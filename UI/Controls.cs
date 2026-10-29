@@ -229,3 +229,154 @@ public sealed class Slider : Control
         base.OnMouseUp(e);
     }
 }
+
+/// <summary>
+/// 数值步进框（自绘，跟主题走）：− [值] +，按住可连续步进。
+/// 系统 NumericUpDown 是原生控件，深色主题下底色/边框/箭头都和这套 UI 不搭，所以自己画。
+/// </summary>
+public sealed class Stepper : Control
+{
+    private int _value;
+    private int _hot = -1;          // 0 = 减号区，1 = 加号区
+    private bool _pressed;
+    private readonly System.Windows.Forms.Timer _repeat;
+
+    public int Minimum = -200;
+    public int Maximum = 200;
+    public Theme Th = Theme.Dark;
+    public event EventHandler? ValueChanged;
+
+    private const float BtnW = 26f;
+
+    public Stepper()
+    {
+        SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
+                 ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        Height = 30;
+        Width = 104;
+        Cursor = Cursors.Hand;
+        _repeat = new System.Windows.Forms.Timer { Interval = 380 };
+        _repeat.Tick += (_, _) =>
+        {
+            if (!_pressed) { _repeat.Stop(); return; }
+            _repeat.Interval = 55;
+            Step(_hot == 0 ? -1 : 1);
+        };
+    }
+
+    public int Value
+    {
+        get => _value;
+        set
+        {
+            int v = Math.Clamp(value, Minimum, Maximum);
+            if (v == _value) return;
+            _value = v;
+            Invalidate();
+        }
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+        g.Clear(Parent?.BackColor ?? Th.PanelBgOpaque);
+
+        var full = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
+        using (var p = Gfx.RoundRect(full, 8f))
+        {
+            using var bg = new SolidBrush(Th.IsDark
+                ? Color.FromArgb(255, 32, 36, 42)
+                : Color.FromArgb(255, 236, 238, 242));
+            g.FillPath(bg, p);
+            using var pen = new Pen(Th.IsDark
+                ? Color.FromArgb(38, 255, 255, 255)
+                : Color.FromArgb(26, 0, 0, 0), 1f);
+            g.DrawPath(pen, p);
+        }
+
+        float cy = Height / 2f;
+        if (_hot >= 0)
+        {
+            var r = new RectangleF(_hot == 0 ? 2.5f : Width - BtnW - 2.5f, 2.5f, BtnW, Height - 5f);
+            using var hp = Gfx.RoundRect(r, 6f);
+            using var hb = new SolidBrush(Th.IsDark
+                ? Color.FromArgb(90, 70, 76, 86)
+                : Color.FromArgb(90, 220, 223, 228));
+            g.FillPath(hb, hp);
+        }
+
+        using (var sep = new Pen(Th.Sep, 1f))
+        {
+            g.DrawLine(sep, BtnW + 3, 7, BtnW + 3, Height - 7);
+            g.DrawLine(sep, Width - BtnW - 3, 7, Width - BtnW - 3, Height - 7);
+        }
+
+        using (var pen = new Pen(Th.Text, 1.4f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+        {
+            float cxL = 2.5f + BtnW / 2f, cxR = Width - 2.5f - BtnW / 2f;
+            g.DrawLine(pen, cxL - 4.5f, cy, cxL + 4.5f, cy);
+            g.DrawLine(pen, cxR - 4.5f, cy, cxR + 4.5f, cy);
+            g.DrawLine(pen, cxR, cy - 4.5f, cxR, cy + 4.5f);
+        }
+
+        var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        using var tb = new SolidBrush(Th.Text);
+        g.DrawString(_value.ToString(), Gfx.F("Segoe UI", 11.5f, FontStyle.Bold), tb,
+            new RectangleF(BtnW, 0, Width - BtnW * 2, Height), sf);
+    }
+
+    private int Zone(int x) => x < BtnW + 2 ? 0 : x > Width - BtnW - 2 ? 1 : -1;
+
+    private void Step(int delta)
+    {
+        int v = Math.Clamp(_value + delta, Minimum, Maximum);
+        if (v == _value) { _repeat.Stop(); return; }
+        _value = v;
+        Invalidate();
+        ValueChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    protected override void OnMouseMove(MouseEventArgs e)
+    {
+        int z = Zone(e.X);
+        if (z != _hot) { _hot = z; Invalidate(); }
+        base.OnMouseMove(e);
+    }
+
+    protected override void OnMouseLeave(EventArgs e)
+    {
+        _hot = -1;
+        Invalidate();
+        base.OnMouseLeave(e);
+    }
+
+    protected override void OnMouseDown(MouseEventArgs e)
+    {
+        int z = Zone(e.X);
+        if (z >= 0)
+        {
+            _hot = z;
+            _pressed = true;
+            Step(z == 0 ? -1 : 1);
+            _repeat.Interval = 380;
+            _repeat.Stop();
+            _repeat.Start();
+        }
+        base.OnMouseDown(e);
+    }
+
+    protected override void OnMouseUp(MouseEventArgs e)
+    {
+        _pressed = false;
+        _repeat.Stop();
+        base.OnMouseUp(e);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) { _repeat.Stop(); _repeat.Dispose(); }
+        base.Dispose(disposing);
+    }
+}

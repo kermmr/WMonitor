@@ -7,6 +7,9 @@ public enum StripStyle { Numbers = 0, Bars = 1, Rings = 2 }
 public enum TrayStyle { DualNumber = 0, DualRing = 1, FourBar = 2, Single = 3 }
 public enum ThemeMode { Dark = 0, Light = 1, System = 2 }
 
+/// <summary>托盘图标可以显示的指标。</summary>
+public enum TrayMetric { Cpu = 0, Ram = 1, Gpu = 2, Vram = 3, Net = 4, Temp = 5 }
+
 /// <summary>贴片锚点。</summary>
 public enum StripAnchor
 {
@@ -31,6 +34,16 @@ public sealed class AppConfig
     public bool ShowNet { get; set; } = false;
     public bool ShowTemp { get; set; } = false;
 
+    /// <summary>是否显示任务栏贴片（关掉后只剩托盘图标）。</summary>
+    public bool ShowStrip { get; set; } = true;
+
+    /// <summary>托盘图标主指标：双数字/双环取两个、单指标取这一个、四段条取第一个。</summary>
+    public TrayMetric TrayPrimary { get; set; } = TrayMetric.Cpu;
+    public TrayMetric TraySecondary { get; set; } = TrayMetric.Gpu;
+    /// <summary>四段条的第三、第四条。</summary>
+    public TrayMetric TrayThird { get; set; } = TrayMetric.Ram;
+    public TrayMetric TrayFourth { get; set; } = TrayMetric.Vram;
+
     public bool StartWithWindows { get; set; } = false;
     public int OffsetX { get; set; } = 0;
 
@@ -42,6 +55,15 @@ public sealed class AppConfig
     /// <summary>贴片底色与描边的不透明度 0–100。</summary>
     public int StripOpacity { get; set; } = 100;
     public string? LockedGpuLuid { get; set; }
+
+    /// <summary>当前托盘样式实际用到的指标槽位（单指标 1 个、双样式 2 个、四段条 4 个）。</summary>
+    [JsonIgnore]
+    public TrayMetric[] TraySlots => Tray switch
+    {
+        TrayStyle.Single => new[] { TrayPrimary },
+        TrayStyle.FourBar => new[] { TrayPrimary, TraySecondary, TrayThird, TrayFourth },
+        _ => new[] { TrayPrimary, TraySecondary }
+    };
 
     [JsonIgnore]
     public static string Dir => Path.Combine(

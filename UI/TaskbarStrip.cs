@@ -35,6 +35,9 @@ public sealed class TaskbarStrip : LayeredWindow
 
     public void Update(MetricsSnapshot s, AppConfig cfg, Theme th)
     {
+        // 用户关掉「显示贴片」：不画、不定位，只留托盘图标
+        if (!cfg.ShowStrip) { if (Visible) Hide(); return; }
+
         Push(_hCpu, s.CpuPercent);
         Push(_hRam, s.RamPercent);
         Push(_hGpu, s.GpuPercent);
@@ -118,7 +121,7 @@ public sealed class TaskbarStrip : LayeredWindow
     /// <summary>位置校验：任务栏位置/高度变了就重贴（Explorer 重启、换分辨率、自动隐藏）。</summary>
     public void Reanchor(AppConfig cfg)
     {
-        if (_bmp == null || !Visible || _dragging) return;
+        if (_bmp == null || !Visible || _dragging || !cfg.ShowStrip) return;
         if (TryAnchor(cfg, _bmp.Width, _bmp.Height, out int x, out int y))
         {
             ApplyZOrder(cfg);

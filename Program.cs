@@ -1,5 +1,6 @@
 using System.Text;
 using WMonitor.Metrics;
+using WMonitor.UI;
 
 namespace WMonitor;
 
@@ -13,6 +14,12 @@ internal static class Program
         if (args.Contains("--probe"))
         {
             Probe();
+            return;
+        }
+
+        if (args.Contains("--icons"))
+        {
+            IconSheet();
             return;
         }
 
@@ -71,7 +78,75 @@ internal static class Program
                 $"net={s.NetDownBps / 1024:F0}/{s.NetUpBps / 1024:F0} KB/s | {s.GpuName}");
             Thread.Sleep(1000);
         }
-        Directory.CreateDirectory(@"D:\Hermes\output\results");
-        File.WriteAllText(@"D:\Hermes\output\results\sysmon-probe.txt", sb.ToString());
+        Directory.CreateDirectory(@"D:/Hermes/output/results");
+        File.WriteAllText(@"D:/Hermes/output/results/sysmon-probe.txt", sb.ToString());
+    }
+
+    /// <summary>
+    /// 诊断用：把 4 种托盘图标渲染成对比图（真实 16px + 8 倍放大），
+    /// 用来判断小尺寸下数字是否看得清。输出 wmonitor-icons.png。
+    /// </summary>
+    private static void IconSheet()
+    {
+        var normal = new MetricsSnapshot
+        {
+            CpuPercent = 54, GpuPercent = 17, NetDownBps = 3.4 * 1024 * 1024, GpuTempC = 62,
+            RamTotalBytes = 64UL << 30, RamUsedBytes = (ulong)(39.0 * (1UL << 30)),
+            VramTotalBytes = 12UL << 30, VramUsedBytes = (ulong)(5.0 * (1UL << 30)),
+            HasGpu = true, HasVramTotal = true, HasTemp = true
+        };
+        var extreme = new MetricsSnapshot
+        {
+            CpuPercent = 100, GpuPercent = 9, NetDownBps = 12.7 * 1024 * 1024, GpuTempC = 87,
+            RamTotalBytes = 64UL << 30, RamUsedBytes = (ulong)(5.1 * (1UL << 30)),
+            VramTotalBytes = 12UL << 30, VramUsedBytes = 12UL << 30,
+            HasGpu = true, HasVramTotal = true, HasTemp = true
+        };
+        var styles = new[] { TrayStyle.DualNumber, TrayStyle.DualRing, TrayStyle.FourBar, TrayStyle.Single };
+        const int zoom = 8, icon = 16, cellW = 460, cellH = 170;
+
+        using var sheet = new Bitmap(cellW * 2 + 20, cellH * styles.Length + 20);
+        using (var g = Graphics.FromImage(sheet))
+        {
+            g.Clear(Color.FromArgb(0x2E, 0x2E, 0x2E));
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+            using var label = new Font("Segoe UI", 10f);
+            using var white = new SolidBrush(Color.White);
+
+            for (int i = 0; i < styles.Length; i++)
+            {
+                var cfg = new AppConfig { Tray = styles[i] };
+                int y = 20 + i * cellH;
+                g.DrawString(styles[i].ToString(), label, white, 20, y);
+                int row = y + 22;
+
+                for (int k = 0; k < 2; k++)
+                {
+                    var s = k == 0 ? normal : extreme;
+                    int x = 20 + k * (cellW / 2);
+                    using var dark = TrayIconRenderer.Render(cfg, s, Theme.Dark, icon);
+                    using var light = TrayIconRenderer.Render(cfg, s, Theme.Light, icon);
+                    using var bmp = dark.ToBitmap();
+
+                    using (var bg = new SolidBrush(Color.FromArgb(0x20, 0x20, 0x20)))
+                        g.FillRectangle(bg, x, row, 34, 34);
+                    g.DrawIcon(dark, new Rectangle(x + 9, row + 9, icon, icon));
+
+                    using (var bg2 = new SolidBrush(Color.FromArgb(0xF3, 0xF3, 0xF3)))
+                        g.FillRectangle(bg2, x + 40, row, 34, 34);
+                    g.DrawIcon(light, new Rectangle(x + 49, row + 9, icon, icon));
+
+                    var prev = g.InterpolationMode;
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                    g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                    g.DrawImage(bmp, new Rectangle(x + 84, row, icon * zoom, icon * zoom));
+                    g.InterpolationMode = prev;
+                }
+            }
+        }
+
+        Directory.CreateDirectory(@"D:/Hermes/output/results");
+        sheet.Save(@"D:/Hermes/output/results/wmonitor-icons.png");
     }
 }

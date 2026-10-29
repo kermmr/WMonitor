@@ -51,12 +51,12 @@ D:\WMonitor\
 │  │  ├─ DetailPanel.cs        详情面板（4 行 + 60 点曲线）
 │  │  ├─ TrayIconRenderer.cs   4 种托盘图标绘制
 │  │  ├─ SettingsForm.cs       设置窗口
-│  │  ├─ Controls.cs           Segmented（分段选择器）/ Chip（胶囊开关）
+│  │  ├─ Controls.cs           Segmented（分段选择器）/ Chip（胶囊开关）/ Slider / Stepper（数值步进框）
 │  │  └─ Theme.cs              深/浅两套配色 + 系统主题判定
 │  └─ docs\                    详细文档
 ├─ WMonitor\                   ← 安装版（framework 依赖，多文件）
-├─ WMonitor-v0.03-framework.exe
-└─ WMonitor-v0.03-portable.exe
+├─ WMonitor-v0.04-framework.exe
+└─ WMonitor-v0.04-portable.exe
 ```
 
 **改代码只改 `wmonitor-eidt\`**，然后重新发布到另外两个位置。
@@ -80,13 +80,13 @@ dotnet publish -c Release -r win-x64 --self-contained false \
 # ② 单文件 · 框架依赖
 dotnet publish -c Release -r win-x64 --self-contained false \
   -p:PublishSingleFile=true -o build/framework
-cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.03-framework.exe"
+cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.04-framework.exe"
 
 # ③ 单文件 · 自包含
 dotnet publish -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true -o build/portable
-cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.03-portable.exe"
+cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.04-portable.exe"
 ```
 
 **发布前必须先杀掉运行中的进程**，否则 exe 被锁、编译报 `MSB3027 / MSB3021`：
@@ -157,7 +157,7 @@ im.crop((1820,1380,2320,1440)).save(r'D:\Hermes\output\results\check.png')
 | 温度显示 `—` | NVML 不可用（无 N 卡 / 驱动旧），属正常降级 |
 | 开机自启没生效 | 检查 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的 `WMonitor` 值 |
 
-诊断模式：`WMonitor.exe --probe` 采样 8 次写到 `D:\Hermes\output\results\wmonitor-probe.txt`。
+诊断模式：`WMonitor.exe --probe` 采样 8 次写到 `D:/Hermes/output/results/wmonitor-probe.txt`；`WMonitor.exe --icons` 渲染 4 种托盘图标对比图到 `D:/Hermes/output/results/wmonitor-icons.png`（真实 16px + 8 倍放大，改小图标必看）。
 
 ---
 

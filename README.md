@@ -7,7 +7,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4?style=flat-square)](https://github.com/kermmr/WMonitor)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-3DDC97?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.03-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
+[![Version](https://img.shields.io/badge/version-v0.04-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
 
 <img src="docs/screenshots/taskbar-dark.png" alt="WMonitor 任务栏贴片" width="712">
 
@@ -25,7 +25,8 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 
 - **贴片三种形态** — 数字条 / 数字 + 迷你柱 / 四环仪表
 - **五种位置** — 任务栏最左、应用图标左边、应用图标右边、托盘箭头左边、自定义（直接拖动，落在任务栏上自动吸附，落到桌面就悬浮）
-- **托盘图标四种** — 双数字 / 双环 / 四段条 / 单指标
+- **托盘图标四种** — 双数字 / 双环 / 四段条 / 单指标；双数字、双环可分别指定主/次指标，四段条可指定 4 个指标（CPU / 内存 / GPU / 显存 / 网速 / 温度）
+- **贴片可隐藏** — 只留托盘图标，随时在设置或托盘菜单里开回来
 - **深色 / 浅色 / 跟随系统**，贴片不透明度 0–100% 可调（底色和描边一起淡出，文字保持清晰）
 - **详情面板** — 四行指标 + 60 点曲线 + 温度 / 功耗 / 频率
 - **显示项可关** — CPU、内存、GPU、显存、网速、GPU 温度
@@ -58,8 +59,8 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
-| `WMonitor-v0.03-framework.exe` | 288 KB | 需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
-| `WMonitor-v0.03-portable.exe` | 63 MB | 自包含，双击即用，适合拷给别人 |
+| `WMonitor-v0.04-framework.exe` | 299 KB | 需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
+| `WMonitor-v0.04-portable.exe` | 63 MB | 自包含，双击即用，适合拷给别人 |
 
 双击运行，贴片自动出现在任务栏托盘左侧，托盘区出现图标。没有安装程序，删掉 exe 就卸载干净（配置在 `%APPDATA%\WMonitor\`）。
 

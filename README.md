@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/license-MIT-3DDC97?style=flat-square)](LICENSE)
 [![Version](https://img.shields.io/badge/version-v0.03-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
 
-<img src="docs/screenshots/taskbar-dark.png" alt="WMonitor 任务栏贴片" width="820">
+<img src="docs/screenshots/taskbar-dark.png" alt="WMonitor 任务栏贴片" width="712">
 
 </div>
 
@@ -35,22 +35,22 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 
 ### 三种贴片形态
 
-<img src="docs/screenshots/styles.png" alt="三种贴片风格" width="712">
+<img src="docs/screenshots/styles.png" alt="三种贴片风格" width="902">
 
 ### 详情面板
 
-<img src="docs/screenshots/panel-dark.png" alt="详情面板" width="520">
+<img src="docs/screenshots/panel-dark.png" alt="详情面板" width="430">
 
 ### 设置窗口
 
 <p>
-  <img src="docs/screenshots/settings-dark.png" alt="深色设置" width="400">
-  <img src="docs/screenshots/settings-light.png" alt="浅色设置" width="400">
+  <img src="docs/screenshots/settings-dark.png" alt="深色设置" width="440">
+  <img src="docs/screenshots/settings-light.png" alt="浅色设置" width="440">
 </p>
 
 ### 浅色主题
 
-<img src="docs/screenshots/taskbar-light.png" alt="浅色贴片" width="680">
+<img src="docs/screenshots/taskbar-light.png" alt="浅色贴片" width="712">
 
 ## 安装
 

@@ -1,10 +1,11 @@
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using WMonitor.Metrics;
 
 namespace WMonitor.UI;
 
-/// <summary>点贴片弹出的详情面板：四行指标 + 60 点曲线 + 温度功耗。</summary>
+/// <summary>点贴片弹出的详情面板：四行指标 + 曲线（可切时间窗）+ 温度功耗。</summary>
 public sealed class DetailPanel : LayeredWindow
 {
     public const int PanelW = 344;
@@ -12,6 +13,21 @@ public sealed class DetailPanel : LayeredWindow
 
     private Bitmap? _bmp;
     private readonly List<double>[] _hist = { new(), new(), new(), new() };
+
+    /// <summary>历史数据源。为 null 或 <c>!Enabled</c> 时退回 v0.04 的 60 点实时缓冲。</summary>
+    public HistoryStore? History { get; set; }
+
+    private static readonly (string Label, int Minutes)[] Windows =
+    {
+        ("1m", 1), ("5m", 5), ("1h", 60), ("24h", 1440)
+    };
+    private const float ChipW = 26f, ChipH = 16f, ChipGap = 4f;
+    private readonly RectangleF[] _winRects = new RectangleF[Windows.Length];
+
+    private readonly float[]?[] _cache = new float[]?[4];
+    private long _cacheAt;
+    private int _cacheWin = -1;
+    private AppConfig? _cfgRef;
 
     public DetailPanel()
     {
@@ -63,6 +79,7 @@ public sealed class DetailPanel : LayeredWindow
 
     public void Update(MetricsSnapshot s, AppConfig cfg, Theme th)
     {
+        _cfgRef = cfg;
         int w = PanelW, h = PanelH;
         if (_bmp == null) _bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
 
@@ -81,23 +98,21 @@ public sealed class DetailPanel : LayeredWindow
         const float pad = 16f;
         float right = w - pad;
 
-        // ---- 标题 ----
+        // ---- 标题 + 时间窗 ----
         Gfx.Text(g, "系统监视", Gfx.F("Segoe UI", 12.5f, FontStyle.Bold), th.Text, pad, 13f);
-        string cap = $"{Math.Max(1, cfg.RefreshMs / 1000.0):0.#}s · 60 点";
-        var capFont = Gfx.F("Segoe UI", 9.5f, FontStyle.Regular);
-        Gfx.Text(g, cap, capFont, th.Label, right - Gfx.Measure(g, cap, capFont).Width, 16f);
+        DrawWindowChips(g, cfg, th, right);
 
         // ---- 四行 ----
         float rowY = 38f;
         const float rowH = 52f;
         DrawRow(g, 0, "CPU", $"{s.CpuGhz:0.0} GHz · {Environment.ProcessorCount} 线程", s.CpuPercent,
-            s.CpuPercent.ToString("0"), "%", "cpu", th.Cpu, th, pad, right, rowY, rowH);
+            s.CpuPercent.ToString("0"), "%", "cpu", th.Cpu, th, pad, right, rowY, rowH, cfg);
         DrawRow(g, 1, "内存", $"{s.RamUsedGb:0.0} / {s.RamTotalGb:0} GB", s.RamPercent,
-            s.RamPercent.ToString("0"), "%", "ram", th.Ram, th, pad, right, rowY + rowH, rowH);
+            s.RamPercent.ToString("0"), "%", "ram", th.Ram, th, pad, right, rowY + rowH, rowH, cfg);
         DrawRow(g, 2, "GPU", s.HasGpu ? s.GpuName : "未检测到", s.GpuPercent,
-            s.GpuPercent.ToString("0"), "%", "gpu", th.Gpu, th, pad, right, rowY + rowH * 2, rowH);
+            s.GpuPercent.ToString("0"), "%", "gpu", th.Gpu, th, pad, right, rowY + rowH * 2, rowH, cfg);
         DrawRow(g, 3, "显存", s.HasVramTotal ? $"{s.VramGb:0.0} / {s.VramTotalGb:0.0} GB" : "—", s.VramPercent,
-            s.VramGb.ToString("0.0"), "GB", "vram", th.Vram, th, pad, right, rowY + rowH * 3, rowH);
+            s.VramGb.ToString("0.0"), "GB", "vram", th.Vram, th, pad, right, rowY + rowH * 3, rowH, cfg);
 
         // ---- 底部 ----
         float footY = rowY + rowH * 4 + 4;
@@ -156,7 +171,7 @@ public sealed class DetailPanel : LayeredWindow
     }
 
     private void DrawRow(Graphics g, int idx, string name, string sub, double pct, string value, string unit,
-        string icon, Color color, Theme th, float pad, float right, float y, float rowH)
+        string icon, Color color, Theme th, float pad, float right, float y, float rowH, AppConfig cfg)
     {
         float cy = y + rowH / 2;
 
@@ -191,7 +206,7 @@ public sealed class DetailPanel : LayeredWindow
             g.FillPath(fb, fp);
         }
 
-        DrawSpark(g, spark, _hist[idx], color);
+        DrawSpark(g, spark, Series(idx, cfg), color);
 
         // 数值 + 单位（整体右对齐）
         var fNum = Gfx.F("Segoe UI", 15f, FontStyle.Bold);
@@ -203,15 +218,83 @@ public sealed class DetailPanel : LayeredWindow
         Gfx.Text(g, unit, fUnit, th.Label, sx + vw + 3, cy + 1);
     }
 
-    private static void DrawSpark(Graphics g, RectangleF r, List<double> vals, Color c)
+    // ---------------- 时间窗 ----------------
+
+    /// <summary>标题行右侧的 1m/5m/1h/24h 段。未开「跨重启保留」时不画 24h（没有数据源，不给死链）。</summary>
+    private void DrawWindowChips(Graphics g, AppConfig cfg, Theme th, float right)
     {
-        if (vals.Count < 3) return;
-        var pts = new PointF[vals.Count];
-        for (int i = 0; i < vals.Count; i++)
+        // 历史关闭：退回 v0.04 的「1s · 60 点」说明 —— 三个时间窗都只有同一份 60 点缓冲，给出来是骗人
+        if (History is not { Enabled: true })
         {
-            float x = r.Left + r.Width * i / (vals.Count - 1f);
+            string cap = $"{Math.Max(1, cfg.RefreshMs / 1000.0):0.#}s · 60 点";
+            var cf = Gfx.F("Segoe UI", 9.5f, FontStyle.Regular);
+            Gfx.Text(g, cap, cf, th.Label, right - Gfx.Measure(g, cap, cf).Width, 16f);
+            for (int i = 0; i < _winRects.Length; i++) _winRects[i] = RectangleF.Empty;
+            return;
+        }
+
+        int count = LongWindowAvailable() ? Windows.Length : Windows.Length - 1;
+        float x = right - count * ChipW - (count - 1) * ChipGap;
+        var f = Gfx.F("Segoe UI", 9f, FontStyle.Regular);
+        var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+
+        for (int i = 0; i < count; i++)
+        {
+            var r = new RectangleF(x + i * (ChipW + ChipGap), 11f, ChipW, ChipH);
+            bool sel = cfg.ChartWindowMinutes == Windows[i].Minutes;
+            if (sel)
+            {
+                using var p = Gfx.RoundRect(r, 5f);
+                using var b = new SolidBrush(th.Hover);
+                g.FillPath(b, p);
+            }
+            using var tb = new SolidBrush(sel ? th.Text : th.Label);
+            g.DrawString(Windows[i].Label, f, tb, r, sf);
+            _winRects[i] = r;
+        }
+        for (int i = count; i < Windows.Length; i++) _winRects[i] = RectangleF.Empty;
+    }
+
+    private bool LongWindowAvailable() => History is { Enabled: true, CanPersist: true };
+
+    /// <summary>某一行（0=Cpu 1=Ram 2=Gpu 3=Vram）的曲线数据。带缓存：24h 窗口每次要读 3.4 MB 文件，不能每秒读。</summary>
+    private float[] Series(int idx, AppConfig cfg)
+    {
+        if (History is not { Enabled: true } h)
+            return _hist[idx].Select(v => (float)v).ToArray();
+
+        long now = Stopwatch.GetTimestamp();
+        long ttl = cfg.ChartWindowMinutes > 60 ? Stopwatch.Frequency * 10 : Stopwatch.Frequency;
+        if (_cacheWin != cfg.ChartWindowMinutes || now - _cacheAt > ttl)
+        {
+            _cacheWin = cfg.ChartWindowMinutes;
+            _cacheAt = now;
+            for (int i = 0; i < _cache.Length; i++) _cache[i] = null;
+        }
+
+        return _cache[idx] ??= h.Query(MapMetric(idx), TimeSpan.FromMinutes(cfg.ChartWindowMinutes), 60).Values;
+    }
+
+    private static HistoryMetric MapMetric(int idx) => idx switch
+    {
+        1 => HistoryMetric.Ram,
+        2 => HistoryMetric.Gpu,
+        3 => HistoryMetric.Vram,
+        _ => HistoryMetric.Cpu,
+    };
+
+    private static void DrawSpark(Graphics g, RectangleF r, float[] vals, Color c)
+    {
+        if (vals.Length < 3) return;
+        var pts = new PointF[vals.Length];
+        for (int i = 0; i < vals.Length; i++)
+        {
+            float x = r.Left + r.Width * i / (vals.Length - 1f);
             double v = double.IsNaN(vals[i]) ? 0 : vals[i];
             float y = r.Bottom - (float)(Math.Clamp(v, 0, 100) / 100.0) * (r.Height - 2) - 1;
+            // NaN/Inf 坐标会让 GDI+ 的 DrawLines 抛 OverflowException（v0.04 踩过），先兜住
+            if (!float.IsFinite(y)) y = r.Bottom;
+            if (!float.IsFinite(x)) x = r.Left;
             pts[i] = new PointF(x, y);
         }
 
@@ -270,6 +353,20 @@ public sealed class DetailPanel : LayeredWindow
         {
             int lp = m.LParam.ToInt32();
             var pt = new Point((short)(lp & 0xFFFF), (short)((lp >> 16) & 0xFFFF));
+
+            // 时间窗段
+            for (int i = 0; i < _winRects.Length; i++)
+            {
+                if (_winRects[i].IsEmpty || !_winRects[i].Contains(pt)) continue;
+                if (_cfgRef != null)
+                {
+                    _cfgRef.ChartWindowMinutes = Windows[i].Minutes;
+                    _cfgRef.Save();
+                    _cacheWin = -1;               // 强制重算
+                }
+                return;
+            }
+
             if (_closeRect.Contains(pt)) { Hide(); return; }
             if (_gearRect.Contains(pt)) { Hide(); SettingsClicked?.Invoke(); return; }
         }

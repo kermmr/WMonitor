@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using WMonitor.Metrics;
@@ -12,6 +13,12 @@ internal sealed class MonitorAppContext : ApplicationContext
     private readonly DetailPanel _panel;
     private readonly NotifyIcon _tray;
     private readonly System.Windows.Forms.Timer _timer;
+
+    /// <summary>历史存储。总开关关闭时为 null（零开销，连目录都不建）。</summary>
+    private HistoryStore? _hist;
+
+    /// <summary>建 <see cref="_hist"/> 时用的配置三元组，设置窗口关闭后据此判断要不要重建。</summary>
+    private (bool On, bool Persist, int Hours) _histKey = (false, false, 0);
 
     /// <summary>当前活着的贴片（主屏 1 片，或「全部屏幕」时每屏 1 片）。</summary>
     private List<TaskbarStrip> _strips = new();
@@ -41,6 +48,9 @@ internal sealed class MonitorAppContext : ApplicationContext
         // 面板先建：贴片的 Clicked 回调要引用它
         _panel = new DetailPanel();
         _panel.SettingsClicked += OpenSettings;
+
+        _hist = NewHistory();
+        _panel.History = _hist;
 
         _bars = TaskbarLocator.Enumerate();
         RebuildStrips();
@@ -130,6 +140,25 @@ internal sealed class MonitorAppContext : ApplicationContext
         _cfg.Save();
     }
 
+    /// <summary>按配置新建历史存储；总开关关闭时返回 null。</summary>
+    private HistoryStore? NewHistory()
+    {
+        _histKey = (_cfg.HistoryEnabled, _cfg.HistoryPersist, _cfg.HistoryRetentionHours);
+        return _cfg.HistoryEnabled
+            ? new HistoryStore(true, _cfg.HistoryPersist, _cfg.HistoryRetentionHours)
+            : null;
+    }
+
+    /// <summary>设置里改了历史三项之一才重建，避免无谓地丢掉内存环。</summary>
+    private void RefreshHistoryIfChanged()
+    {
+        var want = (_cfg.HistoryEnabled, _cfg.HistoryPersist, _cfg.HistoryRetentionHours);
+        if (want == _histKey) return;
+        _hist?.Dispose();
+        _hist = NewHistory();
+        _panel.History = _hist;
+    }
+
     private void Tick()
     {
         if (_paused) return;
@@ -149,6 +178,8 @@ internal sealed class MonitorAppContext : ApplicationContext
         }
 
         foreach (var st in _strips) st.Update(s, _cfg, _theme);
+
+        _hist?.Push(s, Stopwatch.GetTimestamp());
 
         _panel.PushHistory(s);
         if (_panel.Visible) _panel.Update(s, _cfg, _theme);
@@ -359,6 +390,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         _cfg.Save();
         _theme = Theme.Resolve(_cfg.Theme);
         _trayKey = "";
+        RefreshHistoryIfChanged();
         RefreshAll();
     }
 
@@ -372,6 +404,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         foreach (var st in _strips) st.Dispose();
         _strips.Clear();
         _panel.Dispose();
+        _hist?.Dispose();
         _sampler.Dispose();
         _cfg.Save();
         ExitThread();

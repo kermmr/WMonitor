@@ -8,8 +8,8 @@
 
 ## 一句话状态
 
-**步骤 2/7 完成**：多屏枚举 + 每屏 DPI + 多贴片实例（单屏回归通过，1.5× 排版实测正确）。
-下一步是步骤 3：历史存储 `HistoryStore` + 面板时间窗。
+**步骤 3/7 完成**：历史存储（内存环 + 磁盘日文件 + 抽稀查询）+ 面板 1m/5m/1h/24h 时间窗。
+下一步是步骤 4：阈值告警 `AlertEngine`。
 
 ---
 
@@ -45,7 +45,7 @@ python -c "from PIL import ImageGrab; ImageGrab.grab(all_screens=True).crop((182
 |---|---|---|---|
 | 1 | `feat(interop)` 多屏枚举 + DPI | ✅ | 0 error/0 warning；`--monitors` 正确输出 `#0 主 \\.\DISPLAY17 2560×48@0,1392 dpi=96` |
 | 2 | `feat(strip)` 副屏贴片 | ✅ | 单屏贴片 w=312 h=30 y=1401（与 v0.04 一致）；`WMONITOR_DPI_SCALE=1.5` → w=468 h=45 y=1393，比例与居中均正确 |
-| 3 | `feat(history)` 历史存储 | ⬜ | — |
+| 3 | `feat(history)` 历史存储 | ✅ | 70s 生成 `20261031.hist` 2488B（8B magic + 62×40B）；`--history-dump` 内存环 126 条、1m/24h 抽稀值合理；24h 窗口正确显示「左 59 桶为 0、末桶有值」；关闭总开关后文件不再增长 |
 | 4 | `feat(alert)` 阈值告警 | ⬜ | — |
 | 5 | `feat(disk)` 磁盘 IO | ⬜ | — |
 | 6 | `feat(settings)` 滚动 + 新分区 | ⬜ | — |
@@ -58,8 +58,8 @@ python -c "from PIL import ImageGrab; ImageGrab.grab(all_screens=True).crop((182
 
 ## 下一步第一件事
 
-**步骤 3**：新建 `Metrics/HistoryStore.cs`（40 B 定长记录 + 3600 条内存环 + 按天滚动磁盘文件），
-再把 `DetailPanel` 标题行右侧换成 4 个可点击时间窗段（详见 `08-dev-plan-v005.md` §6）。
+**步骤 4**：新建 `Metrics/AlertEngine.cs`（5 条固定规则 + Armed/Firing 状态机 + 迟滞/冷却），
+接线到 `MonitorAppContext.Apply`：贴片变红、托盘闪烁、`ShowBalloonTip`、脚本（详见 `08-dev-plan-v005.md` §7）。
 
 ---
 
@@ -71,6 +71,9 @@ python -c "from PIL import ImageGrab; ImageGrab.grab(all_screens=True).crop((182
 | §1.3 `Scale` | 「增加 `Scale` 属性」 | 改名 `DpiScale` | `Control` 已有 `Scale(float)`，同名触发 CS0108 |
 | §1.3 `Scale` | 「增加 `Scale` 属性」 | 未显式设置时回落 `DeviceDpi / 96f` | 保证步骤 1 单独提交时单屏行为与 v0.04 完全一致，零回归 |
 | §3.2 `TryAnchor` | 只改入参 | 新增 `RefreshBarRect()`，每 tick 重读任务栏矩形 | 文档只写了「重建时刷新」，但自动隐藏 / 换分辨率要求每 tick 自愈，否则贴片会停在旧位置 |
+| §6.3 抽稀 | 「每桶取最大值」 | 首尾空桶保留 0，只补内部空洞 | 向前填充会把刚启动时的 24h 窗口画成一条平线，看着像"一直这么忙"；0 才诚实 |
+| §6.2 读文件 | 未指定 | 必须 `FileShare.ReadWrite \| Delete` 读 | 应用自己握着今天文件的写句柄，`File.ReadAllBytes` 会共享冲突 → 历史永远是空的（已踩，见 `05-known-issues` #19） |
+| §6.4 时间窗 | 恒显示 4 段 | 历史总开关关闭时显示「1s · 60 点」文字 | 三个窗口共用同一份 60 点缓冲，给分段是骗人 |
 
 ---
 
@@ -81,6 +84,7 @@ python -c "from PIL import ImageGrab; ImageGrab.grab(all_screens=True).crop((182
 | v0.04 基线 | 43 MB | 0.3% | 单屏 100% |
 | 步骤 1 完成后 | 42.8 MB | — | 单屏回归通过 |
 | 步骤 2 完成后 | 43.3 MB | — | 单贴片（多贴片未真机测） |
+| 步骤 3 完成后 | 43.8 MB | 0.66s/25s（含启动 JIT） | 历史开、面板未开；关历史时 46.4 MB（面板开着，含位图） |
 
 ---
 

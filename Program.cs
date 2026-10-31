@@ -29,6 +29,12 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--history-dump"))
+        {
+            HistoryDump();
+            return;
+        }
+
         using var mutex = new Mutex(true, MutexName, out bool first);
         if (!first) return;
 
@@ -74,6 +80,31 @@ internal static class Program
         Directory.CreateDirectory(@"D:/Hermes/output/results");
         File.WriteAllText(@"D:/Hermes/output/results/wmonitor-monitors.txt",
             $"共 {all.Count} 块屏\r\n{TaskbarLocator.Describe(all)}\r\n");
+    }
+
+    /// <summary>诊断用：打印历史存储状态与最近 1 分钟的抽稀结果。</summary>
+    private static void HistoryDump()
+    {
+        var cfg = AppConfig.Load();
+        using var h = new HistoryStore(cfg.HistoryEnabled, cfg.HistoryPersist, cfg.HistoryRetentionHours);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"dir={HistoryStore.Dir} exists={Directory.Exists(HistoryStore.Dir)}");
+        if (Directory.Exists(HistoryStore.Dir))
+            foreach (string f in Directory.GetFiles(HistoryStore.Dir))
+                sb.AppendLine($"  file {Path.GetFileName(f)} {new FileInfo(f).Length}B");
+        sb.AppendLine($"enabled={h.Enabled} persist={h.CanPersist} retention={cfg.HistoryRetentionHours}h window={cfg.ChartWindowMinutes}m");
+        sb.AppendLine($"ring count={h.Count} oldest={h.OldestTs} todayFile={h.FileBytes()} bytes");
+        foreach (HistoryMetric m in Enum.GetValues<HistoryMetric>())
+        {
+            var s = h.Query(m, TimeSpan.FromMinutes(1), 10);
+            sb.AppendLine($"{m,-5} 1m : " + string.Join(", ", s.Values.Select(v => v.ToString("0.0"))));
+            var d24 = h.Query(m, TimeSpan.FromHours(24), 12);
+            sb.AppendLine($"{m,-5} 24h: " + string.Join(", ", d24.Values.Select(v => v.ToString("0.0"))));
+        }
+
+        Directory.CreateDirectory(@"D:/Hermes/output/results");
+        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-history.txt", sb.ToString());
     }
 
     /// <summary>诊断用：采样 8 次写文件，验证各计数器读数是否合理。</summary>

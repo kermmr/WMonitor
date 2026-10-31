@@ -58,6 +58,20 @@ public sealed class AppConfig
     /// <summary>每块屏各贴一片（多贴片模式下自由坐标不持久化）。</summary>
     public bool ShowOnAllMonitors { get; set; } = false;
 
+    // ---------------- 历史 ----------------
+
+    /// <summary>历史总开关。关掉后不采、不存、不落盘，面板退回 v0.04 的 60 点实时缓冲。</summary>
+    public bool HistoryEnabled { get; set; } = true;
+
+    /// <summary>跨重启保留：落盘到 %APPDATA%\WMonitor\history。关掉后只有内存 1 小时。</summary>
+    public bool HistoryPersist { get; set; } = true;
+
+    /// <summary>保留时长（小时）：6 / 24 / 72。</summary>
+    public int HistoryRetentionHours { get; set; } = 24;
+
+    /// <summary>面板默认时间窗（分钟）：1 / 5 / 60 / 1440。</summary>
+    public int ChartWindowMinutes { get; set; } = 1;
+
     /// <summary>贴片底色与描边的不透明度 0–100。</summary>
     public int StripOpacity { get; set; } = 100;
     public string? LockedGpuLuid { get; set; }

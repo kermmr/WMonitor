@@ -20,6 +20,10 @@ public sealed class MetricsSnapshot
     public double GpuPowerW = double.NaN;
     public double NetDownBps;
     public double NetUpBps;
+
+    /// <summary>磁盘读写（B/s）。步骤 5 才由 PDH 填充，之前恒为 0。</summary>
+    public double DiskReadBps;
+    public double DiskWriteBps;
     public string GpuName = "GPU";
     public bool HasGpu;
     public bool HasVramTotal;

@@ -74,6 +74,11 @@ internal sealed class MonitorAppContext : ApplicationContext
         };
         _tray.Icon = TrayIconRenderer.Render(_cfg, _last, _theme, TraySize);
 
+        if (AppConfig.LastLoadError != null)
+            _tray.ShowBalloonTip(8000, "WMonitor",
+                "配置文件读取失败，本次使用默认设置；原文件已备份为 config.json.bad（详见 error.log）。",
+                ToolTipIcon.Warning);
+
         _flashTimer = new System.Windows.Forms.Timer { Interval = 400 };
         _flashTimer.Tick += (_, _) => FlashTick();
 

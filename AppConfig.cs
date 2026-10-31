@@ -164,8 +164,13 @@ public sealed class AppConfig
         Converters = { new JsonStringEnumConverter() }
     };
 
+    /// <summary>上次 Load 失败的原因（null = 正常）。启动后据此提示用户，不要静默吞掉。</summary>
+    [JsonIgnore]
+    public static string? LastLoadError { get; private set; }
+
     public static AppConfig Load()
     {
+        LastLoadError = null;
         try
         {
             if (File.Exists(FilePath))
@@ -182,7 +187,21 @@ public sealed class AppConfig
                 }
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            // 一个非法值（例如手改 Anchor 写成不存在的名字）会让整份配置反序列化失败。
+            // 以前这里静默 return 默认值，用户看到的是"所有设置莫名被重置"；
+            // 现在留下证据：坏文件另存为 config.json.bad，原因写 error.log，启动后弹一次托盘提示。
+            LastLoadError = ex.GetType().Name + ": " + ex.Message;
+            try
+            {
+                Directory.CreateDirectory(Dir);
+                File.Copy(FilePath, FilePath + ".bad", true);
+                File.AppendAllText(Path.Combine(Dir, "error.log"),
+                    $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} config.json 解析失败，已备份为 config.json.bad，本次使用默认设置。{Environment.NewLine}{ex}{Environment.NewLine}");
+            }
+            catch { }
+        }
         return new AppConfig();
     }
 

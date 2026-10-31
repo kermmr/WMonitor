@@ -36,10 +36,17 @@ public sealed class Theme
     public Color CardBg { get; init; }
     /// <summary>卡片 1px 描边。</summary>
     public Color CardBorder { get; init; }
-    /// <summary>次要按钮底色。</summary>
+    /// <summary>次要按钮底色（深色主题）。</summary>
     public Color Soft { get; init; }
+    /// <summary>次要按钮底色（浅色主题）：要比窗口底色暗一档，否则按钮和背景糊在一起。</summary>
+    public Color SoftLight { get; init; }
     /// <summary>主色（主按钮、选中态）。</summary>
     public Color Accent { get; init; }
+
+    /// <summary>右键菜单底色：比卡片略亮一档、带一点透明度，压在任务栏/桌面上有层次。</summary>
+    public Color MenuBg { get; init; }
+    /// <summary>右键菜单 1px 描边。</summary>
+    public Color MenuBorder { get; init; }
 
     private static readonly Color DarkCpu = Color.FromArgb(0x4C, 0xC2, 0xFF);
     private static readonly Color DarkRam = Color.FromArgb(0xB3, 0x9D, 0xFF);
@@ -69,7 +76,10 @@ public sealed class Theme
         CardBg = Color.FromArgb(0xFF, 0x19, 0x1C, 0x22),
         CardBorder = Color.FromArgb(18, 255, 255, 255),
         Soft = Color.FromArgb(0xFF, 0x26, 0x2A, 0x31),
-        Accent = Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF)
+        SoftLight = Color.FromArgb(0xFF, 0xDD, 0xE2, 0xE8),
+        Accent = Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF),
+        MenuBg = Color.FromArgb(250, 0x1E, 0x22, 0x29),
+        MenuBorder = Color.FromArgb(34, 255, 255, 255)
     };
 
     public static readonly Theme Light = new()
@@ -94,7 +104,10 @@ public sealed class Theme
         CardBg = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF),
         CardBorder = Color.FromArgb(16, 0, 0, 0),
         Soft = Color.FromArgb(0xFF, 0xE8, 0xEA, 0xEE),
-        Accent = Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF)
+        SoftLight = Color.FromArgb(0xFF, 0xD8, 0xDE, 0xE6),
+        Accent = Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF),
+        MenuBg = Color.FromArgb(250, 0xFB, 0xFC, 0xFE),
+        MenuBorder = Color.FromArgb(26, 0, 0, 0)
     };
 
     public static bool SystemUsesLight()

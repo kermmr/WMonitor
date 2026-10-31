@@ -31,9 +31,15 @@ public sealed class SettingsForm : Form
     public event Action? Changed;
 
     // ---------------- 框架 ----------------
-    private readonly Panel _header = new();
-    private readonly Panel _footer = new();
-    private readonly Panel _host = new();
+    /// <summary>双缓冲面板：卡片重排时少一层闪烁。</summary>
+    private sealed class BufPanel : Panel
+    {
+        public BufPanel() { DoubleBuffered = true; }
+    }
+
+    private readonly Panel _header = new BufPanel();
+    private readonly Panel _footer = new BufPanel();
+    private readonly Panel _host = new BufPanel();
     private Label _brand = null!, _tagline = null!, _ver = null!, _footNote = null!;
     private Panel _divider = null!;
     private BentoButton _done = null!, _reset = null!;
@@ -52,6 +58,9 @@ public sealed class SettingsForm : Form
 
     // ---------------- 托盘 ----------------
     private Segmented _tray = null!, _trayP = null!, _trayS = null!, _trayT = null!, _tray4 = null!;
+    private TrayPreview _preview = null!;
+    private Label _previewText = null!;
+    private CardSpec _trayCard = null!;
 
     // ---------------- 历史 ----------------
     private Chip _histOn = null!, _histPersist = null!;
@@ -130,6 +139,7 @@ public sealed class SettingsForm : Form
 
         BuildChrome();
         BuildCards();
+        RefreshPreview();
         LayoutCards();
     }
 
@@ -464,7 +474,7 @@ public sealed class SettingsForm : Form
     // ---- 托盘图标 ----
     private void BuildTrayCard()
     {
-        var card = NewCard(1, 0, 2, "托盘图标", "每种样式各存一套指标", _th.Gpu);
+        var card = _trayCard = NewCard(1, 0, 2, "托盘图标", "每种样式各存一套指标", _th.Gpu);
         int w = ColW * 2 + Gap - 36;
 
         var capStyle = Cap("图标样式", w);
@@ -478,6 +488,7 @@ public sealed class SettingsForm : Form
         {
             _cfg.Tray = (TrayStyle)_tray.SelectedIndex;
             RefreshTraySlots();     // 换成这套样式自己存的指标，不是上一套的
+            RefreshPreview();
             LayoutCards();
             Apply();
         };
@@ -492,6 +503,28 @@ public sealed class SettingsForm : Form
         AddInlineRow(card, "第三指标", _trayT, w, () => _cfg.Tray == TrayStyle.FourBar);
         _tray4 = MetricSeg(() => _cfg.TrayCurrent.Fourth, m => _cfg.TrayCurrent.Fourth = m);
         AddInlineRow(card, "第四指标", _tray4, w, () => _cfg.Tray == TrayStyle.FourBar);
+
+        // 预览：当前样式 + 当前槽位的真实画法（示意数据），换样式/换指标立刻跟着变
+        var capPrev = Inline("预览", 76);
+        _preview = new TrayPreview { Th = _th, Cfg = _cfg };
+        _previewText = Small("", 380);
+        _previewText.Height = 20;
+        AddRow(card, 76, null,
+            new Cell(capPrev, 0, 21, 76, 30),
+            new Cell(_preview, 80, 0, 72, 72),
+            new Cell(_previewText, 162, 26, 380, 20));
+    }
+
+    private static readonly string[] MetricCn = { "CPU", "内存", "GPU", "显存", "网速", "温度", "磁盘" };
+
+    /// <summary>预览右边那句：当前样式实际用到的指标槽位。</summary>
+    private void RefreshPreview()
+    {
+        var slots = _cfg.TraySlots;
+        _preview.Cfg = _cfg;
+        _preview.Th = _th;
+        _previewText.Text = string.Join(" · ", slots.Select(m => MetricCn[(int)m]));
+        _preview.Invalidate();
     }
 
     /// <summary>把四个指标分段控件切到「当前样式」存的那一套（切样式后必须调）。</summary>
@@ -793,7 +826,12 @@ public sealed class SettingsForm : Form
                 s.RowOn.Add(on);
                 if (on) s.NatH += r.H;
             }
-            s.ContentH = s.Panel.Head + s.NatH + s.Panel.PadBottom;
+            // 托盘卡按"四行都在"算高度：切样式只换行，卡片本身不涨不缩，
+            // 网格行高就不会变 —— 容器不会出现"内容比视口高"的那一帧，滚动条也就不会闪。
+            int natH = ReferenceEquals(s, _trayCard)
+                ? _trayCard.Rows.Sum(r => r.H)
+                : s.NatH;
+            s.ContentH = s.Panel.Head + natH + s.Panel.PadBottom;
         }
 
         // 2) 网格行高 = 该行最高卡片
@@ -802,8 +840,30 @@ public sealed class SettingsForm : Form
         var rowH = new int[rowCount];
         foreach (var s in _cards) rowH[s.Row] = Math.Max(rowH[s.Row], s.ContentH);
 
-        // 3) 摆卡片：矮的卡片把多出来的高度均摊到各行，避免底部一大块空白
+        // 3) 先把行顶坐标算出来，窗口/容器大小要在"摆控件"之前定好：
+        //    反过来的话会有一帧「内容比视口高」，AutoScroll 趁机弹一条系统滚动条
+        //    —— 那一下就是切换样式时闪的白条。
+        var rowTop = new int[rowCount];
         int top = 6;
+        for (int r = 0; r < rowCount; r++) { rowTop[r] = top; top += rowH[r] + Gap; }
+        int contentH = top - Gap + 6;
+
+        int maxH = Math.Max(360, Screen.PrimaryScreen!.WorkingArea.Height - 140 - HeadH - FootH);
+        int hostH = Math.Min(contentH, maxH);
+        int clientH = HeadH + hostH + FootH;
+        bool grow = clientH > ClientSize.Height;
+
+        SuspendLayout();
+        // 只有内容真的超出可用高度才启用滚动；平时关掉 AutoScroll，
+        // 容器就不可能在重排过程中弹出一条瞬时滚动条（切样式时闪的那条）。
+        _host.AutoScroll = contentH > hostH;
+        if (grow) ClientSize = new Size(FormW, clientH);      // 长窗口放前面，露出来的底色是窗口底色
+        _host.SetBounds(0, HeadH, FormW, hostH);
+        _header.SetBounds(0, 0, FormW, HeadH);
+        _footer.SetBounds(0, HeadH + hostH, FormW, FootH);
+        _divider.SetBounds(Pad, HeadH + hostH, FormW - Pad * 2, 1);
+
+        // 4) 摆卡片：矮的卡片把多出来的高度均摊到各行，避免底部一大块空白
         for (int r = 0; r < rowCount; r++)
         {
             foreach (var s in _cards)
@@ -811,10 +871,11 @@ public sealed class SettingsForm : Form
                 if (s.Row != r) continue;
                 int x = Pad + s.Col * (ColW + Gap);
                 int w = s.Span * ColW + (s.Span - 1) * Gap;
-                s.Panel.SetBounds(x, top, w, rowH[r]);
+                s.Panel.SetBounds(x, rowTop[r], w, rowH[r]);
 
-                int visRows = s.RowOn.Count(b => b);
-                int lastOn = s.RowOn.LastIndexOf(true);
+                bool fixedRows = ReferenceEquals(s, _trayCard);
+                int visRows = fixedRows ? s.Rows.Count : s.RowOn.Count(b => b);
+                int lastOn = fixedRows ? s.Rows.Count - 1 : s.RowOn.LastIndexOf(true);
                 // 多出来的高度：行间最多各让 28px，剩下的留在底部（内容贴顶，不飘）
                 int extra = visRows > 1
                     ? Math.Min(28, Math.Max(0, rowH[r] - s.ContentH) / (visRows - 1))
@@ -825,30 +886,23 @@ public sealed class SettingsForm : Form
                 {
                     var row = s.Rows[i];
                     bool rowOn = s.RowOn[i];
+                    // 托盘卡的行位置写死：隐藏的行照样占位，预览行永远停在「四段条（四行全在）」的位置。
+                    // 以前少显示两行时把预览在剩余空间里居中，切单/双样式预览就跟着上下漂。
+                    int rowY = y;
                     foreach (var cell in row.Cells)
                     {
                         bool on = rowOn && (cell.Show?.Invoke() ?? true);
                         cell.C.Visible = on;
                         if (on)
                             cell.C.Bounds = new Rectangle(
-                                s.Panel.PadX + (cell.XOf?.Invoke() ?? cell.X), y + cell.Y, cell.W, cell.H);
+                                s.Panel.PadX + (cell.XOf?.Invoke() ?? cell.X), rowY + cell.Y, cell.W, cell.H);
                     }
-                    if (rowOn) y += row.H + (i == lastOn ? 0 : extra);
+                    if (rowOn || fixedRows) y += row.H + (i == lastOn ? 0 : extra);
                 }
             }
-            top += rowH[r] + Gap;
         }
 
-        int contentH = top - Gap + 6;
-        _host.AutoScrollMinSize = new Size(FormW, contentH);
-
-        int maxH = Math.Max(360, Screen.PrimaryScreen!.WorkingArea.Height - 140 - HeadH - FootH);
-        int hostH = Math.Min(contentH, maxH);
-        _host.SetBounds(0, HeadH, FormW, hostH);
-
-        _header.SetBounds(0, 0, FormW, HeadH);
-        _footer.SetBounds(0, HeadH + hostH, FormW, FootH);
-        _divider.SetBounds(Pad, HeadH + hostH, FormW - Pad * 2, 1);
+        _host.AutoScrollMinSize = contentH > hostH ? new Size(FormW, contentH) : Size.Empty;
 
         _done.Left = FormW - Pad - _done.Width;
         _done.Top = 6;
@@ -858,7 +912,33 @@ public sealed class SettingsForm : Form
         _ver.Top = 22;
         _footNote.Top = 19;
 
-        ClientSize = new Size(FormW, HeadH + hostH + FootH);
+        if (!grow) ClientSize = new Size(FormW, clientH);      // 缩窗口放最后，先让内容缩回去
+        ResumeLayout(false);
+
+        // 尺寸变完立刻同步画一遍：否则新露出的区域要等下一轮消息循环才画，
+        // 中间那一帧就是用户看到的白条
+        if (IsHandleCreated)
+        {
+            Invalidate(true);
+            Update();
+        }
+    }
+
+    /// <summary>
+    /// WinForms 窗口类的默认擦除刷是系统窗口色（白），窗口长高时新露出的那一条会先被它刷白 ——
+    /// 就是切换样式时闪的那条白条。这里自己用窗口底色擦，并把绘制同步做完。
+    /// </summary>
+    protected override void WndProc(ref Message m)
+    {
+        const int WM_ERASEBKGND = 0x0014;
+        if (m.Msg == WM_ERASEBKGND)
+        {
+            using (var g = Graphics.FromHdc(m.WParam))
+                g.Clear(_th.WindowBg);
+            m.Result = (IntPtr)1;
+            return;
+        }
+        base.WndProc(ref m);
     }
 
     [DllImport("dwmapi.dll")]
@@ -881,6 +961,7 @@ public sealed class SettingsForm : Form
     private void Apply()
     {
         _cfg.Save();
+        RefreshPreview();
         Changed?.Invoke();
     }
 
@@ -1010,6 +1091,7 @@ public sealed class SettingsForm : Form
             l.ForeColor = (l.Tag as string) == "brand" ? _th.Text : _th.Label;
         }
         else if (c is BentoButton bb) { bb.Th = _th; bb.Invalidate(); }
+        else if (c is TrayPreview tp) { tp.Th = _th; tp.Cfg = _cfg; tp.Invalidate(); }
 
         foreach (Control x in c.Controls) RecolorControl(x);
     }

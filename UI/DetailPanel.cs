@@ -5,19 +5,28 @@ using WMonitor.Metrics;
 
 namespace WMonitor.UI;
 
-/// <summary>点贴片弹出的详情面板：四行指标 + 曲线（可切时间窗）+ 温度功耗。</summary>
+/// <summary>
+/// 点贴片 / 托盘图标弹出的详情面板：按「显示项」开关列数据行 + 曲线（可切时间窗）+ 温度功耗。
+///
+/// 行不是写死的四行：CPU / 内存 / GPU / 显存 / 网速 / 磁盘 各对应设置里的一个开关，
+/// 关掉哪项就不画哪行，面板高度跟着变（每行 <see cref="RowH"/>）。
+/// </summary>
 public sealed class DetailPanel : LayeredWindow
 {
     public const int PanelW = 344;
 
-    /// <summary>四行时的基准高度；开磁盘 IO 会多一行（+52）。</summary>
-    public const int PanelBaseH = 314;
+    /// <summary>一行的高度。</summary>
     public const int RowH = 52;
 
-    private Bitmap? _bmp;
-    private readonly List<double>[] _hist = { new(), new(), new(), new(), new() };
+    /// <summary>标题行 + 底栏的固定高度（不含数据行）。</summary>
+    public const int ChromeH = 106;
 
-    /// <summary>历史数据源。为 null 或 <c>!Enabled</c> 时退回 v0.04 的 60 点实时缓冲。</summary>
+    private Bitmap? _bmp;
+
+    /// <summary>历史关闭时的 60 点实时缓冲，下标 = <see cref="HistoryMetric"/>。</summary>
+    private readonly List<double>[] _hist = new List<double>[7];
+
+    /// <summary>历史数据源。为 null 或 <c>!Enabled</c> 时退回 60 点实时缓冲。</summary>
     public HistoryStore? History { get; set; }
 
     private static readonly (string Label, int Minutes)[] Windows =
@@ -27,19 +36,24 @@ public sealed class DetailPanel : LayeredWindow
     private const float ChipW = 26f, ChipH = 16f, ChipGap = 4f;
     private readonly RectangleF[] _winRects = new RectangleF[Windows.Length];
 
-    private readonly float[]?[] _cache = new float[]?[5];   // 4 行 + 磁盘
+    private readonly float[]?[] _cache = new float[]?[7];
     private long _cacheAt;
     private int _cacheWin = -1;
     private AppConfig? _cfgRef;
+
+    /// <summary>一行画什么。</summary>
+    private enum RowKind { Cpu, Ram, Gpu, Vram, Net, Disk }
 
     public DetailPanel()
     {
         Name = "WMonitorPanel";
         NoActivate = false;
         Visible = false;
+        for (int i = 0; i < _hist.Length; i++) _hist[i] = new List<double>();
+
         Deactivate += (_, _) =>
         {
-            // 刚弹出时的焦点抖动会立刻触发 Deactivate，300ms 内忽略
+            // 刚弹出时的焦点抖动会立刻触发 Deactivate，宽限期内忽略
             if (DateTime.UtcNow < _deafUntil) return;
             Hide();
         };
@@ -47,33 +61,70 @@ public sealed class DetailPanel : LayeredWindow
 
     private DateTime _deafUntil;
 
-    public void PushHistory(MetricsSnapshot s)
+    /// <summary>按「显示项」开关决定面板要有哪几行（顺序固定）。全关时至少留 CPU，不留空面板。</summary>
+    private static List<RowKind> RowsFor(AppConfig cfg)
     {
-        Add(0, s.CpuPercent); Add(1, s.RamPercent); Add(2, s.GpuPercent); Add(3, s.VramPercent);
-        Add(4, (s.DiskReadBps + s.DiskWriteBps) / 1024.0);   // 存原始 KB/s，画的时候再归一化
+        var rows = new List<RowKind>(6);
+        if (cfg.ShowCpu) rows.Add(RowKind.Cpu);
+        if (cfg.ShowRam) rows.Add(RowKind.Ram);
+        if (cfg.ShowGpu) rows.Add(RowKind.Gpu);
+        if (cfg.ShowVram) rows.Add(RowKind.Vram);
+        if (cfg.ShowNet) rows.Add(RowKind.Net);
+        if (cfg.ShowDisk) rows.Add(RowKind.Disk);
+        if (rows.Count == 0) rows.Add(RowKind.Cpu);
+        return rows;
     }
 
-    private void Add(int i, double v)
+    private static HistoryMetric Map(RowKind k) => k switch
     {
-        var q = _hist[i];
+        RowKind.Ram => HistoryMetric.Ram,
+        RowKind.Gpu => HistoryMetric.Gpu,
+        RowKind.Vram => HistoryMetric.Vram,
+        RowKind.Net => HistoryMetric.Net,
+        RowKind.Disk => HistoryMetric.Disk,
+        _ => HistoryMetric.Cpu,
+    };
+
+    /// <summary>面板应有高度（打开定位用）。</summary>
+    public static int HeightFor(AppConfig cfg) => ChromeH + RowsFor(cfg).Count * RowH;
+
+    public void PushHistory(MetricsSnapshot s)
+    {
+        Add(HistoryMetric.Cpu, s.CpuPercent);
+        Add(HistoryMetric.Ram, s.RamPercent);
+        Add(HistoryMetric.Gpu, s.GpuPercent);
+        Add(HistoryMetric.Vram, s.VramPercent);
+        Add(HistoryMetric.Net, s.NetDownBps / 1024.0);      // 存原始 KB/s，画的时候再归一化
+        Add(HistoryMetric.Temp, s.GpuTempC);
+        Add(HistoryMetric.Disk, (s.DiskReadBps + s.DiskWriteBps) / 1024.0);
+    }
+
+    private void Add(HistoryMetric m, double v)
+    {
+        var q = _hist[(int)m];
         q.Add(v);
         while (q.Count > 60) q.RemoveAt(0);
     }
 
-    public void OpenNear(Rectangle stripBounds, MetricsSnapshot s, AppConfig cfg, Theme th)
+    /// <summary>
+    /// 弹出面板。<paramref name="deafMs"/> 是「失焦保护期」：从托盘图标打开时要长一点 ——
+    /// 点托盘会让任务栏/溢出面板重新拿到焦点，紧接着的 Deactivate 会把刚弹出的面板关掉。
+    /// </summary>
+    public void OpenNear(Rectangle stripBounds, MetricsSnapshot s, AppConfig cfg, Theme th, int deafMs = 350)
     {
         var screen = Screen.FromRectangle(stripBounds).WorkingArea;
-        int ph = PanelBaseH + (cfg.ShowDisk ? RowH : 0);
+        int ph = HeightFor(cfg);
         int x = stripBounds.Right - PanelW;
         int y = stripBounds.Top - ph - 8;
         if (y < screen.Top + 8) y = stripBounds.Bottom + 8;   // 任务栏在顶部时翻到下面
         x = Math.Clamp(x, screen.Left + 8, screen.Right - PanelW - 8);
+        y = Math.Clamp(y, screen.Top + 8, screen.Bottom - ph - 8);
 
         Update(s, cfg, th);
-        _deafUntil = DateTime.UtcNow.AddMilliseconds(350);
+        _deafUntil = DateTime.UtcNow.AddMilliseconds(deafMs);
         Show();
         Activate();
-        _deafUntil = DateTime.UtcNow.AddMilliseconds(350);
+        _deafUntil = DateTime.UtcNow.AddMilliseconds(deafMs);
         LastPos = new Point(x, y);
         if (_bmp != null) Blit(_bmp, x, y);
     }
@@ -85,9 +136,9 @@ public sealed class DetailPanel : LayeredWindow
     public void Update(MetricsSnapshot s, AppConfig cfg, Theme th)
     {
         _cfgRef = cfg;
+        var rows = RowsFor(cfg);
         int w = PanelW;
-        int rows = cfg.ShowDisk ? 5 : 4;
-        int h = PanelBaseH + (cfg.ShowDisk ? RowH : 0);
+        int h = ChromeH + rows.Count * RowH;
         if (_bmp == null || _bmp.Width != w || _bmp.Height != h)
         {
             _bmp?.Dispose();
@@ -113,29 +164,14 @@ public sealed class DetailPanel : LayeredWindow
         Gfx.Text(g, "系统监视", Gfx.F("Segoe UI", 12.5f, FontStyle.Bold), th.Text, pad, 13f);
         DrawWindowChips(g, cfg, th, right);
 
-        // ---- 四行 / 五行 ----
-        float rowY = 38f;
+        // ---- 数据行（按显示项）----
+        const float rowY = 38f;
         const float rowH = RowH;
-        DrawRow(g, 0, "CPU", $"{s.CpuGhz:0.0} GHz · {Environment.ProcessorCount} 线程", s.CpuPercent,
-            s.CpuPercent.ToString("0"), "%", "cpu", th.Cpu, th, pad, right, rowY, rowH, cfg);
-        DrawRow(g, 1, "内存", $"{s.RamUsedGb:0.0} / {s.RamTotalGb:0} GB", s.RamPercent,
-            s.RamPercent.ToString("0"), "%", "ram", th.Ram, th, pad, right, rowY + rowH, rowH, cfg);
-        DrawRow(g, 2, "GPU", s.HasGpu ? s.GpuName : "未检测到", s.GpuPercent,
-            s.GpuPercent.ToString("0"), "%", "gpu", th.Gpu, th, pad, right, rowY + rowH * 2, rowH, cfg);
-        DrawRow(g, 3, "显存", s.HasVramTotal ? $"{s.VramGb:0.0} / {s.VramTotalGb:0.0} GB" : "—", s.VramPercent,
-            s.VramGb.ToString("0.0"), "GB", "vram", th.Vram, th, pad, right, rowY + rowH * 3, rowH, cfg);
-
-        if (cfg.ShowDisk)
-        {
-            double kb = (s.DiskReadBps + s.DiskWriteBps) / 1024.0;
-            DrawRow(g, 4, "磁盘",
-                $"读 {TrayIconRenderer.RateText(s.DiskReadBps)} · 写 {TrayIconRenderer.RateText(s.DiskWriteBps)}",
-                RateToPct(kb), TrayIconRenderer.RateText(s.DiskReadBps + s.DiskWriteBps), "/s",
-                "disk", th.Disk, th, pad, right, rowY + rowH * 4, rowH, cfg);
-        }
+        for (int i = 0; i < rows.Count; i++)
+            DrawRow(g, rows[i], s, th, pad, right, rowY + rowH * i, rowH, cfg);
 
         // ---- 底部 ----
-        float footY = rowY + rowH * rows + 4;
+        float footY = rowY + rowH * rows.Count + 4;
         using (var sep = new Pen(th.Sep, 1f)) g.DrawLine(sep, pad, footY, right, footY);
 
         var f = Gfx.F("Segoe UI", 9.5f, FontStyle.Regular);
@@ -190,9 +226,67 @@ public sealed class DetailPanel : LayeredWindow
         return lw + vw + 18;
     }
 
-    private void DrawRow(Graphics g, int idx, string name, string sub, double pct, string value, string unit,
-        string icon, Color color, Theme th, float pad, float right, float y, float rowH, AppConfig cfg)
+    private void DrawRow(Graphics g, RowKind kind, MetricsSnapshot s, Theme th,
+        float pad, float right, float y, float rowH, AppConfig cfg)
     {
+        string name, sub, value, unit, icon;
+        double pct;
+        Color color;
+
+        switch (kind)
+        {
+            case RowKind.Ram:
+                name = "内存";
+                sub = $"{s.RamUsedGb:0.0} / {s.RamTotalGb:0} GB";
+                pct = s.RamPercent;
+                value = s.RamPercent.ToString("0");
+                unit = "%"; icon = "ram"; color = th.Ram;
+                break;
+
+            case RowKind.Gpu:
+                name = "GPU";
+                sub = s.HasGpu ? s.GpuName : "未检测到";
+                pct = s.GpuPercent;
+                value = s.GpuPercent.ToString("0");
+                unit = "%"; icon = "gpu"; color = th.Gpu;
+                break;
+
+            case RowKind.Vram:
+                name = "显存";
+                sub = s.HasVramTotal ? $"{s.VramGb:0.0} / {s.VramTotalGb:0.0} GB" : "—";
+                pct = s.VramPercent;
+                value = s.VramGb.ToString("0.0");
+                unit = "GB"; icon = "vram"; color = th.Vram;
+                break;
+
+            case RowKind.Net:
+                name = "网速";
+                sub = $"↓ {TrayIconRenderer.RateText(s.NetDownBps)}/s · ↑ {TrayIconRenderer.RateText(s.NetUpBps)}/s";
+                pct = RateToPct(s.NetDownBps / 1024.0);
+                value = TrayIconRenderer.RateText(s.NetDownBps);
+                unit = "/s"; icon = "net"; color = th.Net;
+                break;
+
+            case RowKind.Disk:
+            {
+                double kb = (s.DiskReadBps + s.DiskWriteBps) / 1024.0;
+                name = "磁盘";
+                sub = $"读 {TrayIconRenderer.RateText(s.DiskReadBps)}/s · 写 {TrayIconRenderer.RateText(s.DiskWriteBps)}/s";
+                pct = RateToPct(kb);
+                value = TrayIconRenderer.RateText(s.DiskReadBps + s.DiskWriteBps);
+                unit = "/s"; icon = "disk"; color = th.Disk;
+                break;
+            }
+
+            default:
+                name = "CPU";
+                sub = $"{s.CpuGhz:0.0} GHz · {Environment.ProcessorCount} 线程";
+                pct = s.CpuPercent;
+                value = s.CpuPercent.ToString("0");
+                unit = "%"; icon = "cpu"; color = th.Cpu;
+                break;
+        }
+
         float cy = y + rowH / 2;
 
         // 图标底
@@ -226,7 +320,7 @@ public sealed class DetailPanel : LayeredWindow
             g.FillPath(fb, fp);
         }
 
-        DrawSpark(g, spark, Series(idx, cfg), color);
+        DrawSpark(g, spark, Series(kind, cfg), color);
 
         // 数值 + 单位（整体右对齐）
         var fNum = Gfx.F("Segoe UI", 15f, FontStyle.Bold);
@@ -243,7 +337,7 @@ public sealed class DetailPanel : LayeredWindow
     /// <summary>标题行右侧的 1m/5m/1h/24h 段。未开「跨重启保留」时不画 24h（没有数据源，不给死链）。</summary>
     private void DrawWindowChips(Graphics g, AppConfig cfg, Theme th, float right)
     {
-        // 历史关闭：退回 v0.04 的「1s · 60 点」说明 —— 三个时间窗都只有同一份 60 点缓冲，给出来是骗人
+        // 历史关闭：退回「1s · 60 点」说明 —— 几个时间窗都只有同一份 60 点缓冲，给出来是骗人
         if (History is not { Enabled: true })
         {
             string cap = $"{Math.Max(1, cfg.RefreshMs / 1000.0):0.#}s · 60 点";
@@ -277,9 +371,11 @@ public sealed class DetailPanel : LayeredWindow
 
     private bool LongWindowAvailable() => History is { Enabled: true, CanPersist: true };
 
-    /// <summary>某一行（0=Cpu 1=Ram 2=Gpu 3=Vram 4=Disk）的曲线数据。带缓存：24h 窗口每次要读 3.4 MB 文件，不能每秒读。</summary>
-    private float[] Series(int idx, AppConfig cfg)
+    /// <summary>某一行的曲线数据。带缓存：24h 窗口每次要读 3.4 MB 文件，不能每秒读。</summary>
+    private float[] Series(RowKind kind, AppConfig cfg)
     {
+        var metric = Map(kind);
+        int idx = (int)metric;
         float[] arr;
 
         if (History is not { Enabled: true } h)
@@ -296,11 +392,12 @@ public sealed class DetailPanel : LayeredWindow
                 _cacheAt = now;
                 for (int i = 0; i < _cache.Length; i++) _cache[i] = null;
             }
-            arr = _cache[idx] ??= h.Query(MapMetric(idx), TimeSpan.FromMinutes(cfg.ChartWindowMinutes), 60).Values;
+            arr = _cache[idx] ??= h.Query(metric, TimeSpan.FromMinutes(cfg.ChartWindowMinutes), 60).Values;
         }
 
-        // 磁盘是速率（KB/s），曲线要归一化到 0–100，跟网速同一套对数刻度
-        if (idx != 4) return arr;
+        // 网速 / 磁盘是速率（KB/s），曲线要归一化到 0–100，跟托盘图标同一套对数刻度
+        if (kind != RowKind.Net && kind != RowKind.Disk) return arr;
+
         var norm = new float[arr.Length];
         for (int i = 0; i < arr.Length; i++) norm[i] = RateToPct(arr[i]);
         return norm;
@@ -309,15 +406,6 @@ public sealed class DetailPanel : LayeredWindow
     /// <summary>KB/s → 0–100（对数）：20 KB/s ≈ 26%，1 MB/s ≈ 60%，100 MB/s 满。与托盘图标同刻度。</summary>
     private static float RateToPct(double kb) =>
         (float)Math.Clamp(Math.Log10(Math.Max(0, kb) + 1) / Math.Log10(100 * 1024 + 1) * 100, 0, 100);
-
-    private static HistoryMetric MapMetric(int idx) => idx switch
-    {
-        1 => HistoryMetric.Ram,
-        2 => HistoryMetric.Gpu,
-        3 => HistoryMetric.Vram,
-        4 => HistoryMetric.Disk,
-        _ => HistoryMetric.Cpu,
-    };
 
     private static void DrawSpark(Graphics g, RectangleF r, float[] vals, Color c)
     {
@@ -373,6 +461,21 @@ public sealed class DetailPanel : LayeredWindow
                 g.DrawEllipse(pen, r.X + 4, r.Y + 6, 5, 5);
                 g.DrawLine(pen, r.X + 11, r.Y + 7, r.Right - 3, r.Y + 7);
                 g.DrawLine(pen, r.X + 11, r.Y + 10, r.Right - 3, r.Y + 10);
+                break;
+            case "vram":
+                g.DrawRectangle(pen, r.X + 1, r.Y + 3, r.Width - 2, r.Height - 8);
+                g.DrawLine(pen, r.X + 4, r.Bottom - 5, r.X + 4, r.Bottom - 2);
+                g.DrawLine(pen, r.Right - 4, r.Bottom - 5, r.Right - 4, r.Bottom - 2);
+                g.DrawLine(pen, r.X + 4, r.Y + 6, r.Right - 4, r.Y + 6);
+                break;
+            case "net":
+                // 上行 / 下行箭头
+                g.DrawLine(pen, r.X + 4, r.Y + 1, r.X + 4, r.Bottom - 1);
+                g.DrawLine(pen, r.X + 1.5f, r.Y + 3.5f, r.X + 4, r.Y + 1);
+                g.DrawLine(pen, r.X + 6.5f, r.Y + 3.5f, r.X + 4, r.Y + 1);
+                g.DrawLine(pen, r.Right - 3, r.Bottom - 1, r.Right - 3, r.Y + 1);
+                g.DrawLine(pen, r.Right - 5.5f, r.Bottom - 3.5f, r.Right - 3, r.Bottom - 1);
+                g.DrawLine(pen, r.Right - 0.5f, r.Bottom - 3.5f, r.Right - 3, r.Bottom - 1);
                 break;
             case "disk":
                 g.DrawEllipse(pen, r.X + 1, r.Y + 1, r.Width - 2, 4.5f);

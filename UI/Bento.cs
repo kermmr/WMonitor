@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using WMonitor.Metrics;
 
 namespace WMonitor.UI;
 
@@ -115,6 +116,58 @@ public sealed class BentoCard : Panel
 }
 
 /// <summary>
+/// 托盘图标预览：把当前样式 + 当前指标槽位按 40 px 画出来。
+/// 设置里改样式/指标时立刻重画，用户不用盯着托盘看效果。
+/// 数值是示意数据（设置窗口没有采样器），只反映"长什么样"。
+/// </summary>
+public sealed class TrayPreview : Control
+{
+    public Theme Th = Theme.Dark;
+    public AppConfig Cfg = new();
+
+    public TrayPreview()
+    {
+        SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                 ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+        DoubleBuffered = true;
+        Width = 72;
+        Height = 72;
+    }
+
+    private static readonly MetricsSnapshot Sample = new()
+    {
+        CpuPercent = 54, GpuPercent = 17, GpuTempC = 62,
+        NetDownBps = 3.4 * 1024 * 1024, NetUpBps = 0.6 * 1024 * 1024,
+        DiskReadBps = 1.2 * 1024 * 1024, DiskWriteBps = 0.4 * 1024 * 1024,
+        RamTotalBytes = 64UL << 30, RamUsedBytes = (ulong)(25.0 * (1UL << 30)),
+        VramTotalBytes = 12UL << 30, VramUsedBytes = (ulong)(5.0 * (1UL << 30)),
+        HasGpu = true, HasVramTotal = true, HasTemp = true
+    };
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        g.Clear(Parent?.BackColor ?? Th.CardBg);
+
+        // 模拟任务栏按钮底：深色主题用比卡片更亮一点的方块，浅色用白块
+        var tile = new RectangleF(0.5f, 0.5f, Width - 1f, Height - 1f);
+        using (var path = Gfx.RoundRect(tile, 12f))
+        {
+            using var bg = new SolidBrush(Th.IsDark ? Color.FromArgb(255, 32, 36, 43) : Color.FromArgb(255, 0xF3, 0xF5, 0xF8));
+            g.FillPath(bg, path);
+            using var pen = new Pen(Th.CardBorder, 1f);
+            g.DrawPath(pen, path);
+        }
+
+        int size = Math.Min(Width, Height) - 24;
+        using var ico = TrayIconRenderer.Render(Cfg, Sample, Th, size);
+        using var bmp = ico.ToBitmap();
+        g.DrawImage(bmp, (Width - size) / 2f, (Height - size) / 2f, size, size);
+    }
+}
+
+/// <summary>
 /// 自绘圆角按钮：无描边，hover 提亮 + 抬高投影，按下变暗并整体下沉 1px。
 /// 系统 <see cref="Button"/>（FlatStyle.Flat）画不出圆角，也压不住 hover 态，
 /// 所以这里直接继承 Control 自己画；实现了 <see cref="IButtonControl"/>，
@@ -164,7 +217,7 @@ public sealed class BentoButton : Control, IButtonControl
         if (_hover)
             return Primary ? Mix(Th.Accent, Color.White, 0.20f)
                            : Mix(Th.Soft, Th.IsDark ? Color.White : Color.Black, Th.IsDark ? 0.14f : 0.07f);
-        return Primary ? Th.Accent : Th.Soft;
+        return Primary ? Th.Accent : (Th.IsDark ? Th.Soft : Th.SoftLight);
     }
 
     private Color TextColor() => Primary ? Color.White : Th.Text;
@@ -179,20 +232,27 @@ public sealed class BentoButton : Control, IButtonControl
         g.Clear(Parent?.BackColor ?? Th.WindowBg);
 
         float h = BodyH;
-        int lift = _hover && !_down ? 4 : 0;
 
-        // 投影：hover 抬高（更实、更靠下、带主色晕），按下收回贴回底面
-        var shade = Primary ? Mix(Th.Accent, Color.Black, 0.68f) : Color.Black;
-        int layers = _down ? 1 : _hover ? 8 : 3;
-        for (int i = layers; i >= 1; i--)
+        // 投影：常态不画（平贴）；hover 抬高，按下收回。
+        // 必须由外向内叠 —— 外圈最淡、内圈最深。反过来（外圈最深）会在按钮下面留一条硬边，
+        // 浅色底上尤其难看。
+        int layers = _down ? 2 : _hover ? 10 : 0;
+        if (layers > 0)
         {
-            float inset = i * 0.7f;
-            var sr = new RectangleF(inset, 1.5f + lift + i * 1.0f, Width - inset * 2, h);
-            using var sp = Gfx.RoundRect(sr, Radius);
-            int alpha = _down ? 18 : _hover ? 3 + (int)(i * 2.4f) : 4 + i * 2;
-            if (!Th.IsDark) alpha = (int)(alpha * 0.72f);   // 浅色底上同样的 alpha 会显脏
-            using var sb = new SolidBrush(Color.FromArgb(alpha, shade));
-            g.FillPath(sb, sp);
+            var shade = Th.IsDark && Primary ? Mix(Th.Accent, Color.Black, 0.68f) : Color.Black;
+            int peak = _down ? 14 : Th.IsDark ? 30 : 24;
+            float reach = Math.Max(2f, Shadow - 1.5f);   // 控件底部留给投影的可用下沉距离
+            for (int i = layers; i >= 1; i--)
+            {
+                float k = i / (float)layers;              // 1 = 最外圈（最淡、最靠下）
+                float off = 1f + reach * k;
+                float inset = 0.4f + 2.2f * k;
+                var sr = new RectangleF(inset, off, Width - inset * 2, h);
+                using var sp = Gfx.RoundRect(sr, Radius);
+                int alpha = Math.Max(1, (int)(peak * (1f - k * 0.85f)));
+                using var sb = new SolidBrush(Color.FromArgb(alpha, shade));
+                g.FillPath(sb, sp);
+            }
         }
 
         var rect = new RectangleF(0.5f, 0.5f, Width - 1f, h - 1f);

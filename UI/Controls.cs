@@ -19,6 +19,13 @@ public sealed class Segmented : Control
         Height = 34;
     }
 
+    // 自绘控件必须自己刷底色：默认的 OnPaintBackground 用 BackColor（白），
+    // 控件刚从隐藏变可见时会先白一帧 —— 切换四段条时那几行新出现的控件就是这么闪的。
+    protected override void OnPaintBackground(PaintEventArgs e)
+    {
+        e.Graphics.Clear(Parent?.BackColor ?? Th.PanelBg);
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
@@ -104,6 +111,13 @@ public sealed class Chip : Control
         Width = TextRenderer.MeasureText(text, Font).Width + 30;
     }
 
+    // 自绘控件必须自己刷底色：默认的 OnPaintBackground 用 BackColor（白），
+    // 控件刚从隐藏变可见时会先白一帧 —— 切换四段条时那几行新出现的控件就是这么闪的。
+    protected override void OnPaintBackground(PaintEventArgs e)
+    {
+        e.Graphics.Clear(Parent?.BackColor ?? Th.PanelBg);
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
@@ -173,6 +187,11 @@ public sealed class Slider : Control
     }
 
     private const float Pad = 8f;
+
+    protected override void OnPaintBackground(PaintEventArgs e)
+    {
+        e.Graphics.Clear(Parent?.BackColor ?? Th.PanelBgOpaque);
+    }
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -274,6 +293,11 @@ public sealed class Stepper : Control
             _value = v;
             Invalidate();
         }
+    }
+
+    protected override void OnPaintBackground(PaintEventArgs e)
+    {
+        e.Graphics.Clear(Parent?.BackColor ?? Th.PanelBgOpaque);
     }
 
     protected override void OnPaint(PaintEventArgs e)

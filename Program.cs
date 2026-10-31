@@ -42,8 +42,26 @@ internal static class Program
             return;
         }
 
-        using var mutex = new Mutex(true, MutexName, out bool first);
-        if (!first) return;
+        // 单实例：不能用 `new Mutex(true, name, out createdNew)` 判断 —— 那看的是"对象是否存在"，
+        // 只要有一个残留句柄（别的会话、崩溃后没关掉的宿主、调试时用 OpenExisting 探过）
+        // 就会永远启动不了，且静默退出（用户看到的是"双击没反应"）。
+        // 正确做法是抢持有权：WaitOne(0) 拿到才算首实例；AbandonedMutex 说明上一个实例异常退出，直接接管。
+        using var mutex = new Mutex(false, MutexName);
+        bool owned;
+        try
+        {
+            owned = mutex.WaitOne(TimeSpan.Zero, false);
+        }
+        catch (AbandonedMutexException)
+        {
+            owned = true;
+        }
+        if (!owned)
+        {
+            MessageBox.Show("WMonitor 已经在运行（看托盘区图标）。", "WMonitor",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
 
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
@@ -65,6 +83,19 @@ internal static class Program
             var t = new System.Windows.Forms.Timer { Interval = 700 };
             t.Tick += (_, _) => { t.Stop(); t.Dispose(); ctx.OpenSettingsPublic(); };
             t.Start();
+        }
+        if (args.Contains("--menu"))
+        {
+            // 诊断用：在屏幕右下角把右键菜单摆出来（截图验证自绘菜单，不必模拟鼠标）
+            var m = new System.Windows.Forms.Timer { Interval = 900 };
+            m.Tick += (_, _) =>
+            {
+                m.Stop(); m.Dispose();
+                var wa = Screen.PrimaryScreen!.WorkingArea;
+                int sub = int.TryParse(Environment.GetEnvironmentVariable("WMONITOR_MENU_SUB"), out int v) ? v : -1;
+                ctx.ShowMenuPublic(new Point(wa.Right - 40, wa.Bottom - 20), sub);
+            };
+            m.Start();
         }
         Application.Run(ctx);
     }

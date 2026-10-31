@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using WMonitor.Metrics;
@@ -39,10 +39,11 @@ internal sealed class MonitorAppContext : ApplicationContext
     private string _trayKey = "";
     private int _tick;
 
-    /// <summary>菜单项标签：单选项（勾选状态由委托算，避免一个枚举被多个子菜单共用时分不清）。</summary>
-    private sealed record Radio(Func<bool> IsChecked, Action Apply);
-    /// <summary>菜单项标签：开关项。</summary>
-    private sealed record Toggle(Func<bool> Get, Action<bool> Set);
+    /// <summary>当前打开的托盘右键菜单（每次重开重建，勾选状态直接读配置）。</summary>
+    private FlyoutMenu? _menu;
+
+    /// <summary>左键点击去抖：双击托盘图标只算一次，别开一下又关掉。</summary>
+    private DateTime _lastTrayClick = DateTime.MinValue;
 
     public MonitorAppContext()
     {
@@ -65,13 +66,10 @@ internal sealed class MonitorAppContext : ApplicationContext
         _tray = new NotifyIcon
         {
             Visible = true,
-            Text = "WMonitor",
-            ContextMenuStrip = BuildMenu()
+            Text = "WMonitor"
         };
-        _tray.MouseDoubleClick += (_, e) =>
-        {
-            if (e.Button == MouseButtons.Left) OpenSettings();
-        };
+        // 左键 = 开/关详情面板；右键 = 自绘弹出菜单（不用 ContextMenuStrip，见 UI/FlyoutMenu.cs）
+        _tray.MouseUp += OnTrayMouseUp;
         _tray.Icon = TrayIconRenderer.Render(_cfg, _last, _theme, TraySize);
 
         if (AppConfig.LastLoadError != null)
@@ -335,101 +333,194 @@ internal sealed class MonitorAppContext : ApplicationContext
                      (s.HasVramTotal ? $"  显存 {s.VramGb:0.0}/{s.VramTotalGb:0}G" : "");
     }
 
-    private ContextMenuStrip BuildMenu()
+    // ---------------- 托盘交互 ----------------
+
+    private void OnTrayMouseUp(object? sender, MouseEventArgs e)
     {
-        var menu = new ContextMenuStrip { ShowImageMargin = false };
+        if (e.Button == MouseButtons.Left)
+        {
+            // 双击时 MouseUp 会来两次，去抖后只算一次点击
+            var now = DateTime.UtcNow;
+            if ((now - _lastTrayClick).TotalMilliseconds < 350) return;
+            _lastTrayClick = now;
 
-        var pos = new ToolStripMenuItem("贴片位置");
-        AddRadio(pos, "任务栏最左", () => _cfg.Anchor == StripAnchor.TaskbarLeft, () => _cfg.Anchor = StripAnchor.TaskbarLeft);
-        AddRadio(pos, "应用图标左边", () => _cfg.Anchor == StripAnchor.BeforeApps, () => _cfg.Anchor = StripAnchor.BeforeApps);
-        AddRadio(pos, "应用图标右边", () => _cfg.Anchor == StripAnchor.AfterApps, () => _cfg.Anchor = StripAnchor.AfterApps);
-        AddRadio(pos, "托盘箭头左边", () => _cfg.Anchor == StripAnchor.BeforeTray, () => _cfg.Anchor = StripAnchor.BeforeTray);
-        AddRadio(pos, "自定义（拖动贴片）", () => _cfg.Anchor == StripAnchor.Free, () => _cfg.Anchor = StripAnchor.Free);
-        menu.Items.Add(pos);
+            _menu?.CloseAll();
+            OpenPanel(null, atCursor: true);
+            return;
+        }
 
-        // 只有一块屏时整个子菜单没意义
+        if (e.Button == MouseButtons.Right) ShowTrayMenu();
+    }
+
+    /// <summary>右键：重建菜单模型后在光标处弹出（和系统菜单一样从托盘往上长）。</summary>
+    private void ShowTrayMenu()
+    {
+        _menu?.Dispose();
+        var m = new FlyoutMenu { Th = _theme, Build = BuildMenuRows };
+        _menu = m;
+        m.ShowMain(Cursor.Position);
+    }
+
+    /// <summary>
+    /// 菜单模型：和原来的 ContextMenuStrip 一样的选项与分组，只是换成自绘样式。
+    /// 每次打开/开关项变化时重建，勾选状态直接读配置，不做同步逻辑。
+    /// </summary>
+    private List<MenuRow> BuildMenuRows()
+    {
+        var list = new List<MenuRow>(24);
+
+        // ---- 贴片位置 ----
+        list.Add(new MenuRow
+        {
+            Kind = MenuRowKind.Submenu,
+            Text = "贴片位置",
+            Children = Radios(new[]
+            {
+                ("任务栏最左", StripAnchor.TaskbarLeft),
+                ("应用图标左边", StripAnchor.BeforeApps),
+                ("应用图标右边", StripAnchor.AfterApps),
+                ("托盘箭头左边", StripAnchor.BeforeTray),
+                ("自定义（拖动贴片）", StripAnchor.Free)
+            }, () => _cfg.Anchor, v => _cfg.Anchor = v)
+        });
+
+        // ---- 贴片所在屏幕（只有多屏才有意义）----
         if (_bars.Count > 1)
         {
-            var screen = new ToolStripMenuItem("贴片所在屏幕");
-            AddRadio(screen, "全部屏幕", () => _cfg.ShowOnAllMonitors,
-                () => { _cfg.ShowOnAllMonitors = true; });
-            screen.DropDownItems.Add(new ToolStripSeparator());
+            var screens = new List<MenuRow>
+            {
+                new()
+                {
+                    Kind = MenuRowKind.Radio,
+                    Text = "全部屏幕",
+                    Checked = _cfg.ShowOnAllMonitors,
+                    Click = () => { _cfg.ShowOnAllMonitors = true; Persist(); }
+                },
+                MenuRow.Sep()
+            };
             for (int i = 0; i < _bars.Count; i++)
             {
                 var bar = _bars[i];
-                AddRadio(screen, $"屏幕 {i + 1}（{bar.Rect.Width}×{bar.Rect.Height}）",
-                    () => !_cfg.ShowOnAllMonitors && _cfg.StripMonitor == bar.Device,
-                    () => { _cfg.ShowOnAllMonitors = false; _cfg.StripMonitor = bar.Device; });
+                screens.Add(new MenuRow
+                {
+                    Kind = MenuRowKind.Radio,
+                    Text = $"屏幕 {i + 1}（{bar.Rect.Width}×{bar.Rect.Height}）",
+                    Checked = !_cfg.ShowOnAllMonitors && _cfg.StripMonitor == bar.Device,
+                    Click = () => { _cfg.ShowOnAllMonitors = false; _cfg.StripMonitor = bar.Device; Persist(); }
+                });
             }
-            menu.Items.Add(screen);
+            list.Add(new MenuRow { Kind = MenuRowKind.Submenu, Text = "贴片所在屏幕", Children = screens });
         }
 
-        var strip = new ToolStripMenuItem("贴片风格");
-        AddRadio(strip, "数字条", () => _cfg.Strip == StripStyle.Numbers, () => _cfg.Strip = StripStyle.Numbers);
-        AddRadio(strip, "数字 + 迷你柱", () => _cfg.Strip == StripStyle.Bars, () => _cfg.Strip = StripStyle.Bars);
-        AddRadio(strip, "四环仪表", () => _cfg.Strip == StripStyle.Rings, () => _cfg.Strip = StripStyle.Rings);
-        menu.Items.Add(strip);
+        // ---- 贴片风格 ----
+        list.Add(new MenuRow
+        {
+            Kind = MenuRowKind.Submenu,
+            Text = "贴片风格",
+            Children = Radios(new[]
+            {
+                ("数字条", StripStyle.Numbers),
+                ("数字 + 迷你柱", StripStyle.Bars),
+                ("四环仪表", StripStyle.Rings)
+            }, () => _cfg.Strip, v => _cfg.Strip = v)
+        });
 
-        var tray = new ToolStripMenuItem("托盘图标");
-        AddRadio(tray, "双数字", () => _cfg.Tray == TrayStyle.DualNumber, () => _cfg.Tray = TrayStyle.DualNumber);
-        AddRadio(tray, "双环", () => _cfg.Tray == TrayStyle.DualRing, () => _cfg.Tray = TrayStyle.DualRing);
-        AddRadio(tray, "四段条", () => _cfg.Tray == TrayStyle.FourBar, () => _cfg.Tray = TrayStyle.FourBar);
-        AddRadio(tray, "单指标", () => _cfg.Tray == TrayStyle.Single, () => _cfg.Tray = TrayStyle.Single);
-        tray.DropDownItems.Add(new ToolStripSeparator());
+        // ---- 托盘图标：样式 + 主 / 次指标 ----
+        var trayChildren = Radios(new[]
+        {
+            ("双数字", TrayStyle.DualNumber),
+            ("双环", TrayStyle.DualRing),
+            ("四段条", TrayStyle.FourBar),
+            ("单指标", TrayStyle.Single)
+        }, () => _cfg.Tray, v => _cfg.Tray = v);
 
-        var primary = new ToolStripMenuItem("主指标");
-        AddMetricRadios(primary, m => _cfg.TrayCurrent.Primary == m, m => _cfg.TrayCurrent.Primary = m);
-        tray.DropDownItems.Add(primary);
+        trayChildren.Add(MenuRow.Sep());
+        trayChildren.Add(MetricRow("主指标", () => _cfg.TrayCurrent.Primary, v => _cfg.TrayCurrent.Primary = v));
+        trayChildren.Add(MetricRow("次指标", () => _cfg.TrayCurrent.Secondary, v => _cfg.TrayCurrent.Secondary = v));
 
-        var secondary = new ToolStripMenuItem("次指标");
-        AddMetricRadios(secondary, m => _cfg.TrayCurrent.Secondary == m, m => _cfg.TrayCurrent.Secondary = m);
-        tray.DropDownItems.Add(secondary);
-        menu.Items.Add(tray);
+        list.Add(new MenuRow { Kind = MenuRowKind.Submenu, Text = "托盘图标", Children = trayChildren });
 
-        var theme = new ToolStripMenuItem("主题");
-        AddRadio(theme, "深色", () => _cfg.Theme == ThemeMode.Dark, () => SetTheme(ThemeMode.Dark));
-        AddRadio(theme, "浅色", () => _cfg.Theme == ThemeMode.Light, () => SetTheme(ThemeMode.Light));
-        AddRadio(theme, "跟随系统", () => _cfg.Theme == ThemeMode.System, () => SetTheme(ThemeMode.System));
-        menu.Items.Add(theme);
+        // ---- 主题 ----
+        list.Add(new MenuRow
+        {
+            Kind = MenuRowKind.Submenu,
+            Text = "主题",
+            Children = Radios(new[]
+            {
+                ("深色", ThemeMode.Dark),
+                ("浅色", ThemeMode.Light),
+                ("跟随系统", ThemeMode.System)
+            }, () => _cfg.Theme, SetTheme)
+        });
 
-        menu.Items.Add(new ToolStripSeparator());
+        list.Add(MenuRow.Sep());
 
-        var fields = new ToolStripMenuItem("显示项");
-        AddCheck(fields, "任务栏贴片", () => _cfg.ShowStrip, v => _cfg.ShowStrip = v);
-        fields.DropDownItems.Add(new ToolStripSeparator());
-        AddCheck(fields, "CPU", () => _cfg.ShowCpu, v => _cfg.ShowCpu = v);
-        AddCheck(fields, "内存", () => _cfg.ShowRam, v => _cfg.ShowRam = v);
-        AddCheck(fields, "GPU", () => _cfg.ShowGpu, v => _cfg.ShowGpu = v);
-        AddCheck(fields, "显存", () => _cfg.ShowVram, v => _cfg.ShowVram = v);
-        AddCheck(fields, "网速", () => _cfg.ShowNet, v => _cfg.ShowNet = v);
-        AddCheck(fields, "GPU 温度", () => _cfg.ShowTemp, v => _cfg.ShowTemp = v);
-        AddCheck(fields, "磁盘 IO", () => _cfg.ShowDisk, v => _cfg.ShowDisk = v);
-        menu.Items.Add(fields);
+        // ---- 显示项 ----
+        list.Add(new MenuRow
+        {
+            Kind = MenuRowKind.Submenu,
+            Text = "显示项",
+            Children = new List<MenuRow>
+            {
+                Toggle("任务栏贴片", () => _cfg.ShowStrip, v => _cfg.ShowStrip = v),
+                MenuRow.Sep(),
+                Toggle("CPU", () => _cfg.ShowCpu, v => _cfg.ShowCpu = v),
+                Toggle("内存", () => _cfg.ShowRam, v => _cfg.ShowRam = v),
+                Toggle("GPU", () => _cfg.ShowGpu, v => _cfg.ShowGpu = v),
+                Toggle("显存", () => _cfg.ShowVram, v => _cfg.ShowVram = v),
+                Toggle("网速", () => _cfg.ShowNet, v => _cfg.ShowNet = v),
+                Toggle("GPU 温度", () => _cfg.ShowTemp, v => _cfg.ShowTemp = v),
+                Toggle("磁盘 IO", () => _cfg.ShowDisk, v => _cfg.ShowDisk = v)
+            }
+        });
 
-        var alertMenu = new ToolStripMenuItem("告警");
-        AddCheck(alertMenu, "启用告警", () => _cfg.AlertsEnabled, v => _cfg.AlertsEnabled = v);
-        AddCheck(alertMenu, "静音 1 小时", () => DateTime.Now < _muteUntil,
-            v => _muteUntil = v ? DateTime.Now.AddHours(1) : DateTime.MinValue);
-        alertMenu.DropDownItems.Add(new ToolStripSeparator());
-        alertMenu.DropDownItems.Add(new ToolStripMenuItem("告警设置…", null, (_, _) => OpenSettings()));
-        menu.Items.Add(alertMenu);
+        // ---- 告警 ----
+        list.Add(new MenuRow
+        {
+            Kind = MenuRowKind.Submenu,
+            Text = "告警",
+            Children = new List<MenuRow>
+            {
+                Toggle("启用告警", () => _cfg.AlertsEnabled, v => _cfg.AlertsEnabled = v),
+                Toggle("静音 1 小时", () => DateTime.Now < _muteUntil,
+                    v => _muteUntil = v ? DateTime.Now.AddHours(1) : DateTime.MinValue),
+                MenuRow.Sep(),
+                new MenuRow { Text = "告警设置…", Click = OpenSettings }
+            }
+        });
 
-        menu.Items.Add(new ToolStripSeparator());
+        list.Add(MenuRow.Sep());
 
-        menu.Items.Add(new ToolStripMenuItem("详情面板…", null, (_, _) => OpenPanel(null)));
-        menu.Items.Add(new ToolStripMenuItem("设置…", null, (_, _) => OpenSettings()));
+        list.Add(new MenuRow { Text = "详情面板…", Click = () => OpenPanel(null) });
+        list.Add(new MenuRow { Text = "设置…", Click = OpenSettings });
+        list.Add(Toggle("暂停刷新", () => _paused, v => _paused = v));
 
-        var pause = new ToolStripMenuItem("暂停刷新", null, (_, _) => { }) { CheckOnClick = true };
-        pause.Click += (_, _) => _paused = pause.Checked;
-        menu.Items.Add(pause);
+        list.Add(MenuRow.Sep());
+        list.Add(new MenuRow { Text = "退出", Danger = true, Click = Quit });
 
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(new ToolStripMenuItem("退出", null, (_, _) => Quit()));
-
-        menu.Opening += (_, _) => SyncMenu(menu);
-        return menu;
+        return list;
     }
 
+    /// <summary>一组单选项；值可以是枚举、字符串（设备名）等。</summary>
+    private List<MenuRow> Radios<T>((string Text, T Value)[] items, Func<T> get, Action<T> set)
+    {
+        var cur = get();
+        var rows = new List<MenuRow>(items.Length);
+        foreach (var (text, value) in items)
+        {
+            var v = value;
+            rows.Add(new MenuRow
+            {
+                Kind = MenuRowKind.Radio,
+                Text = text,
+                Checked = EqualityComparer<T>.Default.Equals(cur, v),
+                Click = () => { set(v); Persist(); }
+            });
+        }
+        return rows;
+    }
+
+    /// <summary>托盘图标能显示的指标（和 v0.15 的菜单一致，不含磁盘）。</summary>
     private static readonly (string Text, TrayMetric Metric)[] MetricMenu =
     {
         ("CPU", TrayMetric.Cpu),
@@ -437,51 +528,29 @@ internal sealed class MonitorAppContext : ApplicationContext
         ("GPU", TrayMetric.Gpu),
         ("显存", TrayMetric.Vram),
         ("网速", TrayMetric.Net),
-        ("GPU 温度", TrayMetric.Temp),
+        ("GPU 温度", TrayMetric.Temp)
     };
 
-    private void AddMetricRadios(ToolStripMenuItem parent, Func<TrayMetric, bool> isChecked, Action<TrayMetric> apply)
+    private MenuRow MetricRow(string text, Func<TrayMetric> get, Action<TrayMetric> set) => new()
     {
-        foreach (var (text, m) in MetricMenu)
-            AddRadio(parent, text, () => isChecked(m), () => apply(m));
-    }
+        Kind = MenuRowKind.Submenu,
+        Text = text,
+        Children = Radios(MetricMenu.Select(m => (m.Text, m.Metric)).ToArray(), get, set)
+    };
 
-    private void AddRadio(ToolStripMenuItem parent, string text, Func<bool> isChecked, Action apply)
+    private MenuRow Toggle(string text, Func<bool> get, Action<bool> set) => new()
     {
-        var item = new ToolStripMenuItem(text) { Tag = new Radio(isChecked, apply), CheckOnClick = false };
-        item.Click += (_, _) =>
-        {
-            apply();
-            _cfg.Save();
-            RefreshAll();
-        };
-        parent.DropDownItems.Add(item);
-    }
+        Kind = MenuRowKind.Toggle,
+        Text = text,
+        Checked = get(),
+        Set = v => { set(v); Persist(); }
+    };
 
-    private void AddCheck(ToolStripMenuItem parent, string text, Func<bool> get, Action<bool> set)
+    /// <summary>菜单改完统一落盘 + 立刻生效。</summary>
+    private void Persist()
     {
-        var item = new ToolStripMenuItem(text) { CheckOnClick = true, Tag = new Toggle(get, set) };
-        item.Click += (_, _) =>
-        {
-            set(item.Checked);
-            _cfg.Save();
-            RefreshAll();
-        };
-        parent.DropDownItems.Add(item);
-    }
-
-    private void SyncMenu(ContextMenuStrip menu)
-    {
-        foreach (ToolStripItem topItem in menu.Items)
-        {
-            if (topItem is not ToolStripMenuItem top || top.DropDownItems.Count == 0) continue;
-            foreach (ToolStripItem sub in top.DropDownItems)
-            {
-                if (sub is not ToolStripMenuItem it) continue;
-                if (it.Tag is Radio r) it.Checked = r.IsChecked();
-                else if (it.Tag is Toggle t) it.Checked = t.Get();
-            }
-        }
+        _cfg.Save();
+        RefreshAll();
     }
 
     private void SetTheme(ThemeMode mode)
@@ -501,20 +570,41 @@ internal sealed class MonitorAppContext : ApplicationContext
         Apply(_last);
     }
 
-    private void OpenPanel(TaskbarStrip? src)
+    private void OpenPanel(TaskbarStrip? src, bool atCursor = false)
     {
         if (_panel.Visible) { _panel.Hide(); return; }
 
-        var b = (src ?? _strips.FirstOrDefault())?.StripBounds ?? Rectangle.Empty;
-        // 贴片被隐藏（或还没画出来）时没有锚点，退到鼠标位置
-        if (!_cfg.ShowStrip || b.Width <= 0)
+        Rectangle b;
+        if (atCursor)
+        {
+            // 从托盘图标打开：以光标为锚点（贴片可能被隐藏 / 在别的屏上）
             b = new Rectangle(Cursor.Position, new Size(1, 1));
+        }
+        else
+        {
+            var st = src ?? _strips.FirstOrDefault(s => s.Visible) ?? _strips.FirstOrDefault();
+            b = st?.StripBounds ?? Rectangle.Empty;
+            // 贴片被隐藏（或还没画出来）时没有锚点，退到鼠标位置
+            if (!_cfg.ShowStrip || b.Width <= 0)
+                b = new Rectangle(Cursor.Position, new Size(1, 1));
+        }
 
-        _panel.OpenNear(b, _last, _cfg, _theme);
+        // 从托盘图标打开时给 900ms 失焦保护：点托盘本身会把焦点还给任务栏 / 溢出面板
+        _panel.OpenNear(b, _last, _cfg, _theme, atCursor ? 900 : 350);
     }
 
     public void OpenSettingsPublic() => OpenSettings();
     public void OpenPanelPublic() => OpenPanel(null);
+
+    /// <summary>诊断钩子（--menu）：在指定屏幕坐标弹出右键菜单；subIndex ≥ 0 时顺带展开该行子菜单。</summary>
+    public void ShowMenuPublic(Point at, int subIndex = -1)
+    {
+        _menu?.Dispose();
+        var m = new FlyoutMenu { Th = _theme, Build = BuildMenuRows };
+        _menu = m;
+        m.ShowMain(at);
+        if (subIndex >= 0) m.DebugOpenSubmenu(subIndex);
+    }
 
     private void OpenSettings()
     {
@@ -543,6 +633,8 @@ internal sealed class MonitorAppContext : ApplicationContext
         _timer.Stop();
         _timer.Dispose();
         StopFlash();
+        _menu?.Dispose();
+        _menu = null;
         _tray.Visible = false;
         _tray.Icon = null;
         _tray.Dispose();

@@ -170,3 +170,4 @@ im.crop((1820,1380,2320,1440)).save(r'D:\Hermes\output\results\check.png')
 - 已知限制与踩坑记录 → `docs/05-known-issues.md`
 - 后续计划 → `docs/06-roadmap.md`
 - 版本历史 → `docs/07-changelog.md`
+- **v0.05 施工图（多屏 / 磁盘 IO / 历史曲线 / 阈值告警）→ `docs/08-dev-plan-v005.md`**

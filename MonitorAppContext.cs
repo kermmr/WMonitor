@@ -373,11 +373,11 @@ internal sealed class MonitorAppContext : ApplicationContext
         tray.DropDownItems.Add(new ToolStripSeparator());
 
         var primary = new ToolStripMenuItem("主指标");
-        AddMetricRadios(primary, m => _cfg.TrayPrimary == m, m => _cfg.TrayPrimary = m);
+        AddMetricRadios(primary, m => _cfg.TrayCurrent.Primary == m, m => _cfg.TrayCurrent.Primary = m);
         tray.DropDownItems.Add(primary);
 
         var secondary = new ToolStripMenuItem("次指标");
-        AddMetricRadios(secondary, m => _cfg.TraySecondary == m, m => _cfg.TraySecondary = m);
+        AddMetricRadios(secondary, m => _cfg.TrayCurrent.Secondary == m, m => _cfg.TrayCurrent.Secondary = m);
         tray.DropDownItems.Add(secondary);
         menu.Items.Add(tray);
 

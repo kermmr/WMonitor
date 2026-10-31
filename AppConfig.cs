@@ -21,6 +21,21 @@ public enum StripAnchor
     Free = 4            // 自定义：拖到任意位置（任务栏上或桌面）
 }
 
+/// <summary>
+/// 一种托盘图标样式自己的指标槽位。
+/// v0.12 之前四个样式共用一套槽位（切样式等于换皮不换内容），现在每种样式各存一份：
+/// 双数字可以显示「显存 + GPU」，双环同时显示「CPU + 内存」，互不影响。
+/// </summary>
+public sealed class TraySlotConfig
+{
+    public TrayMetric Primary { get; set; } = TrayMetric.Cpu;
+    public TrayMetric Secondary { get; set; } = TrayMetric.Gpu;
+    public TrayMetric Third { get; set; } = TrayMetric.Ram;
+    public TrayMetric Fourth { get; set; } = TrayMetric.Vram;
+
+    public TraySlotConfig Clone() => (TraySlotConfig)MemberwiseClone();
+}
+
 public sealed class AppConfig
 {
     public StripStyle Strip { get; set; } = StripStyle.Numbers;
@@ -39,12 +54,34 @@ public sealed class AppConfig
     /// <summary>是否显示任务栏贴片（关掉后只剩托盘图标）。</summary>
     public bool ShowStrip { get; set; } = true;
 
-    /// <summary>托盘图标主指标：双数字/双环取两个、单指标取这一个、四段条取第一个。</summary>
+    /// <summary>
+    /// 托盘图标主指标（v0.11 及以前的全局槽位，只在 <see cref="Load"/> 迁移旧配置时读一次）。
+    /// 新代码请用 <see cref="TrayCurrent"/> / <see cref="TrayFor"/>。
+    /// </summary>
     public TrayMetric TrayPrimary { get; set; } = TrayMetric.Cpu;
     public TrayMetric TraySecondary { get; set; } = TrayMetric.Gpu;
-    /// <summary>四段条的第三、第四条。</summary>
+    /// <summary>四段条的第三、第四条（旧字段，见上）。</summary>
     public TrayMetric TrayThird { get; set; } = TrayMetric.Ram;
     public TrayMetric TrayFourth { get; set; } = TrayMetric.Vram;
+
+    // ---------------- 托盘图标：每种样式各一套槽位（v0.12） ----------------
+
+    public TraySlotConfig TrayDualNumber { get; set; } = new() { Primary = TrayMetric.Cpu, Secondary = TrayMetric.Gpu };
+    public TraySlotConfig TrayDualRing { get; set; } = new() { Primary = TrayMetric.Cpu, Secondary = TrayMetric.Gpu };
+    public TraySlotConfig TrayFourBar { get; set; } = new() { Primary = TrayMetric.Cpu, Secondary = TrayMetric.Gpu, Third = TrayMetric.Ram, Fourth = TrayMetric.Vram };
+    public TraySlotConfig TraySingle { get; set; } = new() { Primary = TrayMetric.Cpu };
+
+    /// <summary>当前样式自己的槽位（直接改它的字段就会写进配置）。</summary>
+    [JsonIgnore]
+    public TraySlotConfig TrayCurrent => TrayFor(Tray);
+
+    public TraySlotConfig TrayFor(TrayStyle style) => style switch
+    {
+        TrayStyle.DualRing => TrayDualRing,
+        TrayStyle.FourBar => TrayFourBar,
+        TrayStyle.Single => TraySingle,
+        _ => TrayDualNumber
+    };
 
     public bool StartWithWindows { get; set; } = false;
     public int OffsetX { get; set; } = 0;
@@ -100,12 +137,19 @@ public sealed class AppConfig
 
     /// <summary>当前托盘样式实际用到的指标槽位（单指标 1 个、双样式 2 个、四段条 4 个）。</summary>
     [JsonIgnore]
-    public TrayMetric[] TraySlots => Tray switch
+    public TrayMetric[] TraySlots
     {
-        TrayStyle.Single => new[] { TrayPrimary },
-        TrayStyle.FourBar => new[] { TrayPrimary, TraySecondary, TrayThird, TrayFourth },
-        _ => new[] { TrayPrimary, TraySecondary }
-    };
+        get
+        {
+            var c = TrayCurrent;
+            return Tray switch
+            {
+                TrayStyle.Single => new[] { c.Primary },
+                TrayStyle.FourBar => new[] { c.Primary, c.Secondary, c.Third, c.Fourth },
+                _ => new[] { c.Primary, c.Secondary }
+            };
+        }
+    }
 
     [JsonIgnore]
     public static string Dir => Path.Combine(
@@ -126,12 +170,32 @@ public sealed class AppConfig
         {
             if (File.Exists(FilePath))
             {
-                var cfg = JsonSerializer.Deserialize<AppConfig>(File.ReadAllText(FilePath), JsonOpts);
-                if (cfg != null) return cfg;
+                string json = File.ReadAllText(FilePath);
+                var cfg = JsonSerializer.Deserialize<AppConfig>(json, JsonOpts);
+                if (cfg != null)
+                {
+                    // v0.11 及以前的配置只有一套全局槽位：升级后先原样铺给四个样式，
+                    // 之后用户在设置里改哪个样式就只动那一个。
+                    if (!json.Contains("\"TrayDualNumber\"", StringComparison.Ordinal))
+                        cfg.MigrateTraySlots();
+                    return cfg;
+                }
             }
         }
         catch { }
         return new AppConfig();
+    }
+
+    /// <summary>把旧的全局槽位复制到每种样式（只在读取老配置时调用一次）。</summary>
+    private void MigrateTraySlots()
+    {
+        foreach (var c in new[] { TrayDualNumber, TrayDualRing, TrayFourBar, TraySingle })
+        {
+            c.Primary = TrayPrimary;
+            c.Secondary = TraySecondary;
+            c.Third = TrayThird;
+            c.Fourth = TrayFourth;
+        }
     }
 
     public void Save()

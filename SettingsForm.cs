@@ -5,10 +5,22 @@ using WMonitor.UI;
 namespace WMonitor;
 
 /// <summary>
-/// 设置窗口。布局用「块」描述：每块若干控件 + 各自相对偏移 + 块高 + 显示条件，
-/// 由 <see cref="LayoutBlocks"/> 顺序排版。
-/// v0.10 起内容超过屏幕高度，全部控件放进 <see cref="_scroll"/>（AutoScroll），
-/// 所以「加控件」只需 AddBlock，不用管窗口能不能装下。
+/// 设置窗口（v0.11）：宽面板 + Bento 卡片网格，替掉原来 400 宽的单列长滚动。
+///
+/// 网格 4 列 × 3 行，卡片按「跨列数」拼：
+/// <code>
+/// ┌──────────────────────┬──────────┬──────────┐
+/// │ 贴片 (跨 2)          │ 外观     │ 显示项   │
+/// ├──────────────────────┼──────────┼──────────┤
+/// │ 托盘图标 (跨 2)      │ 历史记录 │ 行为     │
+/// ├──────────────────────┴──────────┴──────────┤
+/// │ 告警 (跨 4)                                │
+/// └────────────────────────────────────────────┘
+/// </code>
+///
+/// 每张卡片自己维护「行」列表（行高 + 显示条件 + 单元格坐标），<see cref="LayoutCards"/>
+/// 统一排版：一行的高度 = 该行最高卡片的内容高度。条件控件出现/消失（多屏、四段条、
+/// 关历史、开告警…）时窗口自动伸缩，正常情况下全程不出现滚动条。
 /// </summary>
 public sealed class SettingsForm : Form
 {
@@ -18,19 +30,30 @@ public sealed class SettingsForm : Form
 
     public event Action? Changed;
 
-    private readonly Panel _scroll = new();
+    // ---------------- 框架 ----------------
+    private readonly Panel _header = new();
+    private readonly Panel _footer = new();
+    private readonly Panel _host = new();
+    private Label _brand = null!, _tagline = null!, _ver = null!, _footNote = null!;
+    private Panel _divider = null!;
+    private BentoButton _done = null!, _reset = null!;
 
-    private Label _header = null!;
-    private Segmented _pos = null!, _strip = null!, _tray = null!, _theme = null!, _rate = null!;
-    private Segmented? _screen;
-    private Segmented _trayP = null!, _trayS = null!, _trayT = null!, _tray4 = null!;
-    private Chip _startup = null!, _onTop = null!, _showStrip = null!, _lockPos = null!, _clickThrough = null!;
+    // ---------------- 贴片 ----------------
+    private Segmented _pos = null!, _strip = null!, _screen = null!;
+    private Stepper _offset = null!;
+
+    // ---------------- 外观 ----------------
+    private Segmented _theme = null!, _rate = null!;
     private Slider _opacity = null!;
     private Label _opacityText = null!;
-    private Stepper _offset = null!;
-    private FlowLayoutPanel _flow = null!, _behavior = null!;
 
-    // 历史
+    // ---------------- 显示项 ----------------
+    private readonly List<(Chip Chip, Func<AppConfig, bool> Dflt)> _chips = new();
+
+    // ---------------- 托盘 ----------------
+    private Segmented _tray = null!, _trayP = null!, _trayS = null!, _trayT = null!, _tray4 = null!;
+
+    // ---------------- 历史 ----------------
     private Chip _histOn = null!, _histPersist = null!;
     private Segmented _retention = null!, _win = null!;
     private Label _histInfo = null!;
@@ -38,26 +61,47 @@ public sealed class SettingsForm : Form
     private static readonly int[] RetentionHours = { 6, 24, 72 };
     private static readonly string[] RetentionNames = { "6 小时", "24 小时", "3 天" };
 
-    // 告警
+    // ---------------- 行为 ----------------
+    private Chip _showStrip = null!, _lockPos = null!, _clickThrough = null!, _onTop = null!, _startup = null!;
+
+    // ---------------- 告警 ----------------
     private Chip _alertOn = null!;
     private readonly Chip[] _alertChips = new Chip[5];
     private readonly Stepper[] _alertThr = new Stepper[5];
     private readonly Stepper[] _alertDur = new Stepper[5];
     private readonly List<(Chip Chip, Func<AppConfig, bool> Dflt)> _alertActions = new();
-    private Button _scriptBtn = null!;
+    private BentoButton _scriptBtn = null!;
     private Label _scriptPath = null!;
 
-    /// <summary>显示项 chip + 它的默认值访问器（不再用下标映射，加 chip 不会错位）。</summary>
-    private readonly List<(Chip Chip, Func<AppConfig, bool> Dflt)> _chips = new();
+    // ---------------- 网格模型 ----------------
+    /// <summary>单元格：控件 + 相对卡片内容原点的位置尺寸 + 独立显示条件（空 = 跟行）。</summary>
+    private sealed record Cell(Control C, int X, int Y, int W, int H, Func<bool>? Show = null, Func<int>? XOf = null);
 
-    private readonly List<Block> _blocks = new();
-    private sealed record Block(Control[] Ctrls, int[] Dy, int Height, Func<bool> Show);
+    /// <summary>一行：行高（含行间距）+ 显示条件 + 若干单元格。</summary>
+    private sealed record Row(int H, Func<bool>? Show, Cell[] Cells);
+
+    private sealed class CardSpec
+    {
+        public BentoCard Panel = null!;
+        public int Row, Col, Span;
+        public readonly List<Row> Rows = new();
+        public readonly List<bool> RowOn = new();
+        public int ContentH;
+        public int NatH;
+    }
+
+    private readonly List<CardSpec> _cards = new();
 
     private const int Pad = 24;
-    private const int ContentW = 352;
-    private const int FormW = 400;
-    private const int CaptionH = 18;
+    private const int Gap = 14;
+    private const int FormW = 1238;
+    private const int ColW = 287;          // (1238 - 24*2 - 14*3) / 4
+    private const int InnerW = ColW - 36;  // 卡片左右各 18 内边距
+    private const int HeadH = 64;
+    private const int FootH = 56;
     private const int CtrlH = 34;
+    private const int ChipH = 30;
+    private const int ChipGap = 8;
 
     private static readonly int[] Rates = { 500, 1000, 2000, 5000 };
     private static readonly string[] MetricNames = { "CPU", "内存", "GPU", "显存", "网速", "温度", "磁盘" };
@@ -76,7 +120,7 @@ public sealed class SettingsForm : Form
         MaximizeBox = false;
         MinimizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
-        BackColor = th.PanelBgOpaque;
+        BackColor = th.WindowBg;
         ForeColor = th.Text;
         Font = new Font("Segoe UI", 9f);
         ShowInTaskbar = true;
@@ -84,13 +128,9 @@ public sealed class SettingsForm : Form
         ShowIcon = false;
         DoubleBuffered = true;
 
-        _scroll.Dock = DockStyle.Fill;
-        _scroll.AutoScroll = true;
-        _scroll.BackColor = th.PanelBgOpaque;
-        Controls.Add(_scroll);
-
-        BuildUi();
-        LayoutBlocks();
+        BuildChrome();
+        BuildCards();
+        LayoutCards();
     }
 
     /// <summary>把配置里的规则按指标归位成 5 条，UI 才能按下标访问。</summary>
@@ -110,24 +150,185 @@ public sealed class SettingsForm : Form
         _cfg.AlertRules = list;
     }
 
-    // ---------------- 构建 ----------------
+    // ================= 框架（标题栏 / 底栏 / 卡片容器） =================
 
-    private void BuildUi()
+    private void BuildChrome()
     {
-        _header = Header("WMonitor", "系统监视器设置");
-        AddBlock(52, null, (_header, 0));
+        _header.BackColor = _th.WindowBg;
+        _footer.BackColor = _th.WindowBg;
+        _host.BackColor = _th.WindowBg;
+        _host.AutoScroll = true;
 
-        // ---- 贴片 ----
+        _brand = new Label
+        {
+            Text = "WMonitor",
+            Left = Pad, Top = 11, Width = 220, Height = 30,
+            Font = new Font("Segoe UI", 15f, FontStyle.Bold),
+            ForeColor = _th.Text, BackColor = _th.WindowBg, Tag = "brand"
+        };
+        _tagline = new Label
+        {
+            Text = "系统监视器设置",
+            Left = Pad + 2, Top = 40, Width = 280, Height = 18,
+            Font = new Font("Segoe UI", 9f),
+            ForeColor = _th.Label, BackColor = _th.WindowBg, Tag = "caption"
+        };
+        _ver = new Label
+        {
+            Text = AppVersion(),
+            Left = FormW - Pad - 140, Top = 22, Width = 140, Height = 18,
+            TextAlign = ContentAlignment.MiddleRight,
+            Font = new Font("Segoe UI", 9f),
+            ForeColor = _th.Label, BackColor = _th.WindowBg, Tag = "caption"
+        };
+
+        _header.Controls.AddRange(new Control[] { _brand, _tagline, _ver });
+
+        _footNote = new Label
+        {
+            Text = "改动即时保存并生效",
+            Left = Pad, Top = 19, Width = 320, Height = 20,
+            TextAlign = ContentAlignment.MiddleLeft,
+            Font = new Font("Segoe UI", 9f),
+            ForeColor = _th.Label, BackColor = _th.WindowBg, Tag = "caption"
+        };
+
+        _done = new BentoButton
+        {
+            Text = "完成",
+            Width = 100, Height = 44,
+            Primary = true, Th = _th,
+            DialogResult = DialogResult.OK
+        };
+        AcceptButton = _done;
+
+        _reset = new BentoButton
+        {
+            Text = "恢复默认",
+            Width = 100, Height = 44,
+            Th = _th
+        };
+        _reset.Click += (_, _) => ResetDefaults();
+
+        _divider = new Panel { Height = 1, BackColor = _th.Line };
+
+        _footer.Controls.AddRange(new Control[] { _footNote, _reset, _done });
+        Controls.AddRange(new Control[] { _host, _header, _footer, _divider });
+    }
+
+    private static string AppVersion()
+    {
+        var v = typeof(SettingsForm).Assembly.GetName().Version;
+        return v is null ? "" : $"v{v.Major}.{v.Minor:00}";
+    }
+
+    // ================= 卡片模型 =================
+
+    private CardSpec NewCard(int row, int col, int span, string title, string note, Color accent)
+    {
+        var p = new BentoCard
+        {
+            Title = title,
+            Note = note,
+            Accent = accent,
+            Th = _th,
+            Outside = _th.WindowBg,
+            BackColor = _th.CardBg
+        };
+        _host.Controls.Add(p);
+
+        var s = new CardSpec { Panel = p, Row = row, Col = col, Span = span };
+        _cards.Add(s);
+        return s;
+    }
+
+    private static void AddRow(CardSpec s, int h, Func<bool>? show, params Cell[] cells)
+    {
+        foreach (var c in cells)
+            if (c.C.Parent is null) s.Panel.Controls.Add(c.C);
+        s.Rows.Add(new Row(h, show, cells));
+    }
+
+    // ================= 小控件工厂 =================
+
+    /// <summary>字段标题（在控件上方，粗体小字）。</summary>
+    private Label Cap(string text, int w) => new()
+    {
+        Text = text, Width = w, Height = 16, AutoSize = false,
+        Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+        ForeColor = _th.Label, BackColor = _th.CardBg, Tag = "caption"
+    };
+
+    /// <summary>行内标题（在控件左侧，垂直居中）。</summary>
+    private Label Inline(string text, int w) => new()
+    {
+        Text = text, Width = w, Height = 30, AutoSize = false,
+        TextAlign = ContentAlignment.MiddleLeft,
+        Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+        ForeColor = _th.Label, BackColor = _th.CardBg, Tag = "caption"
+    };
+
+    /// <summary>说明 / 单位小字。</summary>
+    private Label Small(string text, int w) => new()
+    {
+        Text = text, Width = w, Height = 18, AutoSize = false,
+        TextAlign = ContentAlignment.MiddleLeft,
+        Font = new Font("Segoe UI", 8.5f),
+        ForeColor = _th.Label, BackColor = _th.CardBg, Tag = "caption"
+    };
+
+    private Chip Toggle(string text, bool on, int w, Action<bool> set)
+    {
+        var c = new Chip(text) { Checked = on, Th = _th, Width = w, Height = ChipH };
+        c.CheckedChanged += (_, _) => { set(c.Checked); Apply(); };
+        return c;
+    }
+
+    // ================= 建卡 =================
+
+    private void BuildCards()
+    {
+        BuildStripCard();      // 行0 列0 跨2
+        BuildLookCard();       // 行0 列2
+        BuildItemsCard();      // 行0 列3
+        BuildTrayCard();       // 行1 列0 跨2
+        BuildHistoryCard();    // 行1 列2
+        BuildBehaviorCard();   // 行1 列3
+        BuildAlertCard();      // 行2 列0 跨4
+    }
+
+    // ---- 贴片 ----
+    private void BuildStripCard()
+    {
+        var card = NewCard(0, 0, 2, "贴片", "任务栏上的指标贴片", _th.Cpu);
+        int half = ColW;
+        int right = half + Gap;
+
+        var capPos = Cap("位置", half);
         _pos = new Segmented
         {
             Items = new[] { "最左", "图标左", "图标右", "托盘左", "自定义" },
             SelectedIndex = (int)_cfg.Anchor,
-            Th = _th, Left = Pad, Width = ContentW, Height = CtrlH
+            Th = _th, Height = CtrlH
         };
         _pos.SelectionChanged += (_, _) => { _cfg.Anchor = (StripAnchor)_pos.SelectedIndex; Apply(); };
-        AddCaptionBlock("贴片位置", _pos);
 
-        // ---- 贴片所在屏幕（只有 1 屏时整行隐藏）----
+        var capStyle = Cap("风格", half);
+        _strip = new Segmented
+        {
+            Items = new[] { "数字条", "迷你柱", "四环" },
+            SelectedIndex = (int)_cfg.Strip,
+            Th = _th, Height = CtrlH
+        };
+        _strip.SelectionChanged += (_, _) => { _cfg.Strip = (StripStyle)_strip.SelectedIndex; Apply(); };
+
+        AddRow(card, 62, null,
+            new Cell(capPos, 0, 0, half, 16), new Cell(_pos, 0, 22, half, CtrlH),
+            new Cell(capStyle, right, 0, half, 16), new Cell(_strip, right, 22, half, CtrlH));
+
+        // 所在屏幕（只有多屏才有意义）
+        var capScreen = Cap("所在屏幕", half);
+        _screen = new Segmented { Items = Array.Empty<string>(), Th = _th, Height = CtrlH };
         if (_bars.Count > 1)
         {
             var names = new List<string>();
@@ -140,60 +341,48 @@ public sealed class SettingsForm : Form
                 for (int i = 0; i < shown; i++)
                     if (_bars[i].Device == _cfg.StripMonitor) sel = i;
 
-            _screen = new Segmented
-            {
-                Items = names.ToArray(), SelectedIndex = sel,
-                Th = _th, Left = Pad, Width = ContentW, Height = CtrlH
-            };
+            _screen.Items = names.ToArray();
+            _screen.SelectedIndex = sel;
             _screen.SelectionChanged += (_, _) =>
             {
-                int i = _screen!.SelectedIndex;
+                int i = _screen.SelectedIndex;
                 if (i >= shown) _cfg.ShowOnAllMonitors = true;
                 else { _cfg.ShowOnAllMonitors = false; _cfg.StripMonitor = _bars[i].Device; }
                 Apply();
             };
-            AddCaptionBlock("贴片所在屏幕", _screen);
         }
 
-        _strip = new Segmented
-        {
-            Items = new[] { "数字条", "迷你柱", "四环" },
-            SelectedIndex = (int)_cfg.Strip,
-            Th = _th, Left = Pad, Width = ContentW, Height = CtrlH
-        };
-        _strip.SelectionChanged += (_, _) => { _cfg.Strip = (StripStyle)_strip.SelectedIndex; Apply(); };
-        AddCaptionBlock("贴片风格", _strip);
+        // 水平微调：和「所在屏幕」共用一行；单屏时自动挪到左半，不留空洞
+        var capOff = Inline("水平微调", 66);
+        _offset = new Stepper { Width = 84, Height = 30, Th = _th, Minimum = -200, Maximum = 200 };
+        _offset.Value = Math.Clamp(_cfg.OffsetX, -200, 200);
+        _offset.ValueChanged += (_, _) => { _cfg.OffsetX = _offset.Value; Apply(); };
+        var hint = Small("负 左移 · 正 右移", 150);
+        int dx() => _bars.Count > 1 ? 0 : -right;   // 单屏时整组左移半个卡片宽
 
-        // ---- 托盘图标 ----
-        _tray = new Segmented
-        {
-            Items = new[] { "双数字", "双环", "四段条", "单指标" },
-            SelectedIndex = (int)_cfg.Tray,
-            Th = _th, Left = Pad, Width = ContentW, Height = CtrlH
-        };
-        _tray.SelectionChanged += (_, _) =>
-        {
-            _cfg.Tray = (TrayStyle)_tray.SelectedIndex;
-            LayoutBlocks();
-            Apply();
-        };
-        AddCaptionBlock("托盘图标", _tray);
+        AddRow(card, 62, null,
+            new Cell(capScreen, 0, 0, half, 16, () => _bars.Count > 1),
+            new Cell(_screen, 0, 22, half, CtrlH, () => _bars.Count > 1),
+            new Cell(capOff, right, 0, 66, 16, null, () => right + dx()),
+            new Cell(_offset, right + 4, 22, 84, 30, null, () => right + 4 + dx()),
+            new Cell(hint, right + 96, 26, 150, 20, null, () => right + 96 + dx()));
 
-        _trayP = MetricSeg(_cfg.TrayPrimary, m => _cfg.TrayPrimary = m);
-        AddInlineBlock("主指标", _trayP);
-        _trayS = MetricSeg(_cfg.TraySecondary, m => _cfg.TraySecondary = m);
-        AddInlineBlock("次指标", _trayS, () => _cfg.Tray != TrayStyle.Single);
-        _trayT = MetricSeg(_cfg.TrayThird, m => _cfg.TrayThird = m);
-        AddInlineBlock("第三指标", _trayT, () => _cfg.Tray == TrayStyle.FourBar);
-        _tray4 = MetricSeg(_cfg.TrayFourth, m => _cfg.TrayFourth = m);
-        AddInlineBlock("第四指标", _tray4, () => _cfg.Tray == TrayStyle.FourBar);
+        AddRow(card, 22, null,
+            new Cell(Small("拖动贴片可直接移动 · 锁定后固定", ColW * 2 + Gap - 36), 0, 2, ColW * 2 + Gap - 36, 18));
+    }
 
-        // ---- 主题 / 刷新 ----
+    // ---- 外观 ----
+    private void BuildLookCard()
+    {
+        var card = NewCard(0, 2, 1, "外观", "", _th.Ram);
+        int w = InnerW;
+
+        var capTheme = Cap("主题", w);
         _theme = new Segmented
         {
             Items = new[] { "深色", "浅色", "跟随系统" },
             SelectedIndex = (int)_cfg.Theme,
-            Th = _th, Left = Pad, Width = ContentW, Height = CtrlH
+            Th = _th, Height = CtrlH
         };
         _theme.SelectionChanged += (_, _) =>
         {
@@ -201,49 +390,30 @@ public sealed class SettingsForm : Form
             Apply();
             Recolor();
         };
-        AddCaptionBlock("主题", _theme);
+        AddRow(card, 62, null, new Cell(capTheme, 0, 0, w, 16), new Cell(_theme, 0, 22, w, CtrlH));
 
         int rateIdx = Array.IndexOf(Rates, _cfg.RefreshMs);
+        var capRate = Cap("刷新间隔", w);
         _rate = new Segmented
         {
             Items = new[] { "0.5 秒", "1 秒", "2 秒", "5 秒" },
             SelectedIndex = rateIdx < 0 ? 1 : rateIdx,
-            Th = _th, Left = Pad, Width = ContentW, Height = CtrlH
+            Th = _th, Height = CtrlH
         };
         _rate.SelectionChanged += (_, _) =>
         {
             _cfg.RefreshMs = Rates[Math.Clamp(_rate.SelectedIndex, 0, Rates.Length - 1)];
             Apply();
         };
-        AddCaptionBlock("刷新间隔", _rate);
+        AddRow(card, 62, null, new Cell(capRate, 0, 0, w, 16), new Cell(_rate, 0, 22, w, CtrlH));
 
-        // ---- 贴片显示项 ----
-        var capFields = Caption("贴片显示项");
-        _flow = new FlowLayoutPanel
-        {
-            Left = Pad, Top = 0, Width = ContentW - 20, Height = 104,
-            BackColor = _th.PanelBgOpaque, WrapContents = true, AutoScroll = false
-        };
-        AddChip(_flow, "CPU", () => _cfg.ShowCpu, v => _cfg.ShowCpu = v, d => d.ShowCpu);
-        AddChip(_flow, "内存", () => _cfg.ShowRam, v => _cfg.ShowRam = v, d => d.ShowRam);
-        AddChip(_flow, "GPU", () => _cfg.ShowGpu, v => _cfg.ShowGpu = v, d => d.ShowGpu);
-        AddChip(_flow, "显存", () => _cfg.ShowVram, v => _cfg.ShowVram = v, d => d.ShowVram);
-        AddChip(_flow, "网速", () => _cfg.ShowNet, v => _cfg.ShowNet = v, d => d.ShowNet);
-        AddChip(_flow, "GPU 温度", () => _cfg.ShowTemp, v => _cfg.ShowTemp = v, d => d.ShowTemp);
-        AddChip(_flow, "磁盘 IO", () => _cfg.ShowDisk, v => _cfg.ShowDisk = v, d => d.ShowDisk);
-        AddBlock(22 + 104 + 8, null, (capFields, 0), (_flow, 22));
-
-        // ---- 不透明度 ----
-        var capOpacity = Caption("不透明度");
-        capOpacity.Width = 70;
-        capOpacity.Height = 28;
-        capOpacity.TextAlign = ContentAlignment.MiddleLeft;
-        _opacity = new Slider { Left = Pad + 72, Top = 0, Width = 200, Value = _cfg.StripOpacity, Th = _th };
+        var capOp = Inline("不透明度", 84);
+        _opacity = new Slider { Width = 118, Height = 26, Th = _th, Value = _cfg.StripOpacity };
         _opacityText = new Label
         {
-            Text = _cfg.StripOpacity + "%", Left = Pad + 282, Top = 0, Width = 60, Height = 28,
-            TextAlign = ContentAlignment.MiddleLeft,
-            ForeColor = _th.Text, BackColor = _th.PanelBgOpaque
+            Text = _cfg.StripOpacity + "%", Width = 52, Height = 26,
+            TextAlign = ContentAlignment.MiddleRight,
+            ForeColor = _th.Text, BackColor = _th.CardBg
         };
         _opacity.ValueChanged += (_, _) =>
         {
@@ -251,105 +421,130 @@ public sealed class SettingsForm : Form
             _opacityText.Text = _opacity.Value + "%";
             Apply();
         };
-        AddBlock(44, null, (capOpacity, 0), (_opacity, 0), (_opacityText, 0));
-
-        AddBlock(16, null, (Separator(), 0));
-
-        BuildHistorySection();
-
-        AddBlock(16, null, (Separator(), 0));
-
-        BuildAlertSection();
-
-        AddBlock(16, null, (Separator(), 0));
-
-        // ---- 行为开关（5 个 chip 一行放不下，改用流式两行）----
-        _behavior = new FlowLayoutPanel
-        {
-            Left = Pad, Top = 0, Width = ContentW - 20, Height = 76,
-            BackColor = _th.PanelBgOpaque, WrapContents = true, AutoScroll = false
-        };
-        _onTop = new Chip("始终置顶") { Checked = _cfg.AlwaysOnTop, Th = _th, Margin = new Padding(0, 0, 8, 8) };
-        _startup = new Chip("开机自动启动") { Checked = Startup.IsEnabled(), Th = _th, Margin = new Padding(0, 0, 8, 8) };
-        _showStrip = new Chip("显示贴片") { Checked = _cfg.ShowStrip, Th = _th, Margin = new Padding(0, 0, 8, 8) };
-        _lockPos = new Chip("锁定位置") { Checked = _cfg.LockPosition, Th = _th, Margin = new Padding(0, 0, 8, 8) };
-        _clickThrough = new Chip("点击穿透") { Checked = _cfg.ClickThrough, Th = _th, Margin = new Padding(0, 0, 8, 8) };
-
-        _onTop.CheckedChanged += (_, _) => { _cfg.AlwaysOnTop = _onTop.Checked; Apply(); };
-        _startup.CheckedChanged += (_, _) => { Startup.Set(_startup.Checked); _cfg.StartWithWindows = _startup.Checked; Apply(); };
-        _showStrip.CheckedChanged += (_, _) => { _cfg.ShowStrip = _showStrip.Checked; Apply(); };
-        _lockPos.CheckedChanged += (_, _) => { _cfg.LockPosition = _lockPos.Checked; Apply(); };
-        _clickThrough.CheckedChanged += (_, _) => { _cfg.ClickThrough = _clickThrough.Checked; Apply(); };
-
-        _behavior.Controls.AddRange(new Control[] { _onTop, _startup, _showStrip, _lockPos, _clickThrough });
-        AddBlock(76 + 10, null, (_behavior, 0));
-
-        // ---- 水平微调 ----
-        var offLabel = Caption("贴片水平微调");
-        offLabel.Width = 100;
-        offLabel.Height = 30;
-        offLabel.TextAlign = ContentAlignment.MiddleLeft;
-        _offset = new Stepper
-        {
-            Left = Pad + 104, Top = 0, Width = 100, Height = 30,
-            Th = _th, Minimum = -200, Maximum = 200
-        };
-        _offset.Value = Math.Clamp(_cfg.OffsetX, -200, 200);
-        _offset.ValueChanged += (_, _) => { _cfg.OffsetX = _offset.Value; Apply(); };
-
-        var hint = Caption("负数左移 · 正数右移");
-        hint.Left = Pad + 236;
-        hint.Width = 140;
-        hint.Height = 30;
-        hint.TextAlign = ContentAlignment.MiddleLeft;
-        AddBlock(30 + 16, null, (offLabel, 0), (_offset, 0), (hint, 0));
-
-        // ---- 按钮 ----
-        var done = new Button
-        {
-            Text = "完成",
-            Left = Pad + ContentW - 88, Top = 0, Width = 88, Height = 32,
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.FromArgb(255, 10, 132, 255),
-            ForeColor = Color.White,
-            DialogResult = DialogResult.OK
-        };
-        done.FlatAppearance.BorderSize = 0;
-        AcceptButton = done;
-
-        var reset = new Button
-        {
-            Text = "恢复默认",
-            Left = Pad + ContentW - 88 - 96, Top = 0, Width = 88, Height = 32,
-            FlatStyle = FlatStyle.Flat,
-            BackColor = _th.IsDark ? Color.FromArgb(38, 42, 48) : Color.FromArgb(232, 234, 238),
-            ForeColor = _th.Text
-        };
-        reset.FlatAppearance.BorderSize = 0;
-        reset.Click += (_, _) => ResetDefaults();
-        AddBlock(32 + 8, null, (reset, 0), (done, 0));
+        AddRow(card, 48, null,
+            new Cell(capOp, 0, 8, 84, 26),
+            new Cell(_opacity, 88, 8, 104, 26),
+            new Cell(_opacityText, 198, 8, 46, 26));
     }
 
-    // ---------------- 历史分区 ----------------
-
-    private void BuildHistorySection()
+    // ---- 显示项 ----
+    private void BuildItemsCard()
     {
-        var cap = Caption("历史记录");
-        cap.Width = 120;
-
-        var row = new FlowLayoutPanel
+        var card = NewCard(0, 3, 1, "显示项", "贴片上显示什么", _th.Vram);
+        var defs = new (string Text, Func<bool> Get, Action<bool> Set, Func<AppConfig, bool> Dflt)[]
         {
-            Left = Pad, Top = 0, Width = ContentW - 20, Height = 40,
-            BackColor = _th.PanelBgOpaque, WrapContents = true, AutoScroll = false
+            ("CPU", () => _cfg.ShowCpu, v => _cfg.ShowCpu = v, d => d.ShowCpu),
+            ("内存", () => _cfg.ShowRam, v => _cfg.ShowRam = v, d => d.ShowRam),
+            ("GPU", () => _cfg.ShowGpu, v => _cfg.ShowGpu = v, d => d.ShowGpu),
+            ("显存", () => _cfg.ShowVram, v => _cfg.ShowVram = v, d => d.ShowVram),
+            ("网速", () => _cfg.ShowNet, v => _cfg.ShowNet = v, d => d.ShowNet),
+            ("GPU 温度", () => _cfg.ShowTemp, v => _cfg.ShowTemp = v, d => d.ShowTemp),
+            ("磁盘 IO", () => _cfg.ShowDisk, v => _cfg.ShowDisk = v, d => d.ShowDisk),
         };
-        _histOn = new Chip("记录历史") { Checked = _cfg.HistoryEnabled, Th = _th, Margin = new Padding(0, 0, 8, 8) };
-        _histPersist = new Chip("跨重启保留") { Checked = _cfg.HistoryPersist, Th = _th, Margin = new Padding(0, 0, 8, 8) };
 
+        const int w = 120;
+        const int gapX = 11;
+        var made = new List<Chip>();
+        foreach (var d in defs)
+        {
+            var chip = new Chip(d.Text) { Checked = d.Get(), Th = _th, Width = w, Height = ChipH };
+            chip.CheckedChanged += (_, _) => { d.Set(chip.Checked); Apply(); };
+            _chips.Add((chip, d.Dflt));
+            made.Add(chip);
+        }
+
+        for (int i = 0; i < made.Count; i += 2)
+        {
+            var cells = new List<Cell> { new(made[i], 0, 0, w, ChipH) };
+            if (i + 1 < made.Count) cells.Add(new Cell(made[i + 1], w + gapX, 0, w, ChipH));
+            AddRow(card, ChipH + ChipGap, null, cells.ToArray());
+        }
+    }
+
+    // ---- 托盘图标 ----
+    private void BuildTrayCard()
+    {
+        var card = NewCard(1, 0, 2, "托盘图标", "每种样式各存一套指标", _th.Gpu);
+        int w = ColW * 2 + Gap - 36;
+
+        var capStyle = Cap("图标样式", w);
+        _tray = new Segmented
+        {
+            Items = new[] { "双数字", "双环", "四段条", "单指标" },
+            SelectedIndex = (int)_cfg.Tray,
+            Th = _th, Height = CtrlH
+        };
+        _tray.SelectionChanged += (_, _) =>
+        {
+            _cfg.Tray = (TrayStyle)_tray.SelectedIndex;
+            RefreshTraySlots();     // 换成这套样式自己存的指标，不是上一套的
+            LayoutCards();
+            Apply();
+        };
+        AddRow(card, 62, null, new Cell(capStyle, 0, 0, w, 16), new Cell(_tray, 0, 22, w, CtrlH));
+
+        // 每行都读写「当前样式」的槽位：切样式时 RefreshTraySlots 把值换过去
+        _trayP = MetricSeg(() => _cfg.TrayCurrent.Primary, m => _cfg.TrayCurrent.Primary = m);
+        AddInlineRow(card, "主指标", _trayP, w);
+        _trayS = MetricSeg(() => _cfg.TrayCurrent.Secondary, m => _cfg.TrayCurrent.Secondary = m);
+        AddInlineRow(card, "次指标", _trayS, w, () => _cfg.Tray != TrayStyle.Single);
+        _trayT = MetricSeg(() => _cfg.TrayCurrent.Third, m => _cfg.TrayCurrent.Third = m);
+        AddInlineRow(card, "第三指标", _trayT, w, () => _cfg.Tray == TrayStyle.FourBar);
+        _tray4 = MetricSeg(() => _cfg.TrayCurrent.Fourth, m => _cfg.TrayCurrent.Fourth = m);
+        AddInlineRow(card, "第四指标", _tray4, w, () => _cfg.Tray == TrayStyle.FourBar);
+    }
+
+    /// <summary>把四个指标分段控件切到「当前样式」存的那一套（切样式后必须调）。</summary>
+    private void RefreshTraySlots()
+    {
+        var c = _cfg.TrayCurrent;
+        _trayP.SelectedIndex = (int)c.Primary;
+        _trayS.SelectedIndex = (int)c.Secondary;
+        _trayT.SelectedIndex = (int)c.Third;
+        _tray4.SelectedIndex = (int)c.Fourth;
+        _trayP.Invalidate();
+        _trayS.Invalidate();
+        _trayT.Invalidate();
+        _tray4.Invalidate();
+    }
+
+    private void AddInlineRow(CardSpec card, string caption, Control ctrl, int w, Func<bool>? show = null)
+    {
+        var cap = Inline(caption, 76);
+        AddRow(card, 42, show,
+            new Cell(cap, 0, 2, 76, 30),
+            new Cell(ctrl, 80, 0, w - 80, CtrlH));
+    }
+
+    private Segmented MetricSeg(Func<TrayMetric> get, Action<TrayMetric> set)
+    {
+        var s = new Segmented
+        {
+            Items = MetricNames,
+            SelectedIndex = (int)get(),
+            Th = _th, Height = CtrlH
+        };
+        s.SelectionChanged += (_, _) =>
+        {
+            set((TrayMetric)Math.Clamp(s.SelectedIndex, 0, MetricNames.Length - 1));
+            Apply();
+        };
+        return s;
+    }
+
+    // ---- 历史 ----
+    private void BuildHistoryCard()
+    {
+        var card = NewCard(1, 2, 1, "历史记录", "", _th.Net);
+        int w = InnerW;
+
+        _histOn = new Chip("记录历史") { Checked = _cfg.HistoryEnabled, Th = _th, Width = 120, Height = ChipH };
+        _histPersist = new Chip("跨重启保留") { Checked = _cfg.HistoryPersist, Th = _th, Width = 120, Height = ChipH };
         _histOn.CheckedChanged += (_, _) =>
         {
             _cfg.HistoryEnabled = _histOn.Checked;
             Apply();
-            LayoutBlocks();
+            LayoutCards();
         };
         _histPersist.CheckedChanged += (_, _) =>
         {
@@ -357,18 +552,20 @@ public sealed class SettingsForm : Form
             if (!_cfg.HistoryPersist && _cfg.ChartWindowMinutes > 60) _cfg.ChartWindowMinutes = 60;
             RefreshWindowSeg();
             Apply();
-            LayoutBlocks();
+            LayoutCards();
         };
-        row.Controls.AddRange(new Control[] { _histOn, _histPersist });
-        AddBlock(22 + 40 + 6, null, (cap, 0), (row, 22));
+        AddRow(card, ChipH + ChipGap, null,
+            new Cell(_histOn, 0, 0, 120, ChipH),
+            new Cell(_histPersist, 131, 0, 120, ChipH));
 
         // 保留时长（只有开持久化才有意义）
         int ri = Array.IndexOf(RetentionHours, _cfg.HistoryRetentionHours);
+        var capRet = Cap("保留时长", w);
         _retention = new Segmented
         {
             Items = RetentionNames,
             SelectedIndex = ri < 0 ? 1 : ri,
-            Th = _th, Left = Pad, Width = ContentW, Height = CtrlH
+            Th = _th, Height = CtrlH
         };
         _retention.SelectionChanged += (_, _) =>
         {
@@ -376,10 +573,12 @@ public sealed class SettingsForm : Form
             Apply();
             RefreshHistoryInfo();
         };
-        AddCaptionBlock("保留时长", _retention, () => _cfg.HistoryEnabled && _cfg.HistoryPersist);
+        AddRow(card, 62, () => _cfg.HistoryEnabled && _cfg.HistoryPersist,
+            new Cell(capRet, 0, 0, w, 16), new Cell(_retention, 0, 22, w, CtrlH));
 
         // 面板默认时间窗
-        _win = new Segmented { Th = _th, Left = Pad, Width = ContentW, Height = CtrlH };
+        var capWin = Cap("面板默认时间窗", w);
+        _win = new Segmented { Th = _th, Height = CtrlH };
         _win.SelectionChanged += (_, _) =>
         {
             int i = Math.Clamp(_win.SelectedIndex, 0, _winValues.Count - 1);
@@ -387,13 +586,16 @@ public sealed class SettingsForm : Form
             Apply();
         };
         RefreshWindowSeg();
-        AddCaptionBlock("面板默认时间窗", _win, () => _cfg.HistoryEnabled);
+        AddRow(card, 62, () => _cfg.HistoryEnabled,
+            new Cell(capWin, 0, 0, w, 16), new Cell(_win, 0, 22, w, CtrlH));
 
-        _histInfo = Caption("");
-        _histInfo.Width = ContentW;
+        _histInfo = Small("", w);
         _histInfo.Height = 20;
         RefreshHistoryInfo();
-        AddBlock(24, () => _cfg.HistoryEnabled && _cfg.HistoryPersist, (_histInfo, 0));
+        AddRow(card, 24, null, new Cell(_histInfo, 0, 0, w, 20));
+
+        AddRow(card, 22, () => !_cfg.HistoryEnabled,
+            new Cell(Small("关闭后不再采样，面板无曲线", w), 0, 0, w, 18));
     }
 
     /// <summary>没开持久化时不给 24 小时档（没有数据源，不给死链）。</summary>
@@ -428,122 +630,133 @@ public sealed class SettingsForm : Form
         catch { _histInfo.Text = ""; }
     }
 
-    // ---------------- 告警分区 ----------------
-
-    private void BuildAlertSection()
+    // ---- 行为 ----
+    private void BuildBehaviorCard()
     {
-        var cap = Caption("告警");
-        cap.Width = 120;
+        var card = NewCard(1, 3, 1, "行为", "", _th.Disk);
+        int w = InnerW;
 
-        _alertOn = new Chip("启用告警") { Checked = _cfg.AlertsEnabled, Th = _th, Margin = new Padding(0, 0, 8, 8) };
+        _showStrip = Toggle("显示贴片", _cfg.ShowStrip, w, v => _cfg.ShowStrip = v);
+        _lockPos = Toggle("锁定位置", _cfg.LockPosition, w, v => _cfg.LockPosition = v);
+        _clickThrough = Toggle("点击穿透", _cfg.ClickThrough, w, v => _cfg.ClickThrough = v);
+        _onTop = Toggle("始终置顶", _cfg.AlwaysOnTop, w, v => _cfg.AlwaysOnTop = v);
+        _startup = Toggle("开机自动启动", Startup.IsEnabled(), w, v =>
+        {
+            Startup.Set(v);
+            _cfg.StartWithWindows = v;
+        });
+
+        foreach (var c in new[] { _showStrip, _lockPos, _clickThrough, _onTop, _startup })
+            AddRow(card, ChipH + ChipGap, null, new Cell(c, 0, 0, w, ChipH));
+    }
+
+    // ---- 告警 ----
+    private void BuildAlertCard()
+    {
+        var card = NewCard(2, 0, 4, "告警", "超过阈值时提醒", _th.Alert);
+        int w = ColW * 4 + Gap * 3 - 36;
+
+        _alertOn = new Chip("启用告警") { Checked = _cfg.AlertsEnabled, Th = _th, Width = 104, Height = ChipH };
         _alertOn.CheckedChanged += (_, _) =>
         {
             _cfg.AlertsEnabled = _alertOn.Checked;
             Apply();
-            LayoutBlocks();
+            LayoutCards();
         };
 
-        var row = new FlowLayoutPanel
+        var top = new List<Cell> { new(_alertOn, 0, 0, 104, ChipH) };
+
+        var acts = new (string Text, Func<bool> Get, Action<bool> Set, Func<AppConfig, bool> Dflt)[]
         {
-            Left = Pad, Top = 0, Width = ContentW - 20, Height = 40,
-            BackColor = _th.PanelBgOpaque, WrapContents = true, AutoScroll = false
+            ("贴片变红", () => _cfg.AlertStrip, v => _cfg.AlertStrip = v, d => d.AlertStrip),
+            ("托盘闪烁", () => _cfg.AlertTrayFlash, v => _cfg.AlertTrayFlash = v, d => d.AlertTrayFlash),
+            ("系统通知", () => _cfg.AlertToast, v => _cfg.AlertToast = v, d => d.AlertToast),
+            ("运行脚本", () => _cfg.AlertScript, v => { _cfg.AlertScript = v; LayoutCards(); }, d => d.AlertScript),
         };
-        row.Controls.Add(_alertOn);
-        AddBlock(22 + 40 + 6, null, (cap, 0), (row, 22));
 
-        for (int i = 0; i < 5; i++) AddAlertRow((AlertMetric)i, AlertNames[i]);
-
-        // 动作
-        var capAct = Caption("触发时");
-        capAct.Width = 120;
-        var acts = new FlowLayoutPanel
+        int x = 116;
+        foreach (var a in acts)
         {
-            Left = Pad, Top = 0, Width = ContentW - 20, Height = 76,
-            BackColor = _th.PanelBgOpaque, WrapContents = true, AutoScroll = false
-        };
-        AddActionChip(acts, "贴片变红", () => _cfg.AlertStrip, v => _cfg.AlertStrip = v, d => d.AlertStrip);
-        AddActionChip(acts, "托盘闪烁", () => _cfg.AlertTrayFlash, v => _cfg.AlertTrayFlash = v, d => d.AlertTrayFlash);
-        AddActionChip(acts, "系统通知", () => _cfg.AlertToast, v => _cfg.AlertToast = v, d => d.AlertToast);
-        AddActionChip(acts, "运行脚本", () => _cfg.AlertScript, v => { _cfg.AlertScript = v; LayoutBlocks(); }, d => d.AlertScript);
-        AddBlock(22 + 76 + 6, () => _cfg.AlertsEnabled, (capAct, 0), (acts, 22));
+            var chip = new Chip(a.Text) { Checked = a.Get(), Th = _th, Width = 100, Height = ChipH };
+            chip.CheckedChanged += (_, _) => { a.Set(chip.Checked); Apply(); };
+            _alertActions.Add((chip, a.Dflt));
+            top.Add(new Cell(chip, x, 0, 100, ChipH, () => _cfg.AlertsEnabled));
+            x += 108;
+        }
 
-        // 脚本路径
-        _scriptBtn = new Button
+        _scriptBtn = new BentoButton
         {
-            Text = "选择脚本…",
-            Left = Pad, Top = 0, Width = 96, Height = 30,
-            FlatStyle = FlatStyle.Flat,
-            BackColor = _th.IsDark ? Color.FromArgb(38, 42, 48) : Color.FromArgb(232, 234, 238),
-            ForeColor = _th.Text
+            Text = "选择脚本…", Width = 104, Height = 38,
+            Radius = 9, Shadow = 8, Th = _th
         };
-        _scriptBtn.FlatAppearance.BorderSize = 0;
         _scriptBtn.Click += (_, _) => PickScript();
 
         _scriptPath = new Label
         {
             Text = string.IsNullOrEmpty(_cfg.AlertScriptPath) ? "未选择" : Path.GetFileName(_cfg.AlertScriptPath),
-            Left = Pad + 104, Top = 0, Width = ContentW - 104, Height = 30,
+            Width = 300, Height = 26,
             TextAlign = ContentAlignment.MiddleLeft, AutoEllipsis = true,
-            ForeColor = _th.Label, BackColor = _th.PanelBgOpaque
+            ForeColor = _th.Label, BackColor = _th.CardBg
         };
-        AddBlock(30 + 10, () => _cfg.AlertsEnabled && _cfg.AlertScript, (_scriptBtn, 0), (_scriptPath, 0));
-    }
 
-    private void AddAlertRow(AlertMetric m, string name)
-    {
-        var rule = _cfg.AlertRules[(int)m];
-        bool temp = m == AlertMetric.GpuTemp;
+        // 关着的时候给一句说明，别让这张卡空着
+        var offHint = Small("开启后可设置 CPU / 内存 / GPU / 显存 / 温度的阈值与持续时间", 460);
+        offHint.Height = 30;
+        top.Add(new Cell(offHint, 116, 0, 460, 30, () => !_cfg.AlertsEnabled));
 
-        var chip = new Chip(name)
+        top.Add(new Cell(_scriptBtn, x + 12, 0, 104, 38, () => _cfg.AlertsEnabled && _cfg.AlertScript));
+        top.Add(new Cell(_scriptPath, x + 124, 5, 300, 26, () => _cfg.AlertsEnabled && _cfg.AlertScript));
+
+        AddRow(card, 44, null, top.ToArray());
+
+        // 5 条规则排成 5 列：上面指标名，下面「阈值 %」+「持续 秒」
+        int cellW = (w - 4 * 12) / 5;
+        var ruleCells = new List<Cell>();
+        for (int i = 0; i < 5; i++)
         {
-            Checked = rule.Enabled, Th = _th,
-            Left = Pad, Width = 62, Height = 30
-        };
-        chip.CheckedChanged += (_, _) => { rule.Enabled = chip.Checked; Apply(); };
-        _alertChips[(int)m] = chip;
+            var m = (AlertMetric)i;
+            var rule = _cfg.AlertRules[i];
+            bool temp = m == AlertMetric.GpuTemp;
+            int cx = i * (cellW + 12);
 
-        // Stepper 两侧按钮各 26 宽，所以总宽至少要 26*2 + 数字宽；76 会把 "90" 挤成两行
-        var thr = new Stepper
-        {
-            Left = Pad + 66, Top = 0, Width = 90, Height = 30, Th = _th,
-            Minimum = 40, Maximum = temp ? 110 : 100
-        };
-        thr.Value = (int)Math.Clamp(rule.Threshold, thr.Minimum, thr.Maximum);
-        thr.ValueChanged += (_, _) => { rule.Threshold = thr.Value; Apply(); };
-        _alertThr[(int)m] = thr;
+            var chip = new Chip(AlertNames[i]) { Checked = rule.Enabled, Th = _th, Width = cellW, Height = 28 };
+            chip.CheckedChanged += (_, _) => { rule.Enabled = chip.Checked; Apply(); };
+            _alertChips[i] = chip;
 
-        var unit = Caption(temp ? "°" : "%");
-        unit.Left = Pad + 160; unit.Width = 14; unit.Height = 30;
-        unit.TextAlign = ContentAlignment.MiddleLeft;
+            var thr = new Stepper
+            {
+                Width = 78, Height = 30, Th = _th,
+                Minimum = 40, Maximum = temp ? 110 : 100
+            };
+            thr.Value = (int)Math.Clamp(rule.Threshold, thr.Minimum, thr.Maximum);
+            thr.ValueChanged += (_, _) => { rule.Threshold = thr.Value; Apply(); };
+            _alertThr[i] = thr;
 
-        var durCap = Caption("持续");
-        durCap.Left = Pad + 178; durCap.Width = 40; durCap.Height = 30;
-        durCap.TextAlign = ContentAlignment.MiddleLeft;
+            var unit = Small(temp ? "°" : "%", 16);
+            unit.Height = 30;
+            unit.TextAlign = ContentAlignment.MiddleLeft;
 
-        var dur = new Stepper
-        {
-            Left = Pad + 222, Top = 0, Width = 84, Height = 30, Th = _th,
-            Minimum = 1, Maximum = 300
-        };
-        dur.Value = Math.Clamp(rule.DurationSec, 1, 300);
-        dur.ValueChanged += (_, _) => { rule.DurationSec = dur.Value; Apply(); };
-        _alertDur[(int)m] = dur;
+            var dur = new Stepper
+            {
+                Width = 78, Height = 30, Th = _th,
+                Minimum = 1, Maximum = 300
+            };
+            dur.Value = Math.Clamp(rule.DurationSec, 1, 300);
+            dur.ValueChanged += (_, _) => { rule.DurationSec = dur.Value; Apply(); };
+            _alertDur[i] = dur;
 
-        var sec = Caption("秒");
-        sec.Left = Pad + 310; sec.Width = 16; sec.Height = 30;
-        sec.TextAlign = ContentAlignment.MiddleLeft;
+            var sec = Small("秒", 16);
+            sec.Height = 30;
+            sec.TextAlign = ContentAlignment.MiddleLeft;
 
-        AddBlock(30 + 6, () => _cfg.AlertsEnabled,
-            (chip, 0), (thr, 0), (unit, 0), (durCap, 0), (dur, 0), (sec, 0));
-    }
+            ruleCells.Add(new Cell(chip, cx, 0, cellW, 28, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(thr, cx, 34, 78, 30, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(unit, cx + 80, 34, 16, 30, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(dur, cx + 98, 34, 78, 30, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(sec, cx + 178, 34, 16, 30, () => _cfg.AlertsEnabled));
+        }
 
-    private void AddActionChip(FlowLayoutPanel flow, string text,
-        Func<bool> get, Action<bool> set, Func<AppConfig, bool> dflt)
-    {
-        var chip = new Chip(text) { Checked = get(), Th = _th, Margin = new Padding(0, 0, 8, 8) };
-        chip.CheckedChanged += (_, _) => { set(chip.Checked); Apply(); };
-        _alertActions.Add((chip, dflt));
-        flow.Controls.Add(chip);
+        AddRow(card, 72, () => _cfg.AlertsEnabled, ruleCells.ToArray());
     }
 
     private void PickScript()
@@ -565,74 +778,87 @@ public sealed class SettingsForm : Form
         Apply();
     }
 
-    // ---------------- 布局 ----------------
+    // ================= 排版 =================
 
-    private Segmented MetricSeg(TrayMetric cur, Action<TrayMetric> set)
+    private void LayoutCards()
     {
-        var s = new Segmented
+        // 1) 可见性 + 自然内容高度
+        foreach (var s in _cards)
         {
-            Items = MetricNames,
-            SelectedIndex = (int)cur,
-            Th = _th, Left = Pad + 70, Width = ContentW - 70, Height = 30
-        };
-        s.SelectionChanged += (_, _) =>
-        {
-            set((TrayMetric)Math.Clamp(s.SelectedIndex, 0, MetricNames.Length - 1));
-            Apply();
-        };
-        return s;
-    }
-
-    private Panel Separator() => new()
-    {
-        Left = Pad, Top = 0, Width = ContentW, Height = 1, BackColor = _th.Line
-    };
-
-    private void AddBlock(int height, Func<bool>? show, params (Control C, int Dy)[] items)
-    {
-        foreach (var (c, _) in items) _scroll.Controls.Add(c);
-        _blocks.Add(new Block(
-            items.Select(i => i.C).ToArray(),
-            items.Select(i => i.Dy).ToArray(),
-            height,
-            show ?? (() => true)));
-    }
-
-    /// <summary>分组标题 + 控件（标题在上，控件在下）。</summary>
-    private void AddCaptionBlock(string text, Control ctrl, Func<bool>? show = null)
-    {
-        var cap = Caption(text);
-        AddBlock(20 + ctrl.Height + 12, show, (cap, 0), (ctrl, 20));
-    }
-
-    /// <summary>标题在左、控件在右的紧凑一行。</summary>
-    private void AddInlineBlock(string text, Control ctrl, Func<bool>? show = null)
-    {
-        var cap = Caption(text);
-        cap.Width = 64;
-        cap.Height = 30;
-        cap.TextAlign = ContentAlignment.MiddleLeft;
-        AddBlock(ctrl.Height + 10, show, (cap, 0), (ctrl, 0));
-    }
-
-    private void LayoutBlocks()
-    {
-        int y = 18;
-        foreach (var b in _blocks)
-        {
-            bool vis = b.Show();
-            for (int i = 0; i < b.Ctrls.Length; i++)
+            s.RowOn.Clear();
+            s.NatH = 0;
+            foreach (var r in s.Rows)
             {
-                b.Ctrls[i].Visible = vis;
-                if (vis) b.Ctrls[i].Top = y + b.Dy[i];
+                bool on = r.Show?.Invoke() ?? true;
+                s.RowOn.Add(on);
+                if (on) s.NatH += r.H;
             }
-            if (vis) y += b.Height;
+            s.ContentH = s.Panel.Head + s.NatH + s.Panel.PadBottom;
         }
 
-        int contentH = y + 14;
-        int maxH = Math.Max(420, Screen.PrimaryScreen!.WorkingArea.Height - 120);
-        _scroll.AutoScrollMinSize = new Size(FormW - SystemInformation.VerticalScrollBarWidth - 6, contentH);
-        ClientSize = new Size(FormW, Math.Min(contentH, maxH));
+        // 2) 网格行高 = 该行最高卡片
+        int rowCount = 0;
+        foreach (var s in _cards) rowCount = Math.Max(rowCount, s.Row + 1);
+        var rowH = new int[rowCount];
+        foreach (var s in _cards) rowH[s.Row] = Math.Max(rowH[s.Row], s.ContentH);
+
+        // 3) 摆卡片：矮的卡片把多出来的高度均摊到各行，避免底部一大块空白
+        int top = 6;
+        for (int r = 0; r < rowCount; r++)
+        {
+            foreach (var s in _cards)
+            {
+                if (s.Row != r) continue;
+                int x = Pad + s.Col * (ColW + Gap);
+                int w = s.Span * ColW + (s.Span - 1) * Gap;
+                s.Panel.SetBounds(x, top, w, rowH[r]);
+
+                int visRows = s.RowOn.Count(b => b);
+                int lastOn = s.RowOn.LastIndexOf(true);
+                // 多出来的高度：行间最多各让 28px，剩下的留在底部（内容贴顶，不飘）
+                int extra = visRows > 1
+                    ? Math.Min(28, Math.Max(0, rowH[r] - s.ContentH) / (visRows - 1))
+                    : 0;
+
+                int y = s.Panel.Head;
+                for (int i = 0; i < s.Rows.Count; i++)
+                {
+                    var row = s.Rows[i];
+                    bool rowOn = s.RowOn[i];
+                    foreach (var cell in row.Cells)
+                    {
+                        bool on = rowOn && (cell.Show?.Invoke() ?? true);
+                        cell.C.Visible = on;
+                        if (on)
+                            cell.C.Bounds = new Rectangle(
+                                s.Panel.PadX + (cell.XOf?.Invoke() ?? cell.X), y + cell.Y, cell.W, cell.H);
+                    }
+                    if (rowOn) y += row.H + (i == lastOn ? 0 : extra);
+                }
+            }
+            top += rowH[r] + Gap;
+        }
+
+        int contentH = top - Gap + 6;
+        _host.AutoScrollMinSize = new Size(FormW, contentH);
+
+        int maxH = Math.Max(360, Screen.PrimaryScreen!.WorkingArea.Height - 140 - HeadH - FootH);
+        int hostH = Math.Min(contentH, maxH);
+        _host.SetBounds(0, HeadH, FormW, hostH);
+
+        _header.SetBounds(0, 0, FormW, HeadH);
+        _footer.SetBounds(0, HeadH + hostH, FormW, FootH);
+        _divider.SetBounds(Pad, HeadH + hostH, FormW - Pad * 2, 1);
+
+        _done.Left = FormW - Pad - _done.Width;
+        _done.Top = 6;
+        _reset.Left = _done.Left - 10 - _reset.Width;
+        _reset.Top = 6;
+        _ver.Left = FormW - Pad - _ver.Width;
+        _ver.Top = 22;
+        _footNote.Top = 19;
+
+        ClientSize = new Size(FormW, HeadH + hostH + FootH);
     }
 
     [DllImport("dwmapi.dll")]
@@ -652,38 +878,13 @@ public sealed class SettingsForm : Form
             DwmSetWindowAttribute(Handle, 19, ref dark, sizeof(int));
     }
 
-    private void AddChip(FlowLayoutPanel flow, string text,
-        Func<bool> get, Action<bool> set, Func<AppConfig, bool> dflt)
-    {
-        var chip = new Chip(text) { Checked = get(), Th = _th, Margin = new Padding(0, 0, 8, 8) };
-        chip.CheckedChanged += (_, _) => { set(chip.Checked); Apply(); };
-        _chips.Add((chip, dflt));
-        flow.Controls.Add(chip);
-    }
-
-    private Label Header(string title, string sub) => new()
-    {
-        Text = title,
-        Left = Pad, Top = 0, Width = ContentW, Height = 30,
-        Font = new Font("Segoe UI", 15f, FontStyle.Bold),
-        ForeColor = _th.Text, BackColor = _th.PanelBgOpaque, Tag = "header"
-    };
-
-    private Label Caption(string text) => new()
-    {
-        Text = text,
-        Left = Pad, Top = 0, Width = 200, Height = CaptionH,
-        Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-        ForeColor = _th.Label, BackColor = _th.PanelBgOpaque, Tag = "caption"
-    };
-
     private void Apply()
     {
         _cfg.Save();
         Changed?.Invoke();
     }
 
-    // ---------------- 恢复默认 ----------------
+    // ================= 恢复默认 =================
 
     private void ResetDefaults()
     {
@@ -697,8 +898,10 @@ public sealed class SettingsForm : Form
         _cfg.ShowVram = d.ShowVram; _cfg.ShowNet = d.ShowNet; _cfg.ShowTemp = d.ShowTemp;
         _cfg.ShowDisk = d.ShowDisk;
         _cfg.ShowStrip = d.ShowStrip;
-        _cfg.TrayPrimary = d.TrayPrimary; _cfg.TraySecondary = d.TraySecondary;
-        _cfg.TrayThird = d.TrayThird; _cfg.TrayFourth = d.TrayFourth;
+        _cfg.TrayDualNumber = d.TrayDualNumber.Clone();
+        _cfg.TrayDualRing = d.TrayDualRing.Clone();
+        _cfg.TrayFourBar = d.TrayFourBar.Clone();
+        _cfg.TraySingle = d.TraySingle.Clone();
         _cfg.Anchor = d.Anchor;
         _cfg.AlwaysOnTop = d.AlwaysOnTop;
         _cfg.StripOpacity = d.StripOpacity;
@@ -729,10 +932,7 @@ public sealed class SettingsForm : Form
         _pos.SelectedIndex = (int)_cfg.Anchor;
         _strip.SelectedIndex = (int)_cfg.Strip;
         _tray.SelectedIndex = (int)_cfg.Tray;
-        _trayP.SelectedIndex = (int)_cfg.TrayPrimary;
-        _trayS.SelectedIndex = (int)_cfg.TraySecondary;
-        _trayT.SelectedIndex = (int)_cfg.TrayThird;
-        _tray4.SelectedIndex = (int)_cfg.TrayFourth;
+        RefreshTraySlots();
         _theme.SelectedIndex = (int)_cfg.Theme;
 
         int ri = Array.IndexOf(Rates, _cfg.RefreshMs);
@@ -744,10 +944,10 @@ public sealed class SettingsForm : Form
 
         foreach (var (chip, dflt) in _chips) chip.Checked = dflt(_cfg);
 
-        _onTop.Checked = _cfg.AlwaysOnTop;
         _showStrip.Checked = _cfg.ShowStrip;
         _lockPos.Checked = _cfg.LockPosition;
         _clickThrough.Checked = _cfg.ClickThrough;
+        _onTop.Checked = _cfg.AlwaysOnTop;
 
         _histOn.Checked = _cfg.HistoryEnabled;
         _histPersist.Checked = _cfg.HistoryPersist;
@@ -766,8 +966,8 @@ public sealed class SettingsForm : Form
         }
         foreach (var (chip, dflt) in _alertActions) chip.Checked = dflt(_cfg);
 
-        InvalidateAll(_scroll);
-        LayoutBlocks();
+        InvalidateAll(_host);
+        LayoutCards();
     }
 
     private static void InvalidateAll(Control root)
@@ -779,35 +979,38 @@ public sealed class SettingsForm : Form
     private void Recolor()
     {
         _th = Theme.Resolve(_cfg.Theme);
-        BackColor = _th.PanelBgOpaque;
+        BackColor = _th.WindowBg;
         ForeColor = _th.Text;
-        _scroll.BackColor = _th.PanelBgOpaque;
-        RecolorControl(_scroll);
+        _header.BackColor = _th.WindowBg;
+        _footer.BackColor = _th.WindowBg;
+        _host.BackColor = _th.WindowBg;
+        _divider.BackColor = _th.Line;
+
+        RecolorControl(this);
         ApplyTitleBarTheme();
+        InvalidateAll(this);
     }
 
     private void RecolorControl(Control c)
     {
-        if (c is Segmented s) { s.Th = _th; s.Invalidate(); }
+        if (c is BentoCard bc)
+        {
+            bc.Th = _th;
+            bc.Outside = _th.WindowBg;
+            bc.BackColor = _th.CardBg;
+            bc.Invalidate();
+        }
+        else if (c is Segmented s) { s.Th = _th; s.Invalidate(); }
         else if (c is Chip ch) { ch.Th = _th; ch.Invalidate(); }
         else if (c is Slider sl) { sl.Th = _th; sl.Invalidate(); }
         else if (c is Stepper st) { st.Th = _th; st.Invalidate(); }
-        else if (c is FlowLayoutPanel f) { f.BackColor = _th.PanelBgOpaque; foreach (Control x in f.Controls) RecolorControl(x); }
         else if (c is Label l)
         {
-            l.BackColor = _th.PanelBgOpaque;
-            l.ForeColor = (l.Tag as string) == "caption" ? _th.Label : _th.Text;
+            l.BackColor = l.Parent is BentoCard ? _th.CardBg : _th.WindowBg;
+            l.ForeColor = (l.Tag as string) == "brand" ? _th.Text : _th.Label;
         }
-        else if (c is Button btn)
-        {
-            btn.ForeColor = btn.DialogResult == DialogResult.OK ? Color.White : _th.Text;
-            if (btn.DialogResult != DialogResult.OK)
-                btn.BackColor = _th.IsDark ? Color.FromArgb(38, 42, 48) : Color.FromArgb(232, 234, 238);
-        }
-        else if (c is Panel p)
-        {
-            if (p.Height <= 2) p.BackColor = _th.Line;
-            else if (ReferenceEquals(p, _scroll)) p.BackColor = _th.PanelBgOpaque;
-        }
+        else if (c is BentoButton bb) { bb.Th = _th; bb.Invalidate(); }
+
+        foreach (Control x in c.Controls) RecolorControl(x);
     }
 }

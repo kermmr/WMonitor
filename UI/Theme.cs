@@ -29,6 +29,18 @@ public sealed class Theme
     public Color Line => IsDark ? Color.FromArgb(255, 46, 50, 57) : Color.FromArgb(255, 224, 226, 231);
     public Color Hover { get; init; }
 
+    // ---- 设置窗口（v0.11 Bento 面板）：窗口底色比卡片深一档，卡片靠色差浮起来 ----
+    /// <summary>设置窗口底色（卡片之外的地方）。</summary>
+    public Color WindowBg { get; init; }
+    /// <summary>卡片底色。</summary>
+    public Color CardBg { get; init; }
+    /// <summary>卡片 1px 描边。</summary>
+    public Color CardBorder { get; init; }
+    /// <summary>次要按钮底色。</summary>
+    public Color Soft { get; init; }
+    /// <summary>主色（主按钮、选中态）。</summary>
+    public Color Accent { get; init; }
+
     private static readonly Color DarkCpu = Color.FromArgb(0x4C, 0xC2, 0xFF);
     private static readonly Color DarkRam = Color.FromArgb(0xB3, 0x9D, 0xFF);
     private static readonly Color DarkGpu = Color.FromArgb(0x3D, 0xDC, 0x97);
@@ -52,7 +64,12 @@ public sealed class Theme
         Sep = Color.FromArgb(28, 255, 255, 255),
         PanelBg = Color.FromArgb(242, 0x18, 0x1B, 0x20),
         Hover = Color.FromArgb(30, 255, 255, 255),
-        Alert = Color.FromArgb(0xFF, 0x45, 0x3A)
+        Alert = Color.FromArgb(0xFF, 0x45, 0x3A),
+        WindowBg = Color.FromArgb(0xFF, 0x0E, 0x10, 0x14),
+        CardBg = Color.FromArgb(0xFF, 0x19, 0x1C, 0x22),
+        CardBorder = Color.FromArgb(18, 255, 255, 255),
+        Soft = Color.FromArgb(0xFF, 0x26, 0x2A, 0x31),
+        Accent = Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF)
     };
 
     public static readonly Theme Light = new()
@@ -72,7 +89,12 @@ public sealed class Theme
         Sep = Color.FromArgb(24, 0, 0, 0),
         PanelBg = Color.FromArgb(246, 0xF7, 0xF8, 0xFA),
         Hover = Color.FromArgb(20, 0, 0, 0),
-        Alert = Color.FromArgb(0xD7, 0x00, 0x15)
+        Alert = Color.FromArgb(0xD7, 0x00, 0x15),
+        WindowBg = Color.FromArgb(0xFF, 0xED, 0xEF, 0xF3),
+        CardBg = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF),
+        CardBorder = Color.FromArgb(16, 0, 0, 0),
+        Soft = Color.FromArgb(0xFF, 0xE8, 0xEA, 0xEE),
+        Accent = Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF)
     };
 
     public static bool SystemUsesLight()

@@ -41,6 +41,7 @@ D:\WMonitor\
 │  ├─ Dbg.cs                   诊断日志（默认关闭，SYSMON_DEBUG=1 开启）
 │  ├─ app.ico                  应用图标（PIL 生成的多尺寸 ico）
 │  ├─ run.sh                   开发迭代脚本：杀进程→编译→启动→截任务栏
+│  ├─ SettingsForm.cs          设置窗口（4 列 Bento 卡片网格 + 顶栏/底栏）
 │  ├─ Interop\Native.cs        Win32 / PDH / GDI / 多屏 / DPI P/Invoke 声明
 │  ├─ Metrics\
 │  │  ├─ MetricSampler.cs      所有指标采样（CPU/内存/GPU/显存/网速/磁盘）
@@ -53,13 +54,13 @@ D:\WMonitor\
 │  │  ├─ TaskbarLocator.cs     枚举全部任务栏 + 每屏 DPI
 │  │  ├─ DetailPanel.cs        详情面板（4/5 行 + 可切时间窗曲线）
 │  │  ├─ TrayIconRenderer.cs   4 种托盘图标绘制（+ 告警红环）
-│  │  ├─ SettingsForm.cs       设置窗口（滚动容器 + 块式布局）
+│  │  ├─ Bento.cs              BentoCard 圆角卡片 + BentoButton 圆角按钮（自绘）
 │  │  ├─ Controls.cs           Segmented / Chip / Slider / Stepper
 │  │  └─ Theme.cs              深/浅两套配色 + 系统主题判定 + 告警色
 │  └─ docs\                    详细文档
 ├─ WMonitor\                   ← 安装版（framework 依赖，多文件）
-├─ WMonitor-v0.10-framework.exe
-└─ WMonitor-v0.10-portable.exe
+├─ WMonitor-v0.12-framework.exe
+└─ WMonitor-v0.12-portable.exe
 ```
 
 **改代码只改 `wmonitor-eidt\`**，然后重新发布到另外两个位置。
@@ -83,13 +84,13 @@ dotnet publish -c Release -r win-x64 --self-contained false \
 # ② 单文件 · 框架依赖
 dotnet publish -c Release -r win-x64 --self-contained false \
   -p:PublishSingleFile=true -o build/framework
-cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.10-framework.exe"
+cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.12-framework.exe"
 
 # ③ 单文件 · 自包含
 dotnet publish -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true -o build/portable
-cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.10-portable.exe"
+cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.12-portable.exe"
 ```
 
 **发布前必须先杀掉运行中的进程**，否则 exe 被锁、编译报 `MSB3027 / MSB3021`：
@@ -133,6 +134,10 @@ im.crop((1820,1380,2320,1440)).save(r'D:\Hermes\output\results\check.png')
 | 网卡列表缓存 30 秒 | `GetAllNetworkInterfaces()` 每次 8–16 ms（虚拟网卡多） |
 | 采样在 UI 线程 | 1 秒一次、< 1 ms，跨线程 Post 反而引入抖动和竞态 |
 | 主题读 `SystemUsesLightTheme` | 任务栏跟随「Windows 模式」，不是「应用模式」（`AppsUseLightTheme`） |
+| 设置窗口是 4 列 Bento 卡片网格 | v0.11 起 400 宽单列要滚三屏；现在 1238 宽、正常配置零滚动，条件行增删由 `LayoutCards()` 自动伸缩 |
+| 卡片圆角靠「先铺窗口底色再画圆角路径」 | 不用 `Region`（硬裁切有锯齿）；卡片 `BackColor` 必须保持卡片色，否则子控件 `g.Clear(Parent.BackColor)` 会出方块 |
+| 托盘图标槽位按样式各存一份 | v0.12 起 `TrayDualNumber/TrayDualRing/TrayFourBar/TraySingle` 各一套，读写一律走 `cfg.TrayCurrent`；旧字段 `TrayPrimary…` 只给 `Load()` 迁移用，别再直接读写 |
+| 按钮用自绘 `BentoButton` | 系统 `Button`（FlatStyle.Flat）画不出圆角也压不住 hover；`BentoButton` 实现 `IButtonControl`，仍可当 `AcceptButton` |
 
 ---
 
@@ -144,6 +149,8 @@ im.crop((1820,1380,2320,1440)).save(r'D:\Hermes\output\results\check.png')
 - ❌ 不要把详情面板做成 `NoActivate = true` —— 它靠 `Deactivate` 事件关闭，NOACTIVATE 窗口不会触发。
 - ❌ 不要在 `Blit` 里忘记 `DestroyIcon` / `DeleteObject`（托盘图标每秒重建，漏一个就 GDI 泄漏）。
 - ❌ 不要并行改同一个文件（多个 Agent 同时写会互相覆盖）。
+- ❌ 不要在设置窗口里用系统 `Button` / `NumericUpDown` —— 原生控件深色下底色边框都不搭，用 `BentoButton` / `Stepper`。
+- ❌ 不要把卡片高度写死：卡片高度由 `LayoutCards()` 按网格行算，写死会在条件行增删时错位。
 - ❌ 不要"顺手"改目录名 `wmonitor-eidt`。
 
 ---

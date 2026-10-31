@@ -16,7 +16,7 @@ internal static class TrayIconRenderer
     /// <summary>一个指标在托盘图标里的呈现：文字 + 环形/进度填充比例 + 颜色。</summary>
     public readonly record struct Val(string Text, double Pct, Color Color);
 
-    public static Icon Render(AppConfig cfg, MetricsSnapshot s, Theme th, int size)
+    public static Icon Render(AppConfig cfg, MetricsSnapshot s, Theme th, int size, bool alert = false)
     {
         // 4 倍超采样再缩回目标尺寸：16px 下直接画字，笔画粗细不匀、边缘发暗；
         // 超采样后 GDI+ 的亚像素信息被平均掉，数字明显更干净（见 --icons 对比图）。
@@ -37,6 +37,8 @@ internal static class TrayIconRenderer
                 case TrayStyle.Single: DrawSingle(g, vals[0], th, hi); break;
                 default: DrawDualNumber(g, vals, th, hi); break;
             }
+
+            if (alert) DrawAlertRing(g, hi, th);
         }
 
         using var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
@@ -56,6 +58,14 @@ internal static class TrayIconRenderer
             return (Icon)tmp.Clone();
         }
         finally { DestroyIcon(h); }
+    }
+
+    /// <summary>告警闪烁时套一圈红环（画在 4 倍超采样画布上，缩到 16px 后仍清晰）。</summary>
+    private static void DrawAlertRing(Graphics g, int size, Theme th)
+    {
+        float w = Math.Max(2f, size * 0.10f);
+        using var pen = new Pen(th.Alert, w);
+        g.DrawEllipse(pen, w / 2f, w / 2f, size - w, size - w);
     }
 
     /// <summary>托盘图标缓存键：样式 + 主题 + 每个槽位的文字与填充比例。</summary>

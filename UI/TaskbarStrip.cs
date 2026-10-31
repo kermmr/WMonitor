@@ -47,7 +47,7 @@ public sealed class TaskbarStrip : LayeredWindow
         set => _scale = value;
     }
 
-    public void Update(MetricsSnapshot s, AppConfig cfg, Theme th)
+    public void Update(MetricsSnapshot s, AppConfig cfg, Theme th, AlertView? alert = null)
     {
         // 用户关掉「显示贴片」：不画、不定位，只留托盘图标
         if (!cfg.ShowStrip) { if (Visible) Hide(); return; }
@@ -61,6 +61,7 @@ public sealed class TaskbarStrip : LayeredWindow
 
         var cells = BuildCells(s, cfg, th);
         if (cfg.Strip == StripStyle.Rings) cells = cells.Where(c => c.Bar).ToList();
+        if (cfg.AlertStrip && alert is { AnyFiring: true }) Recolor(cells, alert, th);
         if (cells.Count == 0) { if (Visible) Hide(); return; }
 
         float k = DpiScale;
@@ -174,6 +175,28 @@ public sealed class TaskbarStrip : LayeredWindow
         return list;
     }
 
+    /// <summary>告警中的指标整格变红（圆点、标签、数值、迷你柱一起变）。</summary>
+    private static void Recolor(List<Cell> cells, AlertView alert, Theme th)
+    {
+        for (int i = 0; i < cells.Count; i++)
+        {
+            var m = AlertMetricOf(cells[i].Label);
+            if (m.HasValue && alert.IsFiring(m.Value))
+                cells[i] = cells[i] with { Color = th.Alert };
+        }
+    }
+
+    /// <summary>贴片 cell 的 Label → 告警指标。网速/磁盘没有告警规则，返回 null。</summary>
+    private static AlertMetric? AlertMetricOf(string label) => label switch
+    {
+        "CPU" => AlertMetric.Cpu,
+        "RAM" => AlertMetric.Ram,
+        "GPU" => AlertMetric.Gpu,
+        "VRAM" => AlertMetric.Vram,
+        "T" => AlertMetric.GpuTemp,
+        _ => null,
+    };
+
     private static string Fmt(double v) =>
         double.IsNaN(v) ? "0" : v >= 100 ? "100" : ((int)Math.Round(v)).ToString();
 
@@ -246,10 +269,11 @@ public sealed class TaskbarStrip : LayeredWindow
             Gfx.Text(g, c.Label, fLabel, Color.FromArgb(165, c.Color), x, cy - 4.5f * k);
             x += lw + 4 * k;
 
-            // value（右对齐到固定盒，数字不跳）
+            // value（右对齐到固定盒，数字不跳）；告警时整格变红
             float bw = ValueBox(g, c, fValue, k);
             float vw = Gfx.Measure(g, c.Value, fValue).Width;
-            Gfx.Text(g, c.Value, fValue, th.Text, x + (bw - vw), cy - 6.5f * k);
+            bool hot = c.Color == th.Alert;
+            Gfx.Text(g, c.Value, fValue, hot ? th.Alert : th.Text, x + (bw - vw), cy - 6.5f * k);
             x += bw + 2 * k;
 
             // unit

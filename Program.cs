@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using WMonitor.Metrics;
 using WMonitor.UI;
@@ -32,6 +33,12 @@ internal static class Program
         if (args.Contains("--history-dump"))
         {
             HistoryDump();
+            return;
+        }
+
+        if (args.Contains("--alert-test"))
+        {
+            AlertTest();
             return;
         }
 
@@ -80,6 +87,77 @@ internal static class Program
         Directory.CreateDirectory(@"D:/Hermes/output/results");
         File.WriteAllText(@"D:/Hermes/output/results/wmonitor-monitors.txt",
             $"共 {all.Count} 块屏\r\n{TaskbarLocator.Describe(all)}\r\n");
+    }
+
+    /// <summary>
+    /// 诊断用：离线跑告警状态机（不碰 UI）。伪造 CPU 曲线验证 武装→触发→解除→再触发，
+    /// 以及阈值抖动不重复触发。等真实温度触发要跑游戏，这个 50 步模拟 0.1 秒出结果。
+    /// </summary>
+    private static void AlertTest()
+    {
+        var sb = new StringBuilder();
+        var cfg = new AppConfig { AlertsEnabled = true };
+        foreach (var r in cfg.AlertRules) r.Enabled = false;
+
+        var cpu = cfg.AlertRules[(int)AlertMetric.Cpu];
+        cpu.Enabled = true;
+        cpu.Threshold = 90;
+        cpu.DurationSec = 5;
+        cpu.CooldownSec = 10;
+
+        var eng = new AlertEngine();
+        eng.Configure(cfg);
+
+        long t0 = Stopwatch.GetTimestamp();
+        var fired = new List<int>();
+
+        for (int t = 0; t <= 50; t++)
+        {
+            double v = t switch
+            {
+                <= 10 => 95,          // 越线，持续 5 秒后触发（t=5）
+                <= 19 => 80,          // 落到恢复线（85）以下 → 解除
+                <= 30 => 95,          // 再次越线 → t=25 再触发（冷却已过）
+                _ => (t % 2 == 0) ? 89 : 91,   // 阈值抖动 → 不应再触发
+            };
+
+            var view = eng.Evaluate(new MetricsSnapshot { CpuPercent = v }, t0 + (long)t * Stopwatch.Frequency);
+            foreach (var e in view.Events)
+            {
+                fired.Add(t);
+                sb.AppendLine($"t={t,2}s FIRE {e.Metric} {e.Value:0} >= {e.Threshold:0}");
+            }
+            if (t % 5 == 0) sb.AppendLine($"t={t,2}s v={v,3:0} firing={view.IsFiring(AlertMetric.Cpu)}");
+        }
+
+        string got = string.Join(",", fired);
+        sb.AppendLine($"events at: {got}");
+        sb.AppendLine(got == "5,25" ? "PASS" : "FAIL (expected 5,25)");
+
+        // 静音：事件被压住，但 Firing 状态照常维护（贴片仍要红）
+        eng.Reset();
+        eng.Muted = true;
+        bool anyEvent = false, stillFiring = false;
+        for (int t = 0; t <= 20; t++)
+        {
+            var v = eng.Evaluate(new MetricsSnapshot { CpuPercent = 95 }, t0 + (long)(100 + t) * Stopwatch.Frequency);
+            if (v.Events.Count > 0) anyEvent = true;
+            stillFiring = v.IsFiring(AlertMetric.Cpu);
+        }
+        sb.AppendLine($"mute: events={(anyEvent ? "有(FAIL)" : "无(PASS)")} firing={(stillFiring ? "仍红(PASS)" : "灭(FAIL)")}");
+
+        // 总开关关闭：完全不参与
+        cfg.AlertsEnabled = false;
+        var off = new AlertEngine();
+        off.Configure(cfg);
+        bool offFired = false;
+        for (int t = 0; t <= 20; t++)
+            if (off.Evaluate(new MetricsSnapshot { CpuPercent = 99 }, t0 + (long)(200 + t) * Stopwatch.Frequency).Events.Count > 0)
+                offFired = true;
+        sb.AppendLine($"disabled: events={(offFired ? "有(FAIL)" : "无(PASS)")}");
+
+        Directory.CreateDirectory(@"D:/Hermes/output/results");
+        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-alert-test.txt", sb.ToString());
     }
 
     /// <summary>诊断用：打印历史存储状态与最近 1 分钟的抽稀结果。</summary>

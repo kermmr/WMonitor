@@ -20,6 +20,9 @@ public sealed class Theme
     public Color Sep { get; init; }
     public Color PanelBg { get; init; }
 
+    /// <summary>告警色：贴片数字变红、托盘闪烁环都用它。</summary>
+    public Color Alert { get; init; }
+
     /// <summary>WinForms 控件的 BackColor 必须是全不透明色。</summary>
     public Color PanelBgOpaque => Color.FromArgb(255, PanelBg.R, PanelBg.G, PanelBg.B);
     public Color Line => IsDark ? Color.FromArgb(255, 46, 50, 57) : Color.FromArgb(255, 224, 226, 231);
@@ -46,7 +49,8 @@ public sealed class Theme
         Track = Color.FromArgb(34, 255, 255, 255),
         Sep = Color.FromArgb(28, 255, 255, 255),
         PanelBg = Color.FromArgb(242, 0x18, 0x1B, 0x20),
-        Hover = Color.FromArgb(30, 255, 255, 255)
+        Hover = Color.FromArgb(30, 255, 255, 255),
+        Alert = Color.FromArgb(0xFF, 0x45, 0x3A)
     };
 
     public static readonly Theme Light = new()
@@ -64,7 +68,8 @@ public sealed class Theme
         Track = Color.FromArgb(26, 0, 0, 0),
         Sep = Color.FromArgb(24, 0, 0, 0),
         PanelBg = Color.FromArgb(246, 0xF7, 0xF8, 0xFA),
-        Hover = Color.FromArgb(20, 0, 0, 0)
+        Hover = Color.FromArgb(20, 0, 0, 0),
+        Alert = Color.FromArgb(0xD7, 0x00, 0x15)
     };
 
     public static bool SystemUsesLight()

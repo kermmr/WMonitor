@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using WMonitor.Metrics;
 
 namespace WMonitor;
 
@@ -71,6 +72,20 @@ public sealed class AppConfig
 
     /// <summary>面板默认时间窗（分钟）：1 / 5 / 60 / 1440。</summary>
     public int ChartWindowMinutes { get; set; } = 1;
+
+    // ---------------- 告警 ----------------
+
+    /// <summary>告警总开关。关闭时 AlertEngine 不参与计算，零开销。</summary>
+    public bool AlertsEnabled { get; set; } = false;
+
+    /// <summary>5 条固定规则（按 Metric 归位，数组长度与顺序都不被信任）。</summary>
+    public AlertRule[] AlertRules { get; set; } = AlertRule.Defaults();
+
+    public bool AlertStrip { get; set; } = true;      // 贴片数字变红
+    public bool AlertTrayFlash { get; set; } = true;  // 托盘图标闪烁
+    public bool AlertToast { get; set; } = true;      // 系统通知
+    public bool AlertScript { get; set; } = false;    // 运行脚本
+    public string? AlertScriptPath { get; set; }
 
     /// <summary>贴片底色与描边的不透明度 0–100。</summary>
     public int StripOpacity { get; set; } = 100;

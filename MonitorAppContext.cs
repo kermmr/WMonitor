@@ -20,6 +20,13 @@ internal sealed class MonitorAppContext : ApplicationContext
     /// <summary>建 <see cref="_hist"/> 时用的配置三元组，设置窗口关闭后据此判断要不要重建。</summary>
     private (bool On, bool Persist, int Hours) _histKey = (false, false, 0);
 
+    private readonly AlertEngine _alerts = new();
+    private readonly System.Windows.Forms.Timer _flashTimer;
+    private Icon? _flashNormal, _flashAlert;
+    private bool _flashing, _flashOn;
+    private int _flashTicks;
+    private DateTime _muteUntil = DateTime.MinValue;
+
     /// <summary>当前活着的贴片（主屏 1 片，或「全部屏幕」时每屏 1 片）。</summary>
     private List<TaskbarStrip> _strips = new();
 
@@ -66,6 +73,11 @@ internal sealed class MonitorAppContext : ApplicationContext
             if (e.Button == MouseButtons.Left) OpenSettings();
         };
         _tray.Icon = TrayIconRenderer.Render(_cfg, _last, _theme, TraySize);
+
+        _flashTimer = new System.Windows.Forms.Timer { Interval = 400 };
+        _flashTimer.Tick += (_, _) => FlashTick();
+
+        _alerts.Configure(_cfg);
 
         _timer = new System.Windows.Forms.Timer { Interval = Math.Clamp(_cfg.RefreshMs, 250, 10000) };
         _timer.Tick += (_, _) => Tick();
@@ -159,6 +171,109 @@ internal sealed class MonitorAppContext : ApplicationContext
         _panel.History = _hist;
     }
 
+    // ---------------- 告警动作 ----------------
+
+    private void DispatchAlert(AlertView alert)
+    {
+        foreach (var e in alert.Events)
+        {
+            LogAlert($"fired {e.Metric} value={e.Value:0.#} threshold={e.Threshold:0.#}");
+
+            if (_cfg.AlertToast)
+                _tray.ShowBalloonTip(5000, "WMonitor 告警",
+                    $"{AlertEngine.Name(e.Metric)} {e.Value:0.#}{AlertEngine.Unit(e.Metric)} " +
+                    $"超过 {e.Threshold:0.#}{AlertEngine.Unit(e.Metric)}",
+                    ToolTipIcon.Warning);
+
+            if (_cfg.AlertScript) RunAlertScript(e);
+        }
+
+        if (_cfg.AlertTrayFlash) StartFlash();
+    }
+
+    private void StartFlash()
+    {
+        if (_flashing) return;
+
+        _flashNormal = TrayIconRenderer.Render(_cfg, _last, _theme, TraySize);
+        _flashAlert = TrayIconRenderer.Render(_cfg, _last, _theme, TraySize, alert: true);
+        _flashOn = true;
+        _flashTicks = 0;
+        _flashing = true;
+        _tray.Icon = _flashAlert;
+        _flashTimer.Start();
+    }
+
+    private void FlashTick()
+    {
+        _flashOn = !_flashOn;
+        _tray.Icon = _flashOn ? _flashAlert : _flashNormal;
+
+        if (++_flashTicks < 8) return;
+
+        _flashTimer.Stop();
+        _flashing = false;
+        _trayKey = "";
+        Apply(_last);                    // 重建正常图标（Apply 会 Dispose 当前那个）
+
+        var a = _flashAlert;
+        var n = _flashNormal;
+        _flashAlert = _flashNormal = null;
+        if (a != null && !ReferenceEquals(a, _tray.Icon)) a.Dispose();
+        if (n != null && !ReferenceEquals(n, _tray.Icon)) n.Dispose();
+    }
+
+    private void StopFlash()
+    {
+        _flashTimer.Stop();
+        _flashing = false;
+        var a = _flashAlert;
+        var n = _flashNormal;
+        _flashAlert = _flashNormal = null;
+        if (a != null && !ReferenceEquals(a, _tray.Icon)) a.Dispose();
+        if (n != null && !ReferenceEquals(n, _tray.Icon)) n.Dispose();
+    }
+
+    /// <summary>
+    /// 只执行用户在设置里显式选中的文件；参数走环境变量，不拼命令行。
+    /// fire-and-forget：UI 线程绝不能等脚本（30 秒超时会卡死贴片刷新）。
+    /// </summary>
+    private void RunAlertScript(AlertEvent e)
+    {
+        string? path = _cfg.AlertScriptPath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                CreateNoWindow = true,
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(path) ?? Environment.CurrentDirectory
+            };
+            psi.ArgumentList.Add("/c");
+            psi.ArgumentList.Add(path);
+            psi.Environment["WMONITOR_METRIC"] = e.Metric.ToString();
+            psi.Environment["WMONITOR_VALUE"] = e.Value.ToString("0.#", CultureInfo.InvariantCulture);
+            psi.Environment["WMONITOR_THRESHOLD"] = e.Threshold.ToString("0.#", CultureInfo.InvariantCulture);
+            Process.Start(psi);
+            LogAlert($"script started: {Path.GetFileName(path)}");
+        }
+        catch (Exception ex) { LogAlert($"script failed: {ex.Message}"); }
+    }
+
+    private static void LogAlert(string msg)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppConfig.Dir);
+            File.AppendAllText(Path.Combine(AppConfig.Dir, "alert.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}\r\n");
+        }
+        catch { }
+    }
+
     private void Tick()
     {
         if (_paused) return;
@@ -177,9 +292,15 @@ internal sealed class MonitorAppContext : ApplicationContext
             if (t.IsDark != _theme.IsDark) { _theme = t; _trayKey = ""; }
         }
 
-        foreach (var st in _strips) st.Update(s, _cfg, _theme);
+        long now = Stopwatch.GetTimestamp();
 
-        _hist?.Push(s, Stopwatch.GetTimestamp());
+        _alerts.Muted = DateTime.Now < _muteUntil;
+        var alert = _alerts.Evaluate(s, now);
+
+        foreach (var st in _strips) st.Update(s, _cfg, _theme, alert);
+
+        _hist?.Push(s, now);
+        if (alert.Events.Count > 0) DispatchAlert(alert);
 
         _panel.PushHistory(s);
         if (_panel.Visible) _panel.Update(s, _cfg, _theme);
@@ -191,13 +312,17 @@ internal sealed class MonitorAppContext : ApplicationContext
             RebuildStrips();
         }
 
-        string key = TrayIconRenderer.Key(_cfg, s, _theme);
-        if (key != _trayKey)
+        // 闪烁期间由 FlashTick 独占托盘图标，否则会和 key 逻辑打架
+        if (!_flashing)
         {
-            _trayKey = key;
-            var old = _tray.Icon;
-            _tray.Icon = TrayIconRenderer.Render(_cfg, s, _theme, TraySize);
-            old?.Dispose();
+            string key = TrayIconRenderer.Key(_cfg, s, _theme);
+            if (key != _trayKey)
+            {
+                _trayKey = key;
+                var old = _tray.Icon;
+                _tray.Icon = TrayIconRenderer.Render(_cfg, s, _theme, TraySize);
+                old?.Dispose();
+            }
         }
 
         _tray.Text = $"CPU {s.CpuPercent:0}%  内存 {s.RamPercent:0}%" +
@@ -274,6 +399,14 @@ internal sealed class MonitorAppContext : ApplicationContext
         AddCheck(fields, "网速", () => _cfg.ShowNet, v => _cfg.ShowNet = v);
         AddCheck(fields, "GPU 温度", () => _cfg.ShowTemp, v => _cfg.ShowTemp = v);
         menu.Items.Add(fields);
+
+        var alertMenu = new ToolStripMenuItem("告警");
+        AddCheck(alertMenu, "启用告警", () => _cfg.AlertsEnabled, v => _cfg.AlertsEnabled = v);
+        AddCheck(alertMenu, "静音 1 小时", () => DateTime.Now < _muteUntil,
+            v => _muteUntil = v ? DateTime.Now.AddHours(1) : DateTime.MinValue);
+        alertMenu.DropDownItems.Add(new ToolStripSeparator());
+        alertMenu.DropDownItems.Add(new ToolStripMenuItem("告警设置…", null, (_, _) => OpenSettings()));
+        menu.Items.Add(alertMenu);
 
         menu.Items.Add(new ToolStripSeparator());
 
@@ -358,6 +491,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         _bars = TaskbarLocator.Enumerate();
         RebuildStrips();
         foreach (var st in _strips) st.Reanchor(_cfg);
+        _alerts.Configure(_cfg);
         Apply(_last);
     }
 
@@ -391,6 +525,8 @@ internal sealed class MonitorAppContext : ApplicationContext
         _theme = Theme.Resolve(_cfg.Theme);
         _trayKey = "";
         RefreshHistoryIfChanged();
+        _alerts.Configure(_cfg);
+        _alerts.Reset();          // 阈值可能变了，旧的武装计时不能沿用
         RefreshAll();
     }
 
@@ -398,6 +534,7 @@ internal sealed class MonitorAppContext : ApplicationContext
     {
         _timer.Stop();
         _timer.Dispose();
+        StopFlash();
         _tray.Visible = false;
         _tray.Icon = null;
         _tray.Dispose();

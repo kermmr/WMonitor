@@ -53,6 +53,8 @@ public sealed class TaskbarStrip : LayeredWindow
         if (!cfg.ShowStrip) { if (Visible) Hide(); return; }
 
         RefreshBarRect();
+        LockPosition = cfg.LockPosition;
+        ClickThrough = cfg.ClickThrough;
 
         Push(_hCpu, s.CpuPercent);
         Push(_hRam, s.RamPercent);
@@ -345,6 +347,9 @@ public sealed class TaskbarStrip : LayeredWindow
     /// <summary>归属显示器的设备名（<c>\\.\DISPLAY1</c>），用于实例复用与配置匹配。</summary>
     public string Device { get; set; } = "";
 
+    /// <summary>锁定位置：只禁拖动，点击打开面板照常（<c>cfg.LockPosition</c> 每 tick 同步）。</summary>
+    public bool LockPosition { get; set; }
+
     /// <summary>
     /// 每 tick 刷新任务栏矩形。自动隐藏、换分辨率、Explorer 重贴都会改变它，
     /// 所以不能只在重建贴片时读一次 —— 这正是 v0.04 靠"每 tick 重新定位"自愈的原因。
@@ -441,6 +446,7 @@ public sealed class TaskbarStrip : LayeredWindow
 
     private bool _dragging;
     private bool _dragMoved;
+    private bool _lockedClick;
     private Point _dragCursor0;
     private Point _dragWin0;
 
@@ -469,6 +475,11 @@ public sealed class TaskbarStrip : LayeredWindow
         switch (m.Msg)
         {
             case WM_LBUTTONDOWN:
+                if (LockPosition)
+                {
+                    _lockedClick = true;      // 锁定位置：不拖，但松开时仍要能点开面板
+                    return;
+                }
                 Native.GetCursorPos(out var p0);
                 _dragCursor0 = new Point(p0.X, p0.Y);
                 _dragWin0 = new Point(_lastX, _lastY);
@@ -498,6 +509,12 @@ public sealed class TaskbarStrip : LayeredWindow
                 break;
 
             case WM_LBUTTONUP:
+                if (_lockedClick)
+                {
+                    _lockedClick = false;
+                    Clicked?.Invoke(this, EventArgs.Empty);
+                    return;
+                }
                 if (_dragging)
                 {
                     Native.ReleaseCapture();

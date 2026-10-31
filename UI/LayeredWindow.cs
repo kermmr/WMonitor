@@ -30,12 +30,28 @@ public class LayeredWindow : Form
             var cp = base.CreateParams;
             cp.ExStyle |= Native.WS_EX_LAYERED | Native.WS_EX_TOOLWINDOW;
             if (NoActivate) cp.ExStyle |= Native.WS_EX_NOACTIVATE;
+            // 点击穿透：鼠标事件直接落到下面的窗口。分层窗口 + TRANSPARENT 是合法组合。
+            if (ClickThrough) cp.ExStyle |= Native.WS_EX_TRANSPARENT;
             return cp;
         }
     }
 
     /// <summary>true = 不抢焦点（贴片）；false = 可激活、失焦自动关（详情面板）。</summary>
     public bool NoActivate { get; set; } = true;
+
+    private bool _clickThrough;
+
+    /// <summary>点击穿透（<c>WS_EX_TRANSPARENT</c>）。运行时切换要调 <see cref="Control.UpdateStyles"/> 才生效。</summary>
+    public bool ClickThrough
+    {
+        get => _clickThrough;
+        set
+        {
+            if (_clickThrough == value) return;
+            _clickThrough = value;
+            if (IsHandleCreated) UpdateStyles();
+        }
+    }
 
     protected override bool ShowWithoutActivation => true;
 

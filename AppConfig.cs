@@ -60,6 +60,12 @@ public sealed class AppConfig
     /// <summary>每块屏各贴一片（多贴片模式下自由坐标不持久化）。</summary>
     public bool ShowOnAllMonitors { get; set; } = false;
 
+    /// <summary>锁定贴片位置：只禁拖动，点击打开面板照常。</summary>
+    public bool LockPosition { get; set; } = false;
+
+    /// <summary>点击穿透：鼠标直接落到下面的窗口。开启后只能从托盘菜单打开面板。</summary>
+    public bool ClickThrough { get; set; } = false;
+
     // ---------------- 历史 ----------------
 
     /// <summary>历史总开关。关掉后不采、不存、不落盘，面板退回 v0.04 的 60 点实时缓冲。</summary>

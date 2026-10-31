@@ -519,6 +519,8 @@ internal sealed class MonitorAppContext : ApplicationContext
             _theme = Theme.Resolve(_cfg.Theme);
             _trayKey = "";
             _timer.Interval = Math.Clamp(_cfg.RefreshMs, 250, 10000);
+            RefreshHistoryIfChanged();      // 开关历史要立刻生效，不等关窗
+            _alerts.Configure(_cfg);
             Apply(_last);
         };
         f.ShowDialog();

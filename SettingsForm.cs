@@ -12,11 +12,13 @@ public sealed class SettingsForm : Form
 {
     private readonly AppConfig _cfg;
     private Theme _th;
+    private readonly List<TaskbarInfo> _bars;
 
     public event Action? Changed;
 
     private Label _header = null!;
     private Segmented _pos = null!, _strip = null!, _tray = null!, _theme = null!, _rate = null!;
+    private Segmented? _screen;
     private Segmented _trayP = null!, _trayS = null!, _trayT = null!, _tray4 = null!;
     private Chip _startup = null!, _onTop = null!, _showStrip = null!;
     private Slider _opacity = null!;
@@ -37,10 +39,11 @@ public sealed class SettingsForm : Form
     private static readonly int[] Rates = { 500, 1000, 2000, 5000 };
     private static readonly string[] MetricNames = { "CPU", "内存", "GPU", "显存", "网速", "温度" };
 
-    public SettingsForm(AppConfig cfg, Theme th)
+    public SettingsForm(AppConfig cfg, Theme th, List<TaskbarInfo> bars)
     {
         _cfg = cfg;
         _th = th;
+        _bars = bars;
 
         Text = "WMonitor 设置";
         FormBorderStyle = FormBorderStyle.FixedSingle;
@@ -75,6 +78,34 @@ public sealed class SettingsForm : Form
         };
         _pos.SelectionChanged += (_, _) => { _cfg.Anchor = (StripAnchor)_pos.SelectedIndex; Apply(); };
         AddCaptionBlock("贴片位置", _pos);
+
+        // ---- 贴片所在屏幕（只有 1 屏时整行隐藏）----
+        if (_bars.Count > 1)
+        {
+            var names = new List<string>();
+            int shown = Math.Min(_bars.Count, 3);
+            for (int i = 0; i < shown; i++) names.Add($"屏幕 {i + 1}");
+            names.Add("全部");
+
+            int sel = _cfg.ShowOnAllMonitors ? names.Count - 1 : 0;
+            if (!_cfg.ShowOnAllMonitors)
+                for (int i = 0; i < shown; i++)
+                    if (_bars[i].Device == _cfg.StripMonitor) sel = i;
+
+            _screen = new Segmented
+            {
+                Items = names.ToArray(), SelectedIndex = sel,
+                Th = _th, Left = Pad, Width = ContentW, Height = CtrlH
+            };
+            _screen.SelectionChanged += (_, _) =>
+            {
+                int i = _screen!.SelectedIndex;
+                if (i >= shown) _cfg.ShowOnAllMonitors = true;
+                else { _cfg.ShowOnAllMonitors = false; _cfg.StripMonitor = _bars[i].Device; }
+                Apply();
+            };
+            AddCaptionBlock("贴片所在屏幕", _screen);
+        }
 
         _strip = new Segmented
         {

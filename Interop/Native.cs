@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace WMonitor.Interop;
 
@@ -128,6 +129,39 @@ internal static class Native
 
     [DllImport("kernel32.dll", CharSet = CharSet.Ansi, SetLastError = true)]
     public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+
+    // ---------------- 多屏 / DPI ----------------
+    public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+
+    public const uint MONITOR_DEFAULTTONEAREST = 2;
+    public const int MDT_EFFECTIVE_DPI = 0;
+
+    /// <summary>MONITORINFOEXW：cbSize 必须是本结构体大小，GetMonitorInfo 按 cbSize 区分 EX / 非 EX。</summary>
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct MONITORINFOEX
+    {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string szDevice;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX lpmi);
+
+    /// <summary>Win8.1+。返回 HRESULT，非 0 表示失败（远程会话 / 旧系统）。</summary>
+    [DllImport("shcore.dll")]
+    public static extern int GetDpiForMonitor(IntPtr hmonitor, int dpiType, out uint dpiX, out uint dpiY);
 
     // ---------------- pdh ----------------
     public const uint PDH_FMT_DOUBLE = 0x00000200;

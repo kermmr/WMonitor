@@ -23,6 +23,12 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--monitors"))
+        {
+            Monitors();
+            return;
+        }
+
         using var mutex = new Mutex(true, MutexName, out bool first);
         if (!first) return;
 
@@ -59,6 +65,15 @@ internal static class Program
                 $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {ex}\r\n");
         }
         catch { }
+    }
+
+    /// <summary>诊断用：枚举全部任务栏与各自 DPI，验证多屏识别（副屏贴片的前提）。</summary>
+    private static void Monitors()
+    {
+        var all = TaskbarLocator.Enumerate();
+        Directory.CreateDirectory(@"D:/Hermes/output/results");
+        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-monitors.txt",
+            $"共 {all.Count} 块屏\r\n{TaskbarLocator.Describe(all)}\r\n");
     }
 
     /// <summary>诊断用：采样 8 次写文件，验证各计数器读数是否合理。</summary>

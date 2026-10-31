@@ -33,10 +33,26 @@ public sealed class TaskbarStrip : LayeredWindow
 
     private readonly record struct Cell(string Label, string Value, string Unit, Color Color, double Pct, bool Bar);
 
+    private float _scale = -1f;
+
+    /// <summary>
+    /// 96 DPI 基准的比例。由 <see cref="TaskbarLocator"/> 按目标显示器的有效 DPI 显式设定。
+    /// 不能用 <c>DeviceDpi</c>：分层窗口在 Blit 之前还没定位到目标屏，混合 DPI 下取到的是创建时那块屏的 DPI。
+    /// 未显式设置时回落 <c>DeviceDpi / 96f</c>，保持单屏行为与 v0.04 一致。
+    /// 注意不能叫 Scale —— Control 已有 Scale(float) 方法，会触发 CS0108。
+    /// </summary>
+    public float DpiScale
+    {
+        get => _scale > 0 ? _scale : DeviceDpi / 96f;
+        set => _scale = value;
+    }
+
     public void Update(MetricsSnapshot s, AppConfig cfg, Theme th)
     {
         // 用户关掉「显示贴片」：不画、不定位，只留托盘图标
         if (!cfg.ShowStrip) { if (Visible) Hide(); return; }
+
+        RefreshBarRect();
 
         Push(_hCpu, s.CpuPercent);
         Push(_hRam, s.RamPercent);
@@ -47,7 +63,7 @@ public sealed class TaskbarStrip : LayeredWindow
         if (cfg.Strip == StripStyle.Rings) cells = cells.Where(c => c.Bar).ToList();
         if (cells.Count == 0) { if (Visible) Hide(); return; }
 
-        float k = DeviceDpi / 96f;
+        float k = DpiScale;
 
         int w, h;
         var measure = MeasureG;
@@ -92,7 +108,7 @@ public sealed class TaskbarStrip : LayeredWindow
 
         if (_dragging) return;   // 拖动中由鼠标消息驱动，不要拉回锚点
 
-        if (!TryAnchor(cfg, w, h, out int x, out int y))
+        if (!TryAnchor(cfg, Bar, w, h, out int x, out int y))
         {
             if (Visible) Hide();
             return;
@@ -122,7 +138,8 @@ public sealed class TaskbarStrip : LayeredWindow
     public void Reanchor(AppConfig cfg)
     {
         if (_bmp == null || !Visible || _dragging || !cfg.ShowStrip) return;
-        if (TryAnchor(cfg, _bmp.Width, _bmp.Height, out int x, out int y))
+        RefreshBarRect();
+        if (TryAnchor(cfg, Bar, _bmp.Width, _bmp.Height, out int x, out int y))
         {
             ApplyZOrder(cfg);
             if (x != _lastX || y != _lastY) { Blit(_bmp, x, y); _lastX = x; _lastY = y; }
@@ -293,7 +310,24 @@ public sealed class TaskbarStrip : LayeredWindow
 
     // ---------------- 定位 ----------------
 
-    private static bool TryAnchor(AppConfig cfg, int w, int h, out int x, out int y)
+    /// <summary>本片贴片归属的任务栏。由 MonitorAppContext 在每次重建/换屏时刷新。</summary>
+    public TaskbarInfo Bar { get; set; }
+
+    /// <summary>归属显示器的设备名（<c>\\.\DISPLAY1</c>），用于实例复用与配置匹配。</summary>
+    public string Device { get; set; } = "";
+
+    /// <summary>
+    /// 每 tick 刷新任务栏矩形。自动隐藏、换分辨率、Explorer 重贴都会改变它，
+    /// 所以不能只在重建贴片时读一次 —— 这正是 v0.04 靠"每 tick 重新定位"自愈的原因。
+    /// </summary>
+    private void RefreshBarRect()
+    {
+        if (Bar.Hwnd == IntPtr.Zero) return;
+        if (Native.GetWindowRect(Bar.Hwnd, out var r))
+            Bar = Bar with { Rect = new ScreenRect(r.Left, r.Top, r.Right, r.Bottom) };
+    }
+
+    private static bool TryAnchor(AppConfig cfg, TaskbarInfo bar, int w, int h, out int x, out int y)
     {
         x = y = 0;
 
@@ -307,10 +341,10 @@ public sealed class TaskbarStrip : LayeredWindow
             return true;
         }
 
-        IntPtr tray = Native.FindWindow("Shell_TrayWnd", null);
-        if (tray == IntPtr.Zero) return false;
-        if (!Native.GetWindowRect(tray, out var tr)) return false;
-        if (tr.Height < 12 || tr.Width < 200) return false;   // 自动隐藏状态
+        if (bar.Hwnd == IntPtr.Zero) return false;
+        var tr = bar.Rect;
+        // 自动隐藏状态：短边 < 12。用短边而不是只看高度，竖向任务栏也不会误判
+        if (Math.Min(tr.Width, tr.Height) < 12 || tr.Width < 200) return false;
 
         switch (cfg.Anchor)
         {
@@ -319,17 +353,17 @@ public sealed class TaskbarStrip : LayeredWindow
                 break;
 
             case StripAnchor.BeforeApps:
-                GetAppsBounds(tray, tr, out int al, out _);
+                GetAppsBounds(bar, out int al, out _);
                 x = al - w - (int)Math.Round(8 * (h / 30f));
                 break;
 
             case StripAnchor.AfterApps:
-                GetAppsBounds(tray, tr, out _, out int ar);
+                GetAppsBounds(bar, out _, out int ar);
                 x = ar + (int)Math.Round(8 * (h / 30f));
                 break;
 
             default: // BeforeTray
-                x = GetTrayLeft(tray, tr, h) - w - (int)Math.Round(6 * (h / 30f));
+                x = GetTrayLeft(bar, h) - w - (int)Math.Round(6 * (h / 30f));
                 break;
         }
 
@@ -340,29 +374,30 @@ public sealed class TaskbarStrip : LayeredWindow
 
     /// <summary>
     /// 应用图标区的左右边界。
-    /// 左界取「开始」按钮（Win11 上 Start 窗口可靠存在）；
+    /// 左界取「开始」按钮（Win11 上 Start 窗口可靠存在）；副屏任务栏没有 Start，回落到 1/4 处。
     /// 右界 Win11 没有可用 HWND（MSTaskListWClass 的矩形只有 440px，不准；UIA 树也是空的），
     /// 取任务栏中心与托盘左界的中点 —— 本机实测误差约 30px，可用 OffsetX 微调。
     /// </summary>
-    private static void GetAppsBounds(IntPtr tray, Native.RECT tr, out int left, out int right)
+    private static void GetAppsBounds(TaskbarInfo bar, out int left, out int right)
     {
-        IntPtr start = Native.FindWindowEx(tray, IntPtr.Zero, "Start", null);
+        var tr = bar.Rect;
+        IntPtr start = Native.FindWindowEx(bar.Hwnd, IntPtr.Zero, "Start", null);
         if (start != IntPtr.Zero && Native.GetWindowRect(start, out var sr) && sr.Width > 0)
             left = sr.Left;
         else
             left = tr.Left + tr.Width / 4;
 
-        int trayLeft = GetTrayLeft(tray, tr, 48);
+        int trayLeft = GetTrayLeft(bar, 48);
         int cx = tr.Left + tr.Width / 2;
         right = (cx + trayLeft) / 2;
     }
 
-    private static int GetTrayLeft(IntPtr tray, Native.RECT tr, int h)
+    private static int GetTrayLeft(TaskbarInfo bar, int h)
     {
-        IntPtr notify = Native.FindWindowEx(tray, IntPtr.Zero, "TrayNotifyWnd", null);
+        IntPtr notify = Native.FindWindowEx(bar.Hwnd, IntPtr.Zero, "TrayNotifyWnd", null);
         if (notify != IntPtr.Zero && Native.GetWindowRect(notify, out var nr) && nr.Width > 0)
             return nr.Left;
-        return tr.Right - (int)(180 * (h / 30f));
+        return bar.Rect.Right - (int)(180 * (h / 30f));
     }
 
     private static void ClampToScreen(ref int x, ref int y, int w, int h)
@@ -445,8 +480,8 @@ public sealed class TaskbarStrip : LayeredWindow
                         return;
                     }
 
-                    // 落在任务栏带内就吸附垂直居中
-                    IntPtr tray = Native.FindWindow("Shell_TrayWnd", null);
+                    // 落在任务栏带内就吸附垂直居中（用本片所属任务栏，副屏才不会吸到主屏）
+                    IntPtr tray = Bar.Hwnd;
                     if (tray != IntPtr.Zero && Native.GetWindowRect(tray, out var tr)
                         && _lastY + _lastH > tr.Top && _lastY < tr.Bottom
                         && _lastX + _lastW > tr.Left && _lastX < tr.Right)

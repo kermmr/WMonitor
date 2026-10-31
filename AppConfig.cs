@@ -52,6 +52,12 @@ public sealed class AppConfig
     public int FreeY { get; set; } = -1;
     public bool AlwaysOnTop { get; set; } = true;
 
+    /// <summary>贴片所在显示器设备名（如 <c>\\.\DISPLAY2</c>）。空 = 主屏。</summary>
+    public string StripMonitor { get; set; } = "";
+
+    /// <summary>每块屏各贴一片（多贴片模式下自由坐标不持久化）。</summary>
+    public bool ShowOnAllMonitors { get; set; } = false;
+
     /// <summary>贴片底色与描边的不透明度 0–100。</summary>
     public int StripOpacity { get; set; } = 100;
     public string? LockedGpuLuid { get; set; }

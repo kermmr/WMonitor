@@ -18,6 +18,7 @@
 | GPU 功耗 | NVML `nvmlDeviceGetPowerUsage` | mW → W |
 | GPU 名称 | NVML `nvmlDeviceGetName` | 字符串 |
 | 网速 | `NetworkInterface.GetIPStatistics()` 的 `BytesReceived/Sent` 差分 | B/s |
+| 磁盘读写 | PDH `\PhysicalDisk(_Total)\Disk Read/Write Bytes/sec` | B/s（速率计数器，PDH 自动按两次采样差分） |
 
 ## 为什么这些选择
 
@@ -89,7 +90,10 @@ powershell -NoProfile -Command "Get-CimInstance Win32_VideoController | Select N
 
 # 程序自带诊断
 D:/WMonitor/WMonitor/WMonitor.exe --probe
-cat D:/Hermes/output/results/wmonitor-probe.txt
+cat D:/Hermes/output/results/sysmon-probe.txt
+
+# 磁盘计数器（与任务管理器「性能 → 磁盘」同口径，允许 ±20%）
+typeperf "\PhysicalDisk(_Total)\Disk Read Bytes/sec" "\PhysicalDisk(_Total)\Disk Write Bytes/sec" -sc 2 | tail -2
 ```
 
 ## 本机基线（i7-12700 / 64 GB / RTX 3060 12 GB）
@@ -101,5 +105,6 @@ GPU 0–2%（空闲）
 VRAM 5.5 / 12.0 GB（PDH 口径，含系统）
 GPU 温度 53 °C   功耗 14–15 W
 网速 0–50 KB/s
+磁盘 读 0–2 MB/s · 写 0–16 MB/s（空闲，含浏览器/日志写入）
 LUID：0x00010FB0 = RTX 3060，0x0001224E = UHD 770，0x00012295 = Microsoft Basic Render（恒 0）
 ```

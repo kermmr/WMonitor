@@ -41,22 +41,25 @@ D:\WMonitor\
 │  ├─ Dbg.cs                   诊断日志（默认关闭，SYSMON_DEBUG=1 开启）
 │  ├─ app.ico                  应用图标（PIL 生成的多尺寸 ico）
 │  ├─ run.sh                   开发迭代脚本：杀进程→编译→启动→截任务栏
-│  ├─ Interop\Native.cs        Win32 / PDH / GDI P/Invoke 声明
+│  ├─ Interop\Native.cs        Win32 / PDH / GDI / 多屏 / DPI P/Invoke 声明
 │  ├─ Metrics\
-│  │  ├─ MetricSampler.cs      所有指标采样
-│  │  └─ NvmlGpu.cs            NVML 动态加载（无 N 卡自动降级）
+│  │  ├─ MetricSampler.cs      所有指标采样（CPU/内存/GPU/显存/网速/磁盘）
+│  │  ├─ NvmlGpu.cs            NVML 动态加载（无 N 卡自动降级）
+│  │  ├─ HistoryStore.cs       历史：内存环 1 小时 + 磁盘日文件 + 抽稀查询
+│  │  └─ AlertEngine.cs        阈值告警状态机（5 条规则 + 迟滞 + 冷却）
 │  ├─ UI\
-│  │  ├─ LayeredWindow.cs      分层窗口基类 + 圆角/字体缓存
-│  │  ├─ TaskbarStrip.cs       任务栏贴片（3 种风格 + 吸附定位）
-│  │  ├─ DetailPanel.cs        详情面板（4 行 + 60 点曲线）
-│  │  ├─ TrayIconRenderer.cs   4 种托盘图标绘制
-│  │  ├─ SettingsForm.cs       设置窗口
-│  │  ├─ Controls.cs           Segmented（分段选择器）/ Chip（胶囊开关）/ Slider / Stepper（数值步进框）
-│  │  └─ Theme.cs              深/浅两套配色 + 系统主题判定
+│  │  ├─ LayeredWindow.cs      分层窗口基类 + 圆角/字体缓存 + 点击穿透
+│  │  ├─ TaskbarStrip.cs       任务栏贴片（3 种风格 + 吸附定位 + 拖动 + 告警变红）
+│  │  ├─ TaskbarLocator.cs     枚举全部任务栏 + 每屏 DPI
+│  │  ├─ DetailPanel.cs        详情面板（4/5 行 + 可切时间窗曲线）
+│  │  ├─ TrayIconRenderer.cs   4 种托盘图标绘制（+ 告警红环）
+│  │  ├─ SettingsForm.cs       设置窗口（滚动容器 + 块式布局）
+│  │  ├─ Controls.cs           Segmented / Chip / Slider / Stepper
+│  │  └─ Theme.cs              深/浅两套配色 + 系统主题判定 + 告警色
 │  └─ docs\                    详细文档
 ├─ WMonitor\                   ← 安装版（framework 依赖，多文件）
-├─ WMonitor-v0.04-framework.exe
-└─ WMonitor-v0.04-portable.exe
+├─ WMonitor-v0.10-framework.exe
+└─ WMonitor-v0.10-portable.exe
 ```
 
 **改代码只改 `wmonitor-eidt\`**，然后重新发布到另外两个位置。
@@ -80,13 +83,13 @@ dotnet publish -c Release -r win-x64 --self-contained false \
 # ② 单文件 · 框架依赖
 dotnet publish -c Release -r win-x64 --self-contained false \
   -p:PublishSingleFile=true -o build/framework
-cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.04-framework.exe"
+cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.10-framework.exe"
 
 # ③ 单文件 · 自包含
 dotnet publish -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true -o build/portable
-cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.04-portable.exe"
+cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.10-portable.exe"
 ```
 
 **发布前必须先杀掉运行中的进程**，否则 exe 被锁、编译报 `MSB3027 / MSB3021`：
@@ -96,7 +99,7 @@ powershell -NoProfile -Command "Stop-Process -Name WMonitor -Force -ErrorAction 
 sleep 1
 ```
 
-版本号规则：`v0.0N`，`WMonitor.csproj` 里同时改 `<Version>`、`<AssemblyVersion>`、`<FileVersion>`；成品文件名同步。
+版本号规则：`v0.1N`，`WMonitor.csproj` 里同时改 `<Version>`、`<AssemblyVersion>`、`<FileVersion>`；成品文件名同步。
 
 ---
 
@@ -157,7 +160,17 @@ im.crop((1820,1380,2320,1440)).save(r'D:\Hermes\output\results\check.png')
 | 温度显示 `—` | NVML 不可用（无 N 卡 / 驱动旧），属正常降级 |
 | 开机自启没生效 | 检查 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 的 `WMonitor` 值 |
 
-诊断模式：`WMonitor.exe --probe` 采样 8 次写到 `D:/Hermes/output/results/wmonitor-probe.txt`；`WMonitor.exe --icons` 渲染 4 种托盘图标对比图到 `D:/Hermes/output/results/wmonitor-icons.png`（真实 16px + 8 倍放大，改小图标必看）。
+诊断模式：`WMonitor.exe --probe` 采样 8 次写到 `D:/Hermes/output/results/sysmon-probe.txt`；`WMonitor.exe --icons` 渲染 4 种托盘图标对比图到 `D:/Hermes/output/results/wmonitor-icons.png`（真实 16px + 8 倍放大，改小图标必看）。
+
+v0.10 新增诊断（都不开 UI，跑完就退，结果写 `D:/Hermes/output/results/`）：
+
+| 参数 | 用途 |
+|---|---|
+| `--monitors` | 枚举全部任务栏与各自 DPI（副屏贴片的前提） |
+| `--history-dump` | 内存环条数、今日文件大小、1m/24h 抽稀结果 |
+| `--alert-test` | 离线跑告警状态机，输出 PASS/FAIL（触发点、静音、总开关） |
+
+调试钩子：`WMONITOR_DPI_SCALE=1.5` 可在 96 DPI 机器上预览 150% 排版；`WMONITOR_DEBUG=1` 写 `debug.log`（blit 坐标与尺寸）。
 
 ---
 
@@ -171,3 +184,4 @@ im.crop((1820,1380,2320,1440)).save(r'D:\Hermes\output\results\check.png')
 - 后续计划 → `docs/06-roadmap.md`
 - 版本历史 → `docs/07-changelog.md`
 - **v0.05 施工图（多屏 / 磁盘 IO / 历史曲线 / 阈值告警）→ `docs/08-dev-plan-v005.md`**
+- **v0.10 施工进度与交接页 → `docs/09-v010-progress.md`**

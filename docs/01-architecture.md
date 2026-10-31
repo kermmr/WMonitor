@@ -24,13 +24,18 @@ Program.Main
 
 ```
 Tick()                                    // 每 1 秒（可配 0.5–5 秒）
-  s = MetricSampler.Sample()              // 0.3–1.0 ms
+  s = MetricSampler.Sample()              // 0.3–1.5 ms（含磁盘两个计数器）
   Apply(s)
     ├─ Theme 跟随系统时每 2 tick 复查一次
-    ├─ TaskbarStrip.Update(s, cfg, theme) // 0.6–0.9 ms：测宽 → 绘制 → 定位 → Blit
-    ├─ DetailPanel.PushHistory(s)         // 60 点环形缓冲
+    ├─ AlertEngine.Evaluate(s, now)       // 5 条规则，<5 µs；关闭时不参与
+    ├─ foreach strip in _strips           // 1 片，或「全部屏幕」时每屏 1 片
+    │    TaskbarStrip.Update(s, cfg, theme, alert)
+    │      └─ RefreshBarRect → 测宽 → 绘制 → 定位 → Blit
+    ├─ HistoryStore.Push(s, now)          // 40 B 内存环；落盘每 60 s flush
+    ├─ 告警事件 → 变红 / 闪烁 / 通知 / 脚本（仅状态变化时）
+    ├─ DetailPanel.PushHistory(s)         // 60 点实时缓冲（历史关闭时的退路）
     ├─ DetailPanel.Update(...)            // 仅当面板可见
-    ├─ 托盘图标：key = 样式|CPU|GPU|主题，变了才重建（约 0–1.7 ms）
+    ├─ 托盘图标：key = 样式|CPU|GPU|主题，变了才重建；闪烁期间跳过
     └─ 托盘 tooltip 文本
 ```
 
@@ -43,9 +48,12 @@ Tick()                                    // 每 1 秒（可配 0.5–5 秒）
 | 成员 | 作用 |
 |---|---|
 | `Tick()` / `Apply(s)` | 主循环，见上 |
+| `RebuildStrips()` | 按 `ShowOnAllMonitors` / `StripMonitor` 决定要哪几片贴片；同设备实例复用 |
+| `MonitorsChanged()` | 30 秒查一次显示器拓扑（Explorer 重启 / 插拔屏），变了才重建 |
 | `BuildMenu()` / `SyncMenu()` | 托盘右键菜单；`SyncMenu` 在 `Opening` 时同步勾选态 |
-| `OpenPanel()` | 贴片点击：可见则关，否则 `OpenNear` |
-| `OpenSettings()` | 模态打开设置；`Changed` 事件里即时应用 |
+| `OpenPanel(strip)` | 贴片点击：可见则关，否则以**被点那一片**的矩形为锚点 `OpenNear` |
+| `OpenSettings()` | 模态打开设置；`Changed` 事件里即时应用（含历史/告警重配） |
+| `DispatchAlert()` | 告警事件 → 通知 / 脚本 / 托盘闪烁 |
 | `RefreshAll()` | 改配置后重设 Interval + 重贴 + 立即重绘 |
 | `Quit()` | 停 timer、隐藏托盘、Dispose、保存配置 |
 
@@ -80,10 +88,29 @@ Tick()                                    // 每 1 秒（可配 0.5–5 秒）
 
 见 [`02-data-sources.md`](02-data-sources.md)。要点：
 
-- **主 PDH query**：CPU 占用、CPU 频率比、GPU Adapter Memory（3 个计数器）
+- **主 PDH query**：CPU 占用、CPU 频率比、GPU Adapter Memory、磁盘读/写（5 个计数器）
 - **独立 PDH query**：GPU Engine（仅在没有 NVML 时创建）
 - NVML 动态加载，失败静默降级
 - 网卡列表缓存 30 秒
+
+### `TaskbarLocator` / `TaskbarInfo`
+
+枚举主屏 `Shell_TrayWnd` + 每屏 `Shell_SecondaryTrayWnd`，给出 `Hwnd / Device / Rect / Dpi`。
+`Dpi` 走 `GetDpiForMonitor(MDT_EFFECTIVE_DPI)` —— **不能用 `Control.DeviceDpi`**：
+分层窗口在 Blit 之前还没定位到目标屏，混合 DPI 下会取到创建时那块屏的 DPI。
+
+### `HistoryStore`
+
+内存环 3600 条（1 小时，144 KB）+ 磁盘日文件 `%APPDATA%\WMonitor\history\YYYYMMDD.hist`
+（8 B magic + 40 B/条）。`Query(metric, window, points)` 按桶取最大值抽稀。
+读文件必须 `FileShare.ReadWrite | Delete`（自己握着今天的写句柄，否则共享冲突）。
+关闭总开关时整个对象为 `null`。
+
+### `AlertEngine`
+
+5 条固定规则 + Idle/Armed/Firing 状态机 + 迟滞（5% / 3 °C）+ 冷却期。
+`Evaluate` 每 tick 返回 `AlertView`（Firing 数组给贴片着色、Events 给动作派发）。
+规则按 `Metric` 字段归位，不按下标取。
 
 ### `LayeredWindow : Form`
 

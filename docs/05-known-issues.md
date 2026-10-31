@@ -9,9 +9,13 @@ Win11 的 Explorer 任务栏是 XAML 树，不开放第三方插入，Deskband �
 
 本项目的贴片：`WS_POPUP` + `WS_EX_LAYERED | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW`，`ShowInTaskbar=false`，每 tick 重新定位。Explorer 重启后自动重贴。
 
-### 2. 只贴主屏任务栏
+### 2. 副屏任务栏：v0.10 已支持，但有前提
 
-`Shell_TrayWnd` 是主屏任务栏；副屏是 `Shell_SecondaryTrayWnd`，需要逐个枚举。当前未实现（见 roadmap）。
+`Shell_TrayWnd` 是主屏任务栏；副屏是 `Shell_SecondaryTrayWnd`，**只有开启「在所有显示器上显示任务栏」才存在**。
+关掉时枚举只会拿到主屏，配置里指向副屏的 `StripMonitor` 会自动回落主屏（`TaskbarLocator.Find`）。
+
+另外 Win11 已经不允许把任务栏移到屏幕侧边，所以贴片只做横向布局；`TryAnchor` 仍用「短边 < 12」判断自动隐藏，
+避免把竖向任务栏误判成隐藏。
 
 ### 3. 贴片不接收键盘
 
@@ -134,6 +138,25 @@ AMD / Intel 走 PDH 的 `GPU Engine` 聚合，采样开销从 0.3 ms 升到约 2
 ### 18. 截图判断贴片是否可见要注意
 
 贴片只有 30px 高，缩略到整条任务栏（2560×60 → 1280×30）后视觉上几乎看不出内容，容易误判成"消失"。验证时按贴片实际区域裁剪并放大 2–3 倍。
+
+### 19. 历史文件读不出来（共享冲突）
+
+**现象**：`--history-dump` 显示 `ring count=0`，面板 24 h 窗口全 0；但文件明明有数据。
+**原因**：应用自己用 `FileShare.Read` 打开了今天文件的写入句柄，`File.ReadAllBytes`（默认 `FileShare.Read`）
+再来打开会被共享冲突拒绝，异常被 `catch` 吞掉 → 看起来「没有历史」。
+**解法**：读取一律走 `HistoryStore.ReadShared`（`FileShare.ReadWrite | Delete`）。
+
+### 20. 自绘 `Stepper` 太窄会把数字挤成两行
+
+**现象**：告警规则行里阈值显示成竖排的「9 / 0」。
+**原因**：`Stepper` 两侧按钮各占 26 px，宽度 76 时留给数字只剩 24 px。
+**解法**：阈值 Stepper ≥ 90 宽，持续秒数 Stepper ≥ 84 宽。
+
+### 21. 告警规则数组不能按下标取
+
+**现象**：改了 CPU 阈值，结果 GPU 规则变了。
+**原因**：`AlertRules` 是 JSON 数组，用户手改或旧版本长度不足时，下标与 `AlertMetric` 不再对应。
+**解法**：`AlertEngine.Configure` 与 `SettingsForm.NormalizeRules` 都按 `Metric` 字段归位，并补齐到 5 条。
 
 ---
 

@@ -199,13 +199,13 @@ internal static class Program
                 $"gpu={s.GpuPercent:F1}% | vram={s.VramGb:F2}/{s.VramTotalGb:F2}GB | " +
                 $"temp={(double.IsNaN(s.GpuTempC) ? "n/a" : s.GpuTempC.ToString("F0") + "C")} | " +
                 $"power={(double.IsNaN(s.GpuPowerW) ? "n/a" : s.GpuPowerW.ToString("F0") + "W")} | " +
-                $"net={s.NetDownBps / 1024:F0}/{s.NetUpBps / 1024:F0} KB/s | {s.GpuName}");
+                $"net={s.NetDownBps / 1024:F0}/{s.NetUpBps / 1024:F0} KB/s | " +
+                $"disk={s.DiskReadBps / 1024:F0}/{s.DiskWriteBps / 1024:F0} KB/s | {s.GpuName}");
             Thread.Sleep(1000);
         }
         Directory.CreateDirectory(@"D:/Hermes/output/results");
         File.WriteAllText(@"D:/Hermes/output/results/sysmon-probe.txt", sb.ToString());
     }
-
     /// <summary>
     /// 诊断用：把 4 种托盘图标渲染成对比图（真实 16px + 8 倍放大），
     /// 用来判断小尺寸下数字是否看得清。输出 wmonitor-icons.png。

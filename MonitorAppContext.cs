@@ -398,6 +398,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         AddCheck(fields, "显存", () => _cfg.ShowVram, v => _cfg.ShowVram = v);
         AddCheck(fields, "网速", () => _cfg.ShowNet, v => _cfg.ShowNet = v);
         AddCheck(fields, "GPU 温度", () => _cfg.ShowTemp, v => _cfg.ShowTemp = v);
+        AddCheck(fields, "磁盘 IO", () => _cfg.ShowDisk, v => _cfg.ShowDisk = v);
         menu.Items.Add(fields);
 
         var alertMenu = new ToolStripMenuItem("告警");

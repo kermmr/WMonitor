@@ -91,8 +91,10 @@ internal static class TrayIconRenderer
         TrayMetric.Ram => Pct(s.RamPercent, th.Ram),
         TrayMetric.Gpu => Pct(s.GpuPercent, th.Gpu),
         TrayMetric.Vram => Pct(s.VramPercent, th.Vram),
-        TrayMetric.Net => new Val(NetText(s.NetDownBps), NetPct(s.NetDownBps), th.Net),
+        TrayMetric.Net => new Val(RateText(s.NetDownBps), NetPct(s.NetDownBps), th.Net),
         TrayMetric.Temp => new Val(TempText(s.GpuTempC), TempPct(s.GpuTempC), th.Gpu),
+        TrayMetric.Disk => new Val(RateText(s.DiskReadBps + s.DiskWriteBps),
+                                  NetPct(s.DiskReadBps + s.DiskWriteBps), th.Disk),
         _ => Pct(s.CpuPercent, th.Cpu),
     };
 
@@ -117,9 +119,10 @@ internal static class TrayIconRenderer
         return Math.Clamp(Math.Log10(kb + 1) / Math.Log10(100 * 1024 + 1) * 100, 0, 100);
     }
 
-    private static string NetText(double bps)
+    /// <summary>B/s → 0 / 345K / 12M 这类短文本（网速和磁盘共用）。</summary>
+    public static string RateText(double bps)
     {
-        double kb = bps / 1024.0;
+        double kb = Math.Max(0, bps) / 1024.0;
         if (kb < 1) return "0";
         if (kb < 1000) return ((int)kb).ToString() + "K";
         double mb = kb / 1024.0;

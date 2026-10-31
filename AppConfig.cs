@@ -9,7 +9,7 @@ public enum TrayStyle { DualNumber = 0, DualRing = 1, FourBar = 2, Single = 3 }
 public enum ThemeMode { Dark = 0, Light = 1, System = 2 }
 
 /// <summary>托盘图标可以显示的指标。</summary>
-public enum TrayMetric { Cpu = 0, Ram = 1, Gpu = 2, Vram = 3, Net = 4, Temp = 5 }
+public enum TrayMetric { Cpu = 0, Ram = 1, Gpu = 2, Vram = 3, Net = 4, Temp = 5, Disk = 6 }
 
 /// <summary>贴片锚点。</summary>
 public enum StripAnchor
@@ -34,6 +34,7 @@ public sealed class AppConfig
     public bool ShowVram { get; set; } = true;
     public bool ShowNet { get; set; } = false;
     public bool ShowTemp { get; set; } = false;
+    public bool ShowDisk { get; set; } = false;
 
     /// <summary>是否显示任务栏贴片（关掉后只剩托盘图标）。</summary>
     public bool ShowStrip { get; set; } = true;

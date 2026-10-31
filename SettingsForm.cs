@@ -37,7 +37,7 @@ public sealed class SettingsForm : Form
     private const int CtrlH = 34;
 
     private static readonly int[] Rates = { 500, 1000, 2000, 5000 };
-    private static readonly string[] MetricNames = { "CPU", "内存", "GPU", "显存", "网速", "温度" };
+    private static readonly string[] MetricNames = { "CPU", "内存", "GPU", "显存", "网速", "温度", "磁盘" };
 
     public SettingsForm(AppConfig cfg, Theme th, List<TaskbarInfo> bars)
     {
@@ -173,7 +173,7 @@ public sealed class SettingsForm : Form
         var capFields = Caption("贴片显示项");
         _flow = new FlowLayoutPanel
         {
-            Left = Pad, Top = 0, Width = ContentW, Height = 72,
+            Left = Pad, Top = 0, Width = ContentW, Height = 104,
             BackColor = _th.PanelBgOpaque, WrapContents = true, AutoScroll = false
         };
         AddChip(_flow, "CPU", () => _cfg.ShowCpu, v => _cfg.ShowCpu = v);
@@ -182,7 +182,8 @@ public sealed class SettingsForm : Form
         AddChip(_flow, "显存", () => _cfg.ShowVram, v => _cfg.ShowVram = v);
         AddChip(_flow, "网速", () => _cfg.ShowNet, v => _cfg.ShowNet = v);
         AddChip(_flow, "GPU 温度", () => _cfg.ShowTemp, v => _cfg.ShowTemp = v);
-        AddBlock(22 + 72 + 8, null, (capFields, 0), (_flow, 22));
+        AddChip(_flow, "磁盘 IO", () => _cfg.ShowDisk, v => _cfg.ShowDisk = v);
+        AddBlock(22 + 104 + 8, null, (capFields, 0), (_flow, 22));
 
         // ---- 不透明度 ----
         var capOpacity = Caption("不透明度");
@@ -408,7 +409,8 @@ public sealed class SettingsForm : Form
             _chips[i].Checked = i switch
             {
                 0 => _cfg.ShowCpu, 1 => _cfg.ShowRam, 2 => _cfg.ShowGpu,
-                3 => _cfg.ShowVram, 4 => _cfg.ShowNet, _ => _cfg.ShowTemp
+                3 => _cfg.ShowVram, 4 => _cfg.ShowNet, 5 => _cfg.ShowTemp,
+                _ => _cfg.ShowDisk
             };
 
         foreach (var c in new Control[] { _pos, _strip, _tray, _trayP, _trayS, _trayT, _tray4, _theme, _rate })

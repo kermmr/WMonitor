@@ -11,6 +11,7 @@ public sealed class Theme
     public Color Gpu { get; init; }
     public Color Vram { get; init; }
     public Color Net { get; init; }
+    public Color Disk { get; init; }
 
     public Color Text { get; init; }
     public Color Label { get; init; }
@@ -42,6 +43,7 @@ public sealed class Theme
         Gpu = DarkGpu,
         Vram = DarkVram,
         Net = DarkNet,
+        Disk = Color.FromArgb(0xFF, 0x8F, 0xB1),
         Text = Color.FromArgb(0xEE, 0xF1, 0xF6),
         Label = Color.FromArgb(0x9A, 0xA3, 0xB2),
         PillBg = Color.FromArgb(246, 0x22, 0x24, 0x28),
@@ -61,6 +63,7 @@ public sealed class Theme
         Gpu = Color.FromArgb(0x11, 0xA3, 0x6B),
         Vram = Color.FromArgb(0xD1, 0x84, 0x00),
         Net = Color.FromArgb(0x0E, 0x9C, 0x94),
+        Disk = Color.FromArgb(0xC2, 0x25, 0x5C),
         Text = Color.FromArgb(0x14, 0x14, 0x14),
         Label = Color.FromArgb(0x5C, 0x63, 0x6E),
         PillBg = Color.FromArgb(248, 0xF4, 0xF4, 0xF4),

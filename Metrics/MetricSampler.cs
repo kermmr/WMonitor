@@ -45,7 +45,7 @@ public sealed class MetricSampler : IDisposable
 {
     private IntPtr _query;
     private IntPtr _gpuQuery;
-    private IntPtr _cCpu, _cCpuFreq, _cGpuEngine, _cGpuMem;
+    private IntPtr _cCpu, _cCpuFreq, _cGpuEngine, _cGpuMem, _cDiskRead, _cDiskWrite;
     private bool _disposed;
 
     private NvmlGpu? _nvml;
@@ -65,6 +65,8 @@ public sealed class MetricSampler : IDisposable
         _cCpu = Add(@"\Processor Information(_Total)\% Processor Utility");
         _cCpuFreq = Add(@"\Processor Information(_Total)\% Processor Performance");
         _cGpuMem = Add(@"\GPU Adapter Memory(*)\Dedicated Usage");
+        _cDiskRead = Add(@"\PhysicalDisk(_Total)\Disk Read Bytes/sec");
+        _cDiskWrite = Add(@"\PhysicalDisk(_Total)\Disk Write Bytes/sec");
 
         _vramTotalFallback = ReadVramTotalFromRegistry();
         try { _nvml = NvmlGpu.TryCreate(); } catch { _nvml = null; }
@@ -183,6 +185,11 @@ public sealed class MetricSampler : IDisposable
         }
         _lastDown = down; _lastUp = up; _lastNetTicks = ticks;
 
+        // ---- 磁盘 IO（速率计数器，PDH 自己按两次采样差分）----
+        double dr = ReadSingle(_cDiskRead);
+        double dw = ReadSingle(_cDiskWrite);
+        s.DiskReadBps = double.IsNaN(dr) ? 0 : Math.Max(0, dr);
+        s.DiskWriteBps = double.IsNaN(dw) ? 0 : Math.Max(0, dw);
 
         return s;
     }

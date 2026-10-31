@@ -167,8 +167,13 @@ public sealed class TaskbarStrip : LayeredWindow
             list.Add(new("VRAM", s.VramGb.ToString("0.0"), "/" + s.VramTotalGb.ToString("0"), th.Vram, s.VramPercent, true));
         if (cfg.ShowNet)
         {
-            list.Add(new("↓", NetFmt(s.NetDownBps), "", th.Net, 0, false));
-            list.Add(new("↑", NetFmt(s.NetUpBps), "", th.Net, 0, false));
+            list.Add(new("↓", RateFmt(s.NetDownBps), "", th.Net, 0, false));
+            list.Add(new("↑", RateFmt(s.NetUpBps), "", th.Net, 0, false));
+        }
+        if (cfg.ShowDisk)
+        {
+            list.Add(new("R", RateFmt(s.DiskReadBps), "", th.Disk, 0, false));
+            list.Add(new("W", RateFmt(s.DiskWriteBps), "", th.Disk, 0, false));
         }
         if (cfg.ShowTemp && s.HasTemp)
             list.Add(new("T", s.GpuTempC.ToString("0"), "°", th.Gpu, 0, false));
@@ -200,7 +205,7 @@ public sealed class TaskbarStrip : LayeredWindow
     private static string Fmt(double v) =>
         double.IsNaN(v) ? "0" : v >= 100 ? "100" : ((int)Math.Round(v)).ToString();
 
-    private static string NetFmt(double bytesPerSec)
+    private static string RateFmt(double bytesPerSec)
     {
         double kb = bytesPerSec / 1024.0;
         if (kb < 1) return "0";

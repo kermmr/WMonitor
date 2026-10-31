@@ -8,8 +8,8 @@
 
 ## 一句话状态
 
-**步骤 4/7 完成**：阈值告警（5 条规则 + 状态机 + 贴片变红 / 托盘闪烁 / 通知 / 脚本 / 静音）。
-下一步是步骤 5：磁盘 IO。
+**步骤 5/7 完成**：磁盘 IO（PDH 两计数器 + 贴片 R/W 格 + 面板第 5 行 + 托盘槽位）。
+下一步是步骤 6：设置界面（滚动容器 + 历史/告警分区）。
 
 ---
 
@@ -47,7 +47,7 @@ python -c "from PIL import ImageGrab; ImageGrab.grab(all_screens=True).crop((182
 | 2 | `feat(strip)` 副屏贴片 | ✅ | 单屏贴片 w=312 h=30 y=1401（与 v0.04 一致）；`WMONITOR_DPI_SCALE=1.5` → w=468 h=45 y=1393，比例与居中均正确 |
 | 3 | `feat(history)` 历史存储 | ✅ | 70s 生成 `20261031.hist` 2488B（8B magic + 62×40B）；`--history-dump` 内存环 126 条、1m/24h 抽稀值合理；24h 窗口正确显示「左 59 桶为 0、末桶有值」；关闭总开关后文件不再增长 |
 | 4 | `feat(alert)` 阈值告警 | ✅ | `--alert-test` 三条断言全 PASS（触发点 5s/25s、静音不派发但保持 Firing、总开关关闭零事件）；真机 CPU 阈值 1% 触发 → 贴片 CPU 整格变红，`alert.log` 有记录；关闭后配色恢复 |
-| 5 | `feat(disk)` 磁盘 IO | ⬜ | — |
+| 5 | `feat(disk)` 磁盘 IO | ✅ | `--probe` 输出 `disk=224/1138 KB/s`（与任务管理器同量级）；贴片多出 `R 80K / W 558K` 两格；面板五行完整、齿轮/关闭未被裁切 |
 | 6 | `feat(settings)` 滚动 + 新分区 | ⬜ | — |
 | 7 | `chore` 文档与发布 v0.10 | ⬜ | — |
 
@@ -58,8 +58,8 @@ python -c "from PIL import ImageGrab; ImageGrab.grab(all_screens=True).crop((182
 
 ## 下一步第一件事
 
-**步骤 5**：`MetricSampler` 加 `\PhysicalDisk(_Total)\Disk Read/Write Bytes/sec` 两个计数器，
-`MetricsSnapshot` 已预留 `DiskReadBps/DiskWriteBps`；再补贴片 cell、面板第 5 行、托盘 `TrayMetric.Disk`（详见 §5）。
+**步骤 6**：`SettingsForm` 加滚动容器（`_scroll` Panel + AutoScroll），新增「历史记录」「告警」两个分区，
+并把 `ResetDefaults` 的下标映射改成「注册时带默认值访问器」（详见 §8）。**这一步决定用户能不能真的用上开关。**
 
 ---
 
@@ -86,6 +86,7 @@ python -c "from PIL import ImageGrab; ImageGrab.grab(all_screens=True).crop((182
 | 步骤 2 完成后 | 43.3 MB | — | 单贴片（多贴片未真机测） |
 | 步骤 3 完成后 | 43.8 MB | 0.66s/25s（含启动 JIT） | 历史开、面板未开；关历史时 46.4 MB（面板开着，含位图） |
 | 步骤 4 完成后 | 41.9 MB | — | 历史开、告警关 |
+| 步骤 5 完成后 | — | — | 磁盘 IO 默认关（`ShowDisk=false`），开着时每 tick 多 2 个 PDH 读取 |
 
 ---
 

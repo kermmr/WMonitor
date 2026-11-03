@@ -22,6 +22,7 @@ public sealed class TaskbarStrip : LayeredWindow
     private Graphics? _g;
     private int _lastW = -1, _lastH = -1;
     private int _lastX = int.MinValue, _lastY = int.MinValue;
+    private bool _visAtLastBlit;
 
     public event EventHandler? Clicked;
 
@@ -64,7 +65,11 @@ public sealed class TaskbarStrip : LayeredWindow
         var cells = BuildCells(s, cfg, th);
         if (cfg.Strip == StripStyle.Rings) cells = cells.Where(c => c.Bar).ToList();
         if (cfg.AlertStrip && alert is { AnyFiring: true }) Recolor(cells, alert, th);
-        if (cells.Count == 0) { if (Visible) Hide(); return; }
+        if (cells.Count == 0)
+        {
+            if (Visible) { Hide(); _visAtLastBlit = false; }
+            return;
+        }
 
         float k = DpiScale;
 
@@ -113,15 +118,24 @@ public sealed class TaskbarStrip : LayeredWindow
 
         if (!TryAnchor(cfg, Bar, w, h, out int x, out int y))
         {
-            if (Visible) Hide();
+            if (Visible) { Hide(); _visAtLastBlit = false; }
             return;
         }
 
-        if (!Visible) Show();
+        // WinForms 只能看到自己的 Visible；CloakedWindow / 系统手势 / 外壳变化可能让句柄仍然
+        // “可见”但实际不在屏幕上。这里把两个状态都打回可见，再交给 ApplyZOrder + Blit。
+        bool nativeVisible = Native.IsWindowVisible(Handle);
+        bool cloaked = IsCloaked;
+        if (!Visible || !_visAtLastBlit || !nativeVisible || cloaked)
+        {
+            Show();
+            _visAtLastBlit = true;
+        }
         bool zOk = ApplyZOrder(cfg);
         bool blitOk = Blit(_bmp, x, y);
         if (Environment.GetEnvironmentVariable("WMONITOR_DEBUG") == "1")
-            Dbg.Log("blit=" + blitOk + " z=" + zOk + " x=" + x + " y=" + y + " w=" + w + " h=" + h + " vis=" + Visible);
+            Dbg.Log("blit=" + blitOk + " z=" + zOk + " x=" + x + " y=" + y + " w=" + w + " h=" + h +
+                    " vis=" + Visible + " nativeVis=" + nativeVisible + " cloaked=" + cloaked);
         _lastX = x; _lastY = y;
     }
 
@@ -146,8 +160,10 @@ public sealed class TaskbarStrip : LayeredWindow
         {
             ApplyZOrder(cfg);
             if (x != _lastX || y != _lastY) { Blit(_bmp, x, y); _lastX = x; _lastY = y; }
+            else if (!Native.IsWindowVisible(Handle) || IsCloaked) Blit(_bmp, x, y);
         }
     }
+
 
     /// <summary>把颜色的 alpha 按百分比缩放（0 = 全透明，100 = 保持原样）。</summary>
     private static Color WithAlpha(Color c, int pct) =>

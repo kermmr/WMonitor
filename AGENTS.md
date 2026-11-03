@@ -60,8 +60,8 @@ D:\WMonitor\
 │  │  └─ Theme.cs              深/浅两套配色 + 系统主题判定 + 告警色
 │  └─ docs\                    详细文档
 ├─ WMonitor\                   ← 安装版（framework 依赖，多文件）
-├─ WMonitor-v0.16-framework.exe
-└─ WMonitor-v0.16-portable.exe
+├─ WMonitor-v0.17-framework.exe
+└─ WMonitor-v0.17-portable.exe
 ```
 
 **改代码只改 `wmonitor-eidt\`**，然后重新发布到另外两个位置。
@@ -85,13 +85,13 @@ dotnet publish -c Release -r win-x64 --self-contained false \
 # ② 单文件 · 框架依赖
 dotnet publish -c Release -r win-x64 --self-contained false \
   -p:PublishSingleFile=true -o build/framework
-cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.16-framework.exe"
+cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.17-framework.exe"
 
 # ③ 单文件 · 自包含
 dotnet publish -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true -o build/portable
-cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.16-portable.exe"
+cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.17-portable.exe"
 ```
 
 **发布前必须先杀掉运行中的进程**，否则 exe 被锁、编译报 `MSB3027 / MSB3021`：
@@ -164,7 +164,7 @@ im.crop((1820,1380,2320,1440)).save(r'D:\Hermes\output\results\check.png')
 
 | 现象 | 原因 / 处理 |
 |---|---|
-| 编译报 `MSB3027` 文件被锁 | 进程还在跑，先 `Get-Process -Name 'WMonitor*' \| Stop-Process -Force`。**必须带通配符**：单文件 exe 的进程名就是文件名（`WMonitor-v0.16-framework.exe`），只杀 `WMonitor` 杀不到它，它会一直占着 exe 和单实例 Mutex |
+| 编译报 `MSB3027` 文件被锁 | 进程还在跑，先 `Get-Process -Name 'WMonitor*' \| Stop-Process -Force`。**必须带通配符**：单文件 exe 的进程名就是文件名（`WMonitor-v0.17-framework.exe`），只杀 `WMonitor` 杀不到它，它会一直占着 exe 和单实例 Mutex |
 | 贴片窗口存在但内容透明 | 检查绘制是否抛异常（`%APPDATA%\WMonitor\error.log`）；确认 `blit` 返回 true |
 | 设置窗口一闪就没了 | 某控件 `BackColor` 带了 alpha，异常被吞；看 error.log |
 | 贴片位置偏了 | `TryAnchor` 找 `Shell_TrayWnd` + `TrayNotifyWnd`；自动隐藏时 rect 高度 < 12 会跳过 |

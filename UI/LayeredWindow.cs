@@ -39,6 +39,19 @@ public class LayeredWindow : Form
     /// <summary>true = 不抢焦点（贴片）；false = 可激活、失焦自动关（详情面板）。</summary>
     public bool NoActivate { get; set; } = true;
 
+    /// <summary>窗口是否被 DWM 隐藏（Cloak）。存在但不可见时不走常规 Show/Activate 路径。</summary>
+    public bool IsCloaked
+    {
+        get
+        {
+            if (!IsHandleCreated) return false;
+            int cloaked = 0;
+            Native.DwmGetWindowAttribute(Handle, Native.DWMWA_CLOAKED,
+                ref cloaked, sizeof(int));
+            return cloaked != 0;
+        }
+    }
+
     private bool _clickThrough;
 
     /// <summary>点击穿透（<c>WS_EX_TRANSPARENT</c>）。运行时切换要调 <see cref="Control.UpdateStyles"/> 才生效。</summary>

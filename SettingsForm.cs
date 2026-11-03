@@ -311,7 +311,8 @@ public sealed class SettingsForm : Form
     private void BuildStripCard()
     {
         var card = NewCard(0, 0, 2, "贴片", "任务栏上的指标贴片", _th.Cpu);
-        int half = ColW;
+        int spanInner = ColW * 2 + Gap - 36;
+        int half = (spanInner - Gap) / 2;
         int right = half + Gap;
 
         var capPos = Cap("位置", half);
@@ -328,7 +329,7 @@ public sealed class SettingsForm : Form
         {
             Items = new[] { "数字条", "迷你柱", "四环" },
             SelectedIndex = (int)_cfg.Strip,
-            Th = _th, Height = CtrlH
+            Th = _th, Height = CtrlH, Width = half
         };
         _strip.SelectionChanged += (_, _) => { _cfg.Strip = (StripStyle)_strip.SelectedIndex; Apply(); };
 
@@ -370,7 +371,7 @@ public sealed class SettingsForm : Form
         var hint = Small("负 左移 · 正 右移", 150);
         int dx() => _bars.Count > 1 ? 0 : -right;   // 单屏时整组左移半个卡片宽
 
-        AddRow(card, 62, null,
+        AddRow(card, 66, null,
             new Cell(capScreen, 0, 0, half, 16, () => _bars.Count > 1),
             new Cell(_screen, 0, 22, half, CtrlH, () => _bars.Count > 1),
             new Cell(capOff, right, 0, 66, 16, null, () => right + dx()),
@@ -489,7 +490,6 @@ public sealed class SettingsForm : Form
             _cfg.Tray = (TrayStyle)_tray.SelectedIndex;
             RefreshTraySlots();     // 换成这套样式自己存的指标，不是上一套的
             RefreshPreview();
-            LayoutCards();
             Apply();
         };
         AddRow(card, 62, null, new Cell(capStyle, 0, 0, w, 16), new Cell(_tray, 0, 22, w, CtrlH));
@@ -577,7 +577,7 @@ public sealed class SettingsForm : Form
         {
             _cfg.HistoryEnabled = _histOn.Checked;
             Apply();
-            LayoutCards();
+            ScheduleLayoutCards();
         };
         _histPersist.CheckedChanged += (_, _) =>
         {
@@ -585,7 +585,7 @@ public sealed class SettingsForm : Form
             if (!_cfg.HistoryPersist && _cfg.ChartWindowMinutes > 60) _cfg.ChartWindowMinutes = 60;
             RefreshWindowSeg();
             Apply();
-            LayoutCards();
+            ScheduleLayoutCards();
         };
         AddRow(card, ChipH + ChipGap, null,
             new Cell(_histOn, 0, 0, 120, ChipH),
@@ -694,7 +694,7 @@ public sealed class SettingsForm : Form
         {
             _cfg.AlertsEnabled = _alertOn.Checked;
             Apply();
-            LayoutCards();
+            ScheduleLayoutCards();
         };
 
         var top = new List<Cell> { new(_alertOn, 0, 0, 104, ChipH) };
@@ -704,7 +704,7 @@ public sealed class SettingsForm : Form
             ("贴片变红", () => _cfg.AlertStrip, v => _cfg.AlertStrip = v, d => d.AlertStrip),
             ("托盘闪烁", () => _cfg.AlertTrayFlash, v => _cfg.AlertTrayFlash = v, d => d.AlertTrayFlash),
             ("系统通知", () => _cfg.AlertToast, v => _cfg.AlertToast = v, d => d.AlertToast),
-            ("运行脚本", () => _cfg.AlertScript, v => { _cfg.AlertScript = v; LayoutCards(); }, d => d.AlertScript),
+            ("运行脚本", () => _cfg.AlertScript, v => { _cfg.AlertScript = v; ScheduleLayoutCards(); }, d => d.AlertScript),
         };
 
         int x = 116;
@@ -812,6 +812,27 @@ public sealed class SettingsForm : Form
     }
 
     // ================= 排版 =================
+
+    private System.Windows.Forms.Timer? _layoutTimer;
+
+    /// <summary>
+    /// 由自绘控件 MouseDown 触发的重排不能同步执行：整窗 SuspendLayout / SetBounds / 强制重绘
+    /// 会抢走后续 MouseUp/Click，表现为“点了没反应，但配置已经生效”。这里延迟一帧。
+    /// </summary>
+    private void ScheduleLayoutCards()
+    {
+        if (_layoutTimer == null)
+        {
+            _layoutTimer = new System.Windows.Forms.Timer { Interval = 15 };
+            _layoutTimer.Tick += (_, _) =>
+            {
+                _layoutTimer.Stop();
+                LayoutCards();
+            };
+        }
+        _layoutTimer.Stop();
+        _layoutTimer.Start();
+    }
 
     private void LayoutCards()
     {
@@ -948,6 +969,17 @@ public sealed class SettingsForm : Form
     {
         base.OnHandleCreated(e);
         ApplyTitleBarTheme();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _layoutTimer?.Stop();
+            _layoutTimer?.Dispose();
+            _layoutTimer = null;
+        }
+        base.Dispose(disposing);
     }
 
     private void ApplyTitleBarTheme()

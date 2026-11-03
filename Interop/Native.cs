@@ -70,6 +70,12 @@ internal static class Native
     [DllImport("user32.dll")]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmGetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
     [DllImport("user32.dll", SetLastError = true)]
     public static extern bool UpdateLayeredWindow(
         IntPtr hwnd, IntPtr hdcDst, ref POINT pptDst, ref SIZE psize,
@@ -103,6 +109,11 @@ internal static class Native
     public const uint SWP_NOACTIVATE = 0x0010;
     public const uint SWP_NOREDRAW = 0x0008;
     public const uint SWP_SHOWWINDOW = 0x0040;
+
+    public const int DWMWA_CLOAKED = 14;
+    public const int DWM_CLOAKED_APP = 0x00000001;
+    public const int DWM_CLOAKED_SHELL = 0x00000002;
+    public const int DWM_CLOAKED_INHERITED = 0x00000004;
 
     // ---------------- gdi32 ----------------
     [DllImport("gdi32.dll")]

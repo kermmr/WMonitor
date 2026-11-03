@@ -38,7 +38,11 @@ public static class TaskbarLocator
     {
         var list = new List<TaskbarInfo>(4);
 
-        IntPtr primary = Native.FindWindow("Shell_TrayWnd", null);
+        IntPtr primary = Native.FindWindow("Shell_TrayWnd", (string?)null);
+        if (primary == IntPtr.Zero)
+        {
+            primary = Native.FindWindowEx(IntPtr.Zero, IntPtr.Zero, "Shell_TrayWnd", (string?)null);
+        }
         if (primary != IntPtr.Zero) TryAdd(list, primary, true);
 
         Found.Clear();

@@ -1,5 +1,193 @@
 # 07 · 版本记录
 
+## v0.23 — 2026-11-04
+
+**主面板 UI 细节修复**
+
+- 选项卡 `Segmented` 增加 `NoWrap`，GPU 筛选与最小占用阈值段控加宽，文字不再换行。
+- `DetailBar` 背景色对齐卡片底色，操作按钮不再出现黑色矩形底块。
+- 主面板「设置」按钮改为与顶栏「系统进程 / 显示后台」同高同基线，去掉额外投影高度。
+
+## v0.22 — 2026-11-04
+
+**主面板复验修复版**
+
+- 修复主面板名称/PID 排序方向反向。
+- 修复切换深浅主题后搜索框底色/文字不跟随。
+- 修复 explorer 等关键进程按显示名匹配不到、风险提示不出现。
+- 修复当前优先级为 REALTIME/HIGHEST 时，优先级对话框默认落到「空闲」。
+- 修复磁盘图标流关闭后的 GDI+ 生命周期风险。
+- 修复动作探针 `isSuspended` 输出语义、恢复 PASS 判定和牺牲进程残留。
+- 多显卡筛选改为紧凑标签，避免 1280 宽下挤爆；关闭主面板入口时同步隐藏托盘菜单与详情面板图标。
+- `NtQuerySystemInformation` 解析边界改为完整 0x68 字节。
+
+## v0.21 — 2026-11-04
+
+**主面板阶段 4：管控（二次确认 / 结束·挂起·恢复·优先级 / actions 日志 / 中文错误提示）**
+
+方案：`docs/10-main-dashboard-plan.md` §7（阶段 4 + 安全规则），进度与验收数据：`docs/14-phase4-progress.md`。
+
+- **新增 `Metrics/ProcessActions.cs`**：管控执行层（静态类）。四动作全走 P/Invoke 最小权限句柄：
+  `TerminateProcess`（+ WaitForSingleObject 3s 确认真的退了）、`NtSuspendProcess`/`NtResumeProcess`
+  （ntdll）、`SetPriorityClass`（五档：空闲/低于标准/标准/高于标准/高，不提供实时档）。
+  错误码 → 中文映射（Win32 + NTSTATUS 两张表）：权限不足 / 已退出 / 句柄失效 / 需要管理员。
+  每次管控动作（含失败）追加写 `%APPDATA%\WMonitor\dashboard-actions.log`。
+- **新增 `UI/ActionConfirmDialog.cs`**：二次确认对话框（无边框自绘，深浅主题跟随）——
+  动作标题 / 目标（名称·PID·路径）/ 影响范围 / 关键进程红色风险提示（explorer 等外壳组件）/
+  受限进程提示 / 优先级五档段控 / 批量勾选 / **必勾确认框（勾选前确认按钮禁用）**。
+  操作失败不关对话框：红字回显原因，可重试或取消。附 `MessageDialog`（结果提示）与 `ConfirmCheck`。
+- **DetailBar 动作按钮行**：打开位置（explorer /select，非管控不确认）/ 优先级 / 挂起⇄恢复
+  （互斥 label）/ 结束任务（红色 `BentoButton.PrimaryColor`）。系统进程的管控按钮禁用
+  （双保险：表单侧再拦一次）；受限/提权进程不禁用，失败给中文原因。meta 行加「已挂起」。
+- **安全规则落地**（plan §7）：应用聚合行默认只结束主 PID，「同时结束全部 N 个成员」需显式勾选；
+  结束任务确认必须勾选；挂起/恢复按钮按真实挂起状态互斥（`ProcessActions.IsSuspended` 线程级
+  判定，只查选中行 + 2s TTL 缓存，不进采样预算）。
+- **实测坑**（docs/14 §3.11–13）：死 PID 的 `OpenProcess` 报 5 而非 87（先取 LastWin32Error、
+  再 EnumProcesses 判存在）；zombie 进程 `TerminateProcess` 也报 5（句柄已置信号 → 报「已退出」）；
+  `K32EnumProcesses` 缓冲区要 4096（1024 在 500+ 进程机器上截断误判）。
+- **新增诊断**：`--dashboard-action-probe`（无 UI 端到端：牺牲子进程 挂起→验证→恢复→优先级→结束，
+  另测死 PID 与 pid=4 错误映射）；`--dashboard-action-ui-probe`（真面板+真对话框同代码路径执行，
+  config 用后恢复）。对话框截图工具 `D:/Hermes/tmp/pwdlg.ps1`（PS1 含中文必须带 BOM 或纯 ASCII）。
+
+
+## v0.20 — 2026-11-04
+
+**主面板阶段 3：应用识别与体验（真图标 / 系统进程三层判定 / 受限进程真名 / 多卡筛选 / 最小占用阈值）**
+
+方案：`docs/10-main-dashboard-plan.md` §3.4/§7，进度与验收数据：`docs/13-phase3-progress.md`。
+
+- **新增 `Metrics/IconCache.cs`**：三层图标缓存 —— 内存 LRU（约 220 个 48px，含负缓存项）→
+  磁盘 `%APPDATA%\WMonitor\icon-cache\<sha1(小写路径)>-<mtimeTicks>.png`（exe 更新自动失效，
+  同名 `.miss` 记录「抽不到」防反复重试，目录超 512 文件删最旧）→ `SHDefExtractIcon` 现抽
+  （48px，DrawIcon 到透明 Bitmap 保 alpha）。绘制时按可见行查表，每 50ms 窗口最多现抽 2 个
+  （超出回退首字母圆点、下帧补上），摊薄 < 0.5 ms/tick（plan §5 图标预算）。无图标资源的
+  进程（svchost 等）回退字母圆点。表格与详情条都接了缓存。
+- **受限进程真名 + ParentPid**（`ProcessSampler.cs` + `Interop/Native.cs`）：新增
+  `NtQuerySystemInformation(SystemProcessInformation)` 按 x64 偏移解析镜像名 / 父 PID / 会话 ID
+  （PPL / 提权进程也可读，任务管理器同源）。「PID n（受限）」占位彻底移除 —— 现在显示
+  `dwm.exe（受限）` + 「路径不可读」；`ParentPid`（阶段 1 欠账）全量补齐。刷新按需触发
+  （首帧 ∨ 真新建 PID ∨ 60s 维护，500ms 节流）：一次全量实测 ~6ms，PID 信息终身不变，
+  graveyard 复活不算新 PID；稳态采样保持 3.1–3.4 ms（预算 ≤4）。
+- **系统进程三层判定**（替换单一名称黑名单）：① token owner SID 前缀（S-1-5-18/19/20 精确 +
+  S-1-5-80- 每服务虚拟账户 + S-1-5-96- 窗口管理器；OpenProcessToken 在 QUERY_LIMITED 句柄即可）；
+  ② NtQuery 的 SessionId==0（服务全在会话 0 —— 非提权读不到服务进程 token，实测 334 个可读
+  owner 全是同用户 SID，这层是主力）；③ 名称黑名单兜底且改为**无扩展名比较**（修掉 v0.18 起
+  "svchost" 永远匹配不上 "svchost.exe" 的存量 bug）。默认列表不再出现 dwm / svchost / audiodg。
+- **窗口识别增强**（`WindowScanner`）：每个 PID 按面积选「主窗口」（可见 + 非工具 + 未 cloak，
+  无 owner 或 WS_EX_APPWINDOW 才算应用主窗），标题取主窗口而非 z 序首个；
+  代表进程评分改为 前台(8) > 应用主窗(4) > 有窗口(2) > CPU/GPU 活跃(1)。
+- **多卡筛选**（`GpuProcessSampler.cs` 快照新增 `Luids` per-(pid,luid) 行）：LUID 归一小写
+  合流引擎（小写）/ 显存（大写）两族实例名，比较一律 OrdinalIgnoreCase（docs/12 §5.4）。
+  面板多卡时显示下拉（全部显卡 / GPU N + LUID 尾号），选中后行内 GPU/显存改取该卡数值
+  （多卡进程跨卡求和）；单卡隐藏；选择持久化 `DashboardGpuLuid`；筛空显示「切回全部显卡」提示。
+- **最小占用阈值**（`DashboardMinimumPercent` 落地）：顶栏段控 关 / ≥0.5 / ≥1 / ≥5；
+  CPU 与 GPU 都低于阈值才隐藏（零负载后台项会被过滤，任一活跃即显示），GPU 视图同样生效。
+  顶栏补「系统进程」Chip（此前 `DashboardShowSystemProcesses` 无 UI 入口）。
+- **搜索框占位符修复**（v0.18 起存量 bug）：占位文字原在父控件 OnPaint 绘制，被内嵌 TextBox
+  的不透明底色盖住只剩 2px 抗锯齿边。换 `EM_SETCUEBANNER` 由系统在 TextBox 内绘制。
+- **诊断参数**：新增 `--dashboard-icon-probe`（图标三层缓存验证：抽取耗时 / LRU 命中 /
+  磁盘缓存 / 负缓存与目录状态）；`--dashboard-probe` 增加系统进程计数、owner/parent 覆盖率、
+  主窗口数、受限进程命名、per-LUID 分组数与 NtQuery 耗时。
+
+**验收数据（本机 498–512 进程、RTX 3060 / 64GB、3 个 LUID）**
+
+- 稳态进程采样 3.1–3.4 ms（预算 ≤4 ✓）；NtQuery 刷新帧 ~9ms 一次性成本，按需触发摊薄可忽略。
+- `--dashboard-icon-probe`：16 路径 12 OK / 4 真 MISS（svchost 等无图标资源，负缓存生效）；
+  首抽 0.2–17.8 ms，LRU 命中 0.00–0.03 ms，磁盘 PNG 跨运行复用。
+- 受限进程 166/166 全部有真名；sys=171 / sysService=156（svchost / audiodg / dwm 全部命中）。
+- UI 截图四连（默认按应用 / 进程+系统+后台+阈值≥1 / GPU 视图筛空卡 / GPU 视图筛 0eAB）：
+  真图标、Chip、段控、多卡下拉、占位符、dwm.exe（受限）全部就位。
+
+## v0.19 — 2026-11-04
+
+**主面板阶段 2：GPU 进程指标（GPU / 显存列 + GPU 视图真表格）**
+
+方案：`docs/10-main-dashboard-plan.md` §3.2/§7，进度与验收数据：`docs/12-phase2-progress.md`。
+
+- **新增 `Metrics/GpuProcessSampler.cs`**：独立 PDH query 读 `\GPU Engine(*)\Utilization Percentage`
+  与 `\GPU Process Memory(*)\Dedicated/Shared Usage`（不与全局采样器共享 query，plan §10.6）；
+  实例名 `pid_N_luid_..._phys_N_eng_N_engtype_X` span 解析（PID 为稳定锚点，engtype 保留原文）；
+  按 PID+LUID 聚合，利用率 3 帧滑动平均（快照按 PID 合行，多卡进程 sum util、主适配器取单卡
+  util 最高者）；PDH 格式化数组缓冲 grow-only 复用；只有显存、无引擎活动的进程也出行；
+  collect 失败保留旧值并降级标注；连续 3 帧 >12 ms 置 Overloaded，Hub 自动拉长子采样间隔
+  （plan §5 降级）。GPU Process Memory 实例在 Win11 已无 engtype 段（`pid_N_luid_X_phys_0`）。
+- **主面板数据中枢**（`AppMetricsHub.cs`）：按 `DashboardGpuRefreshMs`（默认 2s）做 0.5Hz
+  GPU 子采样，两次采样间沿用旧值；GPU 四字段（util / 专用 / 共享 / 引擎类型）合入
+  `ProcessMetric` 并在按应用视图求和（引擎类型取 util 最高成员）。
+- **表格六列**（`DashboardTable.cs`）：应用 | PID | CPU | 内存 | **GPU** | **显存**；
+  GPU 列 ≥1% 强调色加粗（同 CPU 口径），无 GPU 活动显示 —；显存列以专用显存为主值。
+  `DashboardSort` 枚举新增 `Gpu` / `Vram`（旧 config.json 向后兼容）。
+- **GPU 视图真表格**（`MainDashboardForm.cs`，替换阶段 1 占位 Label）：按 PID 列出 GPU
+  活动进程（util > 0 或专用显存 > 0；GPU 计算进程通常无窗口，此视图忽略「显示后台」过滤，
+  搜索与系统进程过滤仍生效）；选中键与按进程视图共用，跨视图选中不丢。
+- **详情条**：选中行显示 GPU%（引擎类型）与专用/共享显存。状态栏显示 GPU 项数与 GPU
+  采样耗时；Overloaded 时显示「GPU 暂缓刷新」。
+- **诊断参数**：新增 `--dashboard-gpu-probe`（8 帧 × 2s 单独验证 GPU 解析，per-LUID 显存
+  合计与全局对照）；`--dashboard-probe` 增加 GPU 项数/实例数/耗时。
+
+**验收数据（本机 491–506 进程、RTX 3060 / 64GB、3 个 LUID）**
+
+| 项 | 结果 |
+|---|---|
+| 编译 | 0 error 0 warning |
+| GPU 采样耗时 | 稳态 1.5–5.2 ms/帧（预算 ≤8 ms 达标；首帧 ~10 ms 冷缓冲属预期），负载 1072 实例时 4.5 ms |
+| 显存数值 | 逐 PID 与 typeperf 地面真值一致（dwm 4009MB / msedge 912MB / chrome 201MB） |
+| GPU 利用率 | ffmpeg d3d11va 4K60 硬解：本面板 80.0%→77.7%（滑动平均）vs Get-Counter 明细 3D 55.4%+VideoDecode 21.9%=77.3%，TopEngine=3d 归因正确 |
+| 阶段 1 无回归 | dupPids=0、distinctKeys=refDistinct=256；进程采样 3.2–8.1 ms（基线 3.1–5.5） |
+| UI 截图 | GPU 视图（负载下 ffmpeg 置顶 78.1% 绿色加粗）与按应用视图六列均正常 |
+| 已知口径差 | 进程侧 Σ专用显存 > 适配器值（WDDM 专用提交 vs 驻留，任务管理器同样）；「Ardot」进程驱动上报 ~290 GB 专用显存（OS 数据本身如此，任务管理器同源同怪） |
+
+---
+
+## v0.18 — 2026-11-04
+
+**主面板阶段 1：资源管控面板 · 只读监控（按应用 / 按进程 的 CPU 与内存）**
+
+方案：`docs/10-main-dashboard-plan.md`，进度与验收数据：`docs/11-phase1-progress.md`。
+
+- **新增资源面板**（`UI/MainDashboardForm.cs`，普通 Form）：顶部 CPU / 内存 / GPU / 显存
+  四张总览卡（复用主循环全局快照，不重复建 PDH）；「按应用 / 按进程 / GPU」视图切换
+  （GPU 视图阶段 2 占位）；搜索（名称 / 路径 / PID / 文件描述）；列头点击排序（升降切换）；
+  选中行底部只读详情（路径 / 公司 / 描述 / 启动时间 / 架构 / 成员 PID 列表）；
+  状态栏显示进程数 / 应用组数 / 采样耗时 / 最近刷新。顶栏有「刷新 跟随·0.5s·1s·2s」、
+  「显示后台」开关（默认关 = 只显示有可见窗口或前台的应用）与设置入口。
+- **按应用聚合**（`Metrics/AppMetricsHub.cs`）：以完整路径为键（同名不同路径不合并），
+  聚合 CPU / WorkingSet / PrivateMemory；代表进程 = 前台 > 有可见窗口 > CPU 最高；
+  显示名取 FileDescription > ProductName > 进程名（`Metrics/VersionInfoCache.cs`，TTL 15 秒
+  含失败负缓存）。Chrome ×25、Feishu ×10 等多进程应用聚为一行。
+- **进程采样**（`Metrics/ProcessSampler.cs`）：`EnumProcesses` + `OpenProcess(QUERY_LIMITED)`
+  句柄缓存；CPU 按 `GetProcessTimes` 差分归一化到整机；内存走
+  `K32GetProcessMemoryInfo`（**必须传 `PROCESS_MEMORY_COUNTERS_EX` 的 72 字节 cb**，
+  传普通 COUNTERS 的 64 字节会报 `ERROR_INSUFFICIENT_BUFFER` —— 本版实测踩坑，见
+  `Interop/Native.cs` 注释）；路径 TTL 15 秒、架构 `IsWow64Process2` 一次性；
+  每帧一次 EnumWindows 记录可见窗口 / 前台（cloak 过滤）；消失进程保留 12 秒防闪烁。
+- **生命周期**（plan §4.3）：打开面板才创建 hub，关闭即 Dispose（采样定时器停止、句柄关闭、
+  一次性 GC 回收缓存）；不打开时零开销。窗口大小 / 位置可记忆（`DashboardWindowRect`）。
+- **入口**：托盘右键菜单「资源面板…」、详情面板标题旁四格图标；`AppConfig` 新增
+  `Dashboard*` 字段 10 个（强类型枚举 `DashboardView` / `DashboardSort`）。
+- **诊断参数**：`--dashboard`（启动即开面板）、`--dashboard-probe`（无 UI 空跑 8 帧 →
+  `D:/Hermes/output/results/wmonitor-dashboard-probe.txt`）。
+
+**验收数据（本机 506 进程、RTX 3060 / 64GB）**
+
+| 项 | 结果 |
+|---|---|
+| 编译 | 0 error 0 warning |
+| probe 采样耗时 | 稳态 3.1–5.5 ms/帧（预算 ≤4 ms，偶发超出为 GC/系统抖动；首帧 40 ms 为句柄冷启动） |
+| 聚合正确性 | 264 组 / 无重复 / dupPids=0；Chrome 2.2 GB、ZCode 3.2 GB 与任务管理器一致 |
+| 面板打开增量 | 私有内存 +13 MB（预算 15–30 MB）；CPU 均值 0.17%（预算 ≤1%） |
+| 面板关闭 | 采样停止（CPU 增量归零）；私有内存残差 ~12 MB（JIT + 托管堆段常驻，非泄漏） |
+| error.log | 无异常 |
+
+**产物**
+
+| 文件 | 大小 |
+|---|---|
+| `D:\WMonitor\WMonitor\`（安装版，多文件） | 415 KB |
+| `WMonitor-v0.18-framework.exe` | 415 KB |
+| `WMonitor-v0.18-portable.exe` | 63.0 MB |
+
+
 ## v0.17 — 2026-11-03
 
 **修复设置交互时序、贴片消失恢复与多屏实时切换**

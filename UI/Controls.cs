@@ -2,12 +2,13 @@ using System.Drawing.Drawing2D;
 
 namespace WMonitor.UI;
 
-/// <summary>分段选择器（3~4 个选项一行）。</summary>
+/// <summary>分段选择器（3~4 个选项一行）。FontScale：高 DPI 容器里按 DeviceDpi/96 放大字号。</summary>
 public sealed class Segmented : Control
 {
     public string[] Items = Array.Empty<string>();
     public int SelectedIndex;
     public Theme Th = Theme.Dark;
+    public float FontScale = 1f;
     public event EventHandler? SelectionChanged;
 
     private int _hover = -1;
@@ -40,7 +41,7 @@ public sealed class Segmented : Control
 
         if (Items.Length == 0) return;
         float seg = Width / (float)Items.Length;
-        var font = Gfx.F("Segoe UI", 11.5f, FontStyle.Regular);
+        var font = Gfx.F("Segoe UI", 11.5f * FontScale, FontStyle.Regular);
 
         for (int i = 0; i < Items.Length; i++)
         {
@@ -55,7 +56,13 @@ public sealed class Segmented : Control
                 g.FillPath(b, p);
             }
 
-            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            var sf = new StringFormat
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center,
+                Trimming = StringTrimming.EllipsisCharacter,
+                FormatFlags = StringFormatFlags.NoWrap
+            };
             using var tb = new SolidBrush(sel ? Th.Text : Th.Label);
             g.DrawString(Items[i], font, tb, r, sf);
         }
@@ -100,6 +107,7 @@ public sealed class Chip : Control
 {
     public bool Checked;
     public Theme Th = Theme.Dark;
+    public float FontScale = 1f;
     public event EventHandler? CheckedChanged;
 
     public Chip(string text)
@@ -141,7 +149,7 @@ public sealed class Chip : Control
 
         var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         using var tb = new SolidBrush(Checked ? Th.Text : Th.Label);
-        g.DrawString(Text, Gfx.F("Segoe UI", 11f, FontStyle.Regular), tb,
+        g.DrawString(Text, Gfx.F("Segoe UI", 11f * FontScale, FontStyle.Regular), tb,
             new RectangleF(0, 0, Width, Height), sf);
     }
 

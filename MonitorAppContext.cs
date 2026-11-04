@@ -42,6 +42,9 @@ internal sealed class MonitorAppContext : ApplicationContext
     /// <summary>当前打开的托盘右键菜单（每次重开重建，勾选状态直接读配置）。</summary>
     private FlyoutMenu? _menu;
 
+    /// <summary>资源管控主面板（v0.18 阶段 1）。打开时创建 Hub、关闭即 Dispose，不常驻（plan §4.3）。</summary>
+    private MainDashboardForm? _dash;
+
     /// <summary>左键点击去抖：双击托盘图标只算一次，别开一下又关掉。</summary>
     private DateTime _lastTrayClick = DateTime.MinValue;
 
@@ -56,6 +59,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         // 面板先建：贴片的 Clicked 回调要引用它
         _panel = new DetailPanel();
         _panel.SettingsClicked += OpenSettings;
+        _panel.DashboardClicked += () => OpenDashboard();
 
         _hist = NewHistory();
         _panel.History = _hist;
@@ -292,7 +296,12 @@ internal sealed class MonitorAppContext : ApplicationContext
         if (_tick++ % 2 == 0 && _cfg.Theme == ThemeMode.System)
         {
             var t = Theme.Resolve(_cfg.Theme);
-            if (t.IsDark != _theme.IsDark) { _theme = t; _trayKey = ""; }
+            if (t.IsDark != _theme.IsDark)
+            {
+                _theme = t;
+                _trayKey = "";
+                _dash?.ApplyTheme(t);      // 主面板跟随系统主题翻转
+            }
         }
 
         long now = Stopwatch.GetTimestamp();
@@ -491,6 +500,8 @@ internal sealed class MonitorAppContext : ApplicationContext
 
         list.Add(MenuRow.Sep());
 
+        if (_cfg.DashboardEnabled)
+            list.Add(new MenuRow { Text = "资源面板…", Click = () => OpenDashboard() });
         list.Add(new MenuRow { Text = "详情面板…", Click = () => OpenPanel(null) });
         list.Add(new MenuRow { Text = "设置…", Click = OpenSettings });
         list.Add(Toggle("暂停刷新", () => _paused, v => _paused = v));
@@ -558,6 +569,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         _cfg.Theme = mode;
         _theme = Theme.Resolve(mode);
         _trayKey = "";
+        _dash?.ApplyTheme(_theme);
     }
 
     private void RefreshAll()
@@ -596,6 +608,27 @@ internal sealed class MonitorAppContext : ApplicationContext
     public void OpenSettingsPublic() => OpenSettings();
     public void OpenPanelPublic() => OpenPanel(null);
 
+    /// <summary>主循环最新全局快照。主面板引用它做总览卡，不重复建全局 PDH（plan §3）。</summary>
+    public MetricsSnapshot LastSnapshot => _last;
+
+    /// <summary>
+    /// 打开资源管控主面板。已有实例则激活；<paramref name="force"/> = true（--dashboard 诊断参数）
+    /// 时无视 DashboardEnabled 开关。
+    /// </summary>
+    private void OpenDashboard(bool force = false)
+    {
+        if (_dash != null) { _dash.Activate(); return; }
+        if (!force && !_cfg.DashboardEnabled) return;
+
+        _dash = new MainDashboardForm(_cfg, _theme, () => _last);
+        _dash.SettingsRequested += OpenSettings;
+        _dash.FormClosed += (_, _) => _dash = null;
+        _dash.Show();
+        _dash.Activate();
+    }
+
+    public void OpenDashboardPublic() => OpenDashboard();
+
     /// <summary>诊断钩子（--menu）：在指定屏幕坐标弹出右键菜单；subIndex ≥ 0 时顺带展开该行子菜单。</summary>
     public void ShowMenuPublic(Point at, int subIndex = -1)
     {
@@ -624,6 +657,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         _cfg.Save();
         _theme = Theme.Resolve(_cfg.Theme);
         _trayKey = "";
+        _dash?.ApplyTheme(_theme);
         RefreshHistoryIfChanged();
         _alerts.Configure(_cfg);
         _alerts.Reset();          // 阈值可能变了，旧的武装计时不能沿用
@@ -637,6 +671,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         StopFlash();
         _menu?.Dispose();
         _menu = null;
+        _dash?.Close();          // FormClosed 里置 null，同时停采样 timer、dispose hub
         _tray.Visible = false;
         _tray.Icon = null;
         _tray.Dispose();

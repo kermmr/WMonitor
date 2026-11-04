@@ -6,6 +6,12 @@ namespace WMonitor;
 
 public enum StripStyle { Numbers = 0, Bars = 1, Rings = 2 }
 public enum TrayStyle { DualNumber = 0, DualRing = 1, FourBar = 2, Single = 3 }
+
+/// <summary>资源主面板的视图。</summary>
+public enum DashboardView { App = 0, Process = 1, Gpu = 2 }
+
+/// <summary>资源主面板列表的排序键。</summary>
+public enum DashboardSort { Cpu = 0, Memory = 1, Name = 2, Pid = 3, Gpu = 4, Vram = 5 }
 public enum ThemeMode { Dark = 0, Light = 1, System = 2 }
 
 /// <summary>托盘图标可以显示的指标。</summary>
@@ -134,6 +140,42 @@ public sealed class AppConfig
     /// <summary>贴片底色与描边的不透明度 0–100。</summary>
     public int StripOpacity { get; set; } = 100;
     public string? LockedGpuLuid { get; set; }
+
+    // ---------------- 资源管控主面板（v0.18 阶段 1） ----------------
+
+    /// <summary>主面板总开关。关闭后托盘菜单与详情面板不显示入口（诊断参数 --dashboard 仍可强制打开）。</summary>
+    public bool DashboardEnabled { get; set; } = true;
+
+    /// <summary>主面板刷新间隔（毫秒）。0 = 跟随全局 <see cref="RefreshMs"/>（主面板顶栏「刷新」段的默认项）。</summary>
+    public int DashboardRefreshMs { get; set; } = 0;
+
+    /// <summary>GPU 进程子采样间隔（毫秒），阶段 2 的 GpuProcessSampler 使用。</summary>
+    public int DashboardGpuRefreshMs { get; set; } = 2000;
+
+    public DashboardView DashboardDefaultView { get; set; } = DashboardView.App;
+    public DashboardSort DashboardSort { get; set; } = DashboardSort.Cpu;
+    public bool DashboardSortDesc { get; set; } = true;
+
+    /// <summary>显示无窗口的后台进程。关闭时只显示有可见窗口 / 前台的应用（plan §2.1）。</summary>
+    public bool DashboardShowBackground { get; set; } = false;
+
+    /// <summary>显示系统进程（System/Registry/svchost 等名称黑名单，阶段 3 换 owner 判定）。默认隐藏。</summary>
+    public bool DashboardShowSystemProcesses { get; set; } = false;
+
+    /// <summary>最小占用阈值（CPU/GPU %）。&gt;0 时 CPU 与 GPU 都低于阈值的行隐藏，任一活跃即显示。0 = 不过滤。</summary>
+    public double DashboardMinimumPercent { get; set; } = 0;
+
+    /// <summary>多卡筛选：锁定的适配器 LUID 前缀（"0x…_0x…10fb0" 形式，比较一律 OrdinalIgnoreCase）。
+    /// 空 = 全部显卡。仅机器存在多块 GPU（GpuProcessSnapshot.Luids 分组 &gt; 1）时面板才显示下拉。</summary>
+    public string DashboardGpuLuid { get; set; } = "";
+
+    /// <summary>记住主面板窗口大小与位置。</summary>
+    public bool DashboardRememberLayout { get; set; } = true;
+
+    /// <summary>主面板窗口边界 "x,y,w,h"（RememberLayout 时持久化；空 = 居中默认尺寸）。
+    /// 不存 Rectangle：System.Text.Json 对 GDI 结构体的往返不可靠，用字符串最稳。</summary>
+    public string DashboardWindowRect { get; set; } = "";
+
 
     /// <summary>当前托盘样式实际用到的指标槽位（单指标 1 个、双样式 2 个、四段条 4 个）。</summary>
     [JsonIgnore]

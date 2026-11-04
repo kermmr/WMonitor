@@ -180,6 +180,13 @@ public sealed class BentoButton : Control, IButtonControl
 {
     public Theme Th = Theme.Dark;
     public bool Primary;
+
+    /// <summary>主按钮底色覆写（空 = Th.Accent）：结束任务按钮用告警红，其余不变。</summary>
+    public Color PrimaryColor = Color.Empty;
+
+    /// <summary>字号缩放（高 DPI 容器传 DeviceDpi/96）：字体按需重建，默认 1 行为不变。</summary>
+    public float FontScale = 1f;
+
     public int Radius = 10;
 
     /// <summary>控件底部留给投影的高度。</summary>
@@ -188,6 +195,7 @@ public sealed class BentoButton : Control, IButtonControl
     public DialogResult DialogResult { get; set; } = DialogResult.None;
 
     private bool _hover, _down;
+    private float _fontScale = -1f;
     private Font _font = null!;
 
     public BentoButton()
@@ -209,22 +217,29 @@ public sealed class BentoButton : Control, IButtonControl
         (int)(a.G + (b.G - a.G) * t),
         (int)(a.B + (b.B - a.B) * t));
 
+    private Color AccentColor => PrimaryColor != Color.Empty ? PrimaryColor : Th.Accent;
+
     private Color Body()
     {
         if (_down)
-            return Primary ? Mix(Th.Accent, Color.Black, 0.24f)
+            return Primary ? Mix(AccentColor, Color.Black, 0.24f)
                            : Mix(Th.Soft, Color.Black, Th.IsDark ? 0.30f : 0.14f);
         if (_hover)
-            return Primary ? Mix(Th.Accent, Color.White, 0.20f)
+            return Primary ? Mix(AccentColor, Color.White, 0.20f)
                            : Mix(Th.Soft, Th.IsDark ? Color.White : Color.Black, Th.IsDark ? 0.14f : 0.07f);
-        return Primary ? Th.Accent : (Th.IsDark ? Th.Soft : Th.SoftLight);
+        return Primary ? AccentColor : (Th.IsDark ? Th.Soft : Th.SoftLight);
     }
 
     private Color TextColor() => Primary ? Color.White : Th.Text;
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        _font ??= new Font("Segoe UI", 9.5f, Primary ? FontStyle.Bold : FontStyle.Regular);
+        if (_fontScale != FontScale || _font == null)
+        {
+            _font?.Dispose();
+            _font = new Font("Segoe UI", 9.5f * FontScale, Primary ? FontStyle.Bold : FontStyle.Regular);
+            _fontScale = FontScale;
+        }
 
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -239,7 +254,7 @@ public sealed class BentoButton : Control, IButtonControl
         int layers = _down ? 2 : _hover ? 10 : 0;
         if (layers > 0)
         {
-            var shade = Th.IsDark && Primary ? Mix(Th.Accent, Color.Black, 0.68f) : Color.Black;
+            var shade = Th.IsDark && Primary ? Mix(AccentColor, Color.Black, 0.68f) : Color.Black;
             int peak = _down ? 14 : Th.IsDark ? 30 : 24;
             float reach = Math.Max(2f, Shadow - 1.5f);   // 控件底部留给投影的可用下沉距离
             for (int i = layers; i >= 1; i--)

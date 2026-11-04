@@ -7,7 +7,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4?style=flat-square)](https://github.com/kermmr/WMonitor)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-3DDC97?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.17-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
+[![Version](https://img.shields.io/badge/version-v0.23-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
 
 <img src="docs/screenshots/taskbar-dark.png" alt="WMonitor 任务栏贴片" width="712">
 
@@ -19,10 +19,11 @@
 
 任务管理器要开窗口才能看；多数托盘工具不支持 GPU 显存，或者自己就吃掉几十 MB 和几个点的 CPU。
 
-WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下展开曲线。常驻 **44 MB 内存、0.3% CPU**（单核，1 秒刷新），不碰 Explorer、不抢焦点、不进 Alt-Tab。
+WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下展开曲线。框架依赖版常驻约 **49 MB 内存、0.3% CPU**（单核，1 秒刷新）；自包含便携版因单文件运行时约 **80 MB**。不碰 Explorer、不抢焦点、不进 Alt-Tab。
 
 ## 功能
 
+- **资源管控主面板** — 按应用/按进程查看 CPU、内存、GPU、显存占用；支持搜索、排序、系统进程、多显卡筛选，以及结束/挂起/恢复/优先级管控（二次确认 + 操作日志）
 - **贴片三种形态** — 数字条 / 数字 + 迷你柱 / 四环仪表
 - **多屏** — 选一块屏，或每块屏各贴一片；每片按所属显示器的 DPI 排版
 - **五种位置** — 任务栏最左、应用图标左边、应用图标右边、托盘箭头左边、自定义（直接拖动，落在任务栏上自动吸附，落到桌面就悬浮）
@@ -39,6 +40,12 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 - 单实例、开机自启、崩溃日志、`--probe` / `--monitors` / `--history-dump` / `--alert-test` 诊断模式
 
 ## 截图
+
+### 资源管控主面板
+
+托盘右键菜单「资源面板…」打开：按应用 / 按进程 / GPU 三个视图，搜索、排序、多显卡筛选，行内选中后可直接结束 / 挂起 / 恢复 / 调优先级（带二次确认与操作日志）。
+
+<img src="docs/screenshots/dashboard-dark.png" alt="资源管控主面板" width="860">
 
 ### 任务栏贴片（深色 / 浅色）
 
@@ -84,8 +91,8 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
-| `WMonitor-v0.17-framework.exe` | 373 KB | 需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
-| `WMonitor-v0.17-portable.exe` | 63 MB | 自包含，双击即用，适合拷给别人 |
+| `WMonitor-v0.23-framework.exe` | 470 KB | 需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
+| `WMonitor-v0.23-portable.exe` | 63 MB | 自包含，双击即用，适合拷给别人 |
 
 双击运行，贴片自动出现在任务栏托盘左侧，托盘区出现图标。没有安装程序，删掉 exe 就卸载干净（配置与历史在 `%APPDATA%\WMonitor\`）。
 
@@ -98,6 +105,7 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 | 拖贴片 | 自由定位；落在任务栏上自动垂直居中，落到桌面就悬浮 |
 | 左键托盘图标 | 显示 / 关闭详情面板 |
 | 点面板齿轮 / 右键菜单「设置…」 | 打开设置 |
+| 托盘右键「资源面板…」/ 面板标题旁四格图标 | 打开资源管控主面板（结束 / 挂起 / 恢复 / 优先级） |
 | 右键托盘图标 | 快速切换位置、风格、主题、显示项，暂停或退出 |
 
 ## 数据来源

@@ -133,6 +133,9 @@ public sealed class DetailPanel : LayeredWindow
 
     public event Action? SettingsClicked;
 
+    /// <summary>点击标题旁的四格图标：打开资源管控主面板。</summary>
+    public event Action? DashboardClicked;
+
     public void Update(MetricsSnapshot s, AppConfig cfg, Theme th)
     {
         _cfgRef = cfg;
@@ -162,7 +165,18 @@ public sealed class DetailPanel : LayeredWindow
 
         // ---- 标题 + 时间窗 ----
         Gfx.Text(g, "系统监视", Gfx.F("Segoe UI", 12.5f, FontStyle.Bold), th.Text, pad, 13f);
+        float titleW = Gfx.Measure(g, "系统监视", Gfx.F("Segoe UI", 12.5f, FontStyle.Bold)).Width;
         DrawWindowChips(g, cfg, th, right);
+
+        // 资源面板入口（主面板 v0.18）：标题右侧的四格图标；总开关关闭时不画。
+        _dashRect = RectangleF.Empty;
+        if (cfg.DashboardEnabled)
+        {
+            var dashBtn = new RectangleF(pad + titleW + 10, 11f, 18, 18);
+            using (var db = new SolidBrush(th.Hover)) g.FillEllipse(db, dashBtn);
+            DrawGrid(g, dashBtn, th.Label);
+            _dashRect = dashBtn;
+        }
 
         // ---- 数据行（按显示项）----
         const float rowY = 38f;
@@ -202,6 +216,20 @@ public sealed class DetailPanel : LayeredWindow
 
     private RectangleF _closeRect;
     private RectangleF _gearRect;
+    private RectangleF _dashRect;
+
+    /// <summary>四格图标：打开资源管控主面板。</summary>
+    private static void DrawGrid(Graphics g, RectangleF r, Color c)
+    {
+        using var pen = new Pen(c, 1.2f);
+        float cell = r.Width * 0.36f;
+        foreach (var (dx, dy) in new[] { (0f, 0f), (1f, 0f), (0f, 1f), (1f, 1f) })
+        {
+            var cellRect = new RectangleF(
+                r.X + dx * (r.Width - cell), r.Y + dy * (r.Height - cell), cell, cell);
+            g.DrawRectangle(pen, cellRect.X, cellRect.Y, cellRect.Width, cellRect.Height);
+        }
+    }
 
     private static void DrawGear(Graphics g, RectangleF r, Color c)
     {
@@ -514,6 +542,7 @@ public sealed class DetailPanel : LayeredWindow
             }
 
             if (_closeRect.Contains(pt)) { Hide(); return; }
+            if (_dashRect.Contains(pt)) { Hide(); DashboardClicked?.Invoke(); return; }
             if (_gearRect.Contains(pt)) { Hide(); SettingsClicked?.Invoke(); return; }
         }
         base.WndProc(ref m);

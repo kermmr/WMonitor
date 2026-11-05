@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- WMonitor app icon B (gauge), dark, 16px variant: bold progress arc + center dot only -->
+  <defs>
+    <linearGradient id="tD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="tD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#tD-container)"/>
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#tD-glyph)" stroke-width="48" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#tD-glyph)"/>
+</svg>

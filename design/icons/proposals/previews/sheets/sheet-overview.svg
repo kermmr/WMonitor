@@ -1,0 +1,1611 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1630" viewBox="0 0 1240 1630"><rect width="1240" height="1630" fill="#FFFFFF"/><text x="8" y="26" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="16" font-weight="600" fill="#141414">WMonitor 应用图标提案 · 三方案 × 明暗主题</text><text x="8" y="44" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E">无字母抽象图形 · 统一 #0A84FF + 圆角方块语言 · 深浅两版颜色直接映射 Theme.cs token（深 #4CC2FF/#3DDC97，浅 #0A84FF/#11A36B）</text><g><rect x="8" y="54" width="580" height="88" rx="12" fill="#F1F3F6"/><g transform="translate(24 70) scale(0.109375)">
+  <!-- WMonitor app icon proposal A - pulse, dark theme -->
+  <defs>
+    <linearGradient id="aDp42-aD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="aDp42-aD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aDp42-aD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aDp42-aD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aDp42-aD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#aDp42-aD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aDp42-aD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#aDp42-aD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aDp42-aD-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(255,255,255,.13)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aDp42-aD-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#3DDC97"/>
+</g><g transform="translate(116 70) scale(0.109375)">
+  <!-- WMonitor app icon proposal A - pulse, light theme -->
+  <defs>
+    <linearGradient id="aLp43-aL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="aLp43-aL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aLp43-aL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aLp43-aL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aLp43-aL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#aLp43-aL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aLp43-aL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#aLp43-aL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aLp43-aL-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(0,0,0,.10)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aLp43-aL-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#11A36B"/>
+</g><g transform="translate(208 70) scale(0.109375)">
+  <!-- WMonitor app icon proposal B - gauge, dark theme -->
+  <defs>
+    <linearGradient id="bDp44-bD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="bDp44-bD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bDp44-bD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bDp44-bD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bDp44-bD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#bDp44-bD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bDp44-bD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#bDp44-bD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bDp44-bD-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bDp44-bD-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bDp44-bD-glyph)"/>
+</g><g transform="translate(300 70) scale(0.109375)">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bLp45-bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bLp45-bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bLp45-bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bLp45-bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bLp45-bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#bLp45-bL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bLp45-bL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bLp45-bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bLp45-bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bLp45-bL-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bLp45-bL-glyph)"/>
+</g><g transform="translate(392 70) scale(0.109375)">
+  <!-- WMonitor app icon proposal C - radar, dark theme -->
+  <defs>
+    <linearGradient id="cDp46-cD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="cDp46-cD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cDp46-cD-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cDp46-cD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cDp46-cD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cDp46-cD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#cDp46-cD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cDp46-cD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#cDp46-cD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cDp46-cD-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cDp46-cD-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#3DDC97"/>
+  <circle cx="196" cy="208" r="11" fill="#4CC2FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cDp46-cD-glyph)"/>
+</g><g transform="translate(484 70) scale(0.109375)">
+  <!-- WMonitor app icon proposal C - radar, light theme -->
+  <defs>
+    <linearGradient id="cLp47-cL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="cLp47-cL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cLp47-cL-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#0A84FF" stop-opacity=".80"/>
+      <stop offset="1" stop-color="#0A84FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cLp47-cL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cLp47-cL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cLp47-cL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#cLp47-cL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cLp47-cL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#cLp47-cL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cLp47-cL-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(0,0,0,.13)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cLp47-cL-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#11A36B"/>
+  <circle cx="196" cy="208" r="11" fill="#3FA1FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cLp47-cL-glyph)"/>
+</g></g>
+    <text x="8" y="190" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="15" font-weight="600" fill="#141414">方案 A · 脉搏</text>
+    <text x="157" y="190" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="12" fill="#5C636E">实时采样活性：灰色采样轨 + ECG 波形 + 绿色 live 点</text>
+    <g>
+    <rect x="8" y="202" width="604" height="422" rx="20" fill="#0E1014" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+    <text x="310" y="242" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="13" letter-spacing="1.5" fill="#9AA3B2" text-anchor="middle">深色主题 · WindowBg #0E1014</text>
+    <g transform="translate(245 264) scale(0.25390625)">
+  <!-- WMonitor app icon proposal A - pulse, dark theme -->
+  <defs>
+    <linearGradient id="aDp48-aD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="aDp48-aD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aDp48-aD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aDp48-aD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aDp48-aD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#aDp48-aD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aDp48-aD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#aDp48-aD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aDp48-aD-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(255,255,255,.13)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aDp48-aD-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#3DDC97"/>
+</g>
+    <g transform="translate(217 428) scale(0.09375)">
+  <!-- WMonitor app icon proposal A - pulse, dark theme -->
+  <defs>
+    <linearGradient id="aDp49-aD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="aDp49-aD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aDp49-aD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aDp49-aD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aDp49-aD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#aDp49-aD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aDp49-aD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#aDp49-aD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aDp49-aD-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(255,255,255,.13)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aDp49-aD-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#3DDC97"/>
+</g><text x="241" y="494" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">48</text><g transform="translate(287 428) scale(0.0625)">
+  <!-- WMonitor app icon proposal A - pulse, dark theme -->
+  <defs>
+    <linearGradient id="aDp50-aD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="aDp50-aD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aDp50-aD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aDp50-aD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aDp50-aD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#aDp50-aD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aDp50-aD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#aDp50-aD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aDp50-aD-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(255,255,255,.13)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aDp50-aD-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#3DDC97"/>
+</g><text x="303" y="478" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">32</text><g transform="translate(341 428) scale(0.046875)">
+  <!-- WMonitor app icon proposal A - pulse, dark theme -->
+  <defs>
+    <linearGradient id="aDp51-aD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="aDp51-aD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aDp51-aD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aDp51-aD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aDp51-aD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#aDp51-aD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aDp51-aD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#aDp51-aD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aDp51-aD-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(255,255,255,.13)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aDp51-aD-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#3DDC97"/>
+</g><text x="353" y="470" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">24</text><g transform="translate(387 428) scale(0.03125)">
+  <!-- WMonitor app icon proposal A - pulse, dark theme -->
+  <defs>
+    <linearGradient id="aDp52-aD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="aDp52-aD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aDp52-aD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aDp52-aD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aDp52-aD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#aDp52-aD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aDp52-aD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#aDp52-aD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aDp52-aD-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(255,255,255,.13)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aDp52-aD-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#3DDC97"/>
+</g><text x="395" y="462" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">16</text>
+    <g>
+    <rect x="140" y="558" width="340" height="46" rx="10" fill="rgba(34,36,40,.965)" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+    <g transform="translate(153 573) scale(0.03125)">
+  <!-- WMonitor app icon proposal A - pulse, dark theme -->
+  <defs>
+    <linearGradient id="aDp53-aD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="aDp53-aD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aDp53-aD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aDp53-aD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aDp53-aD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#aDp53-aD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aDp53-aD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#aDp53-aD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aDp53-aD-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(255,255,255,.13)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aDp53-aD-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#3DDC97"/>
+</g>
+    <rect x="182" y="569" width="92" height="24" rx="7" fill="rgba(255,255,255,.07)"/>
+    <circle cx="206" cy="581" r="3.2" fill="#4CC2FF"/><circle cx="222" cy="581" r="3.2" fill="#B39DFF"/><circle cx="238" cy="581" r="3.2" fill="#3DDC97"/><circle cx="254" cy="581" r="3.2" fill="#FFB340"/>
+    <text x="466" y="585" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="end">14:32</text>
+  </g>
+  </g>
+    <g>
+    <rect x="628" y="202" width="604" height="422" rx="20" fill="#EDEFF3" stroke="rgba(0,0,0,.06)" stroke-width="1"/>
+    <text x="930" y="242" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="13" letter-spacing="1.5" fill="#5C636E" text-anchor="middle">浅色主题 · WindowBg #EDEFF3</text>
+    <g transform="translate(865 264) scale(0.25390625)">
+  <!-- WMonitor app icon proposal A - pulse, light theme -->
+  <defs>
+    <linearGradient id="aLp54-aL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="aLp54-aL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aLp54-aL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aLp54-aL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aLp54-aL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#aLp54-aL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aLp54-aL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#aLp54-aL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aLp54-aL-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(0,0,0,.10)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aLp54-aL-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#11A36B"/>
+</g>
+    <g transform="translate(837 428) scale(0.09375)">
+  <!-- WMonitor app icon proposal A - pulse, light theme -->
+  <defs>
+    <linearGradient id="aLp55-aL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="aLp55-aL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aLp55-aL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aLp55-aL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aLp55-aL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#aLp55-aL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aLp55-aL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#aLp55-aL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aLp55-aL-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(0,0,0,.10)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aLp55-aL-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#11A36B"/>
+</g><text x="861" y="494" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">48</text><g transform="translate(907 428) scale(0.0625)">
+  <!-- WMonitor app icon proposal A - pulse, light theme -->
+  <defs>
+    <linearGradient id="aLp56-aL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="aLp56-aL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aLp56-aL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aLp56-aL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aLp56-aL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#aLp56-aL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aLp56-aL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#aLp56-aL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aLp56-aL-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(0,0,0,.10)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aLp56-aL-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#11A36B"/>
+</g><text x="923" y="478" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">32</text><g transform="translate(961 428) scale(0.046875)">
+  <!-- WMonitor app icon proposal A - pulse, light theme -->
+  <defs>
+    <linearGradient id="aLp57-aL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="aLp57-aL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aLp57-aL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aLp57-aL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aLp57-aL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#aLp57-aL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aLp57-aL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#aLp57-aL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aLp57-aL-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(0,0,0,.10)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aLp57-aL-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#11A36B"/>
+</g><text x="973" y="470" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">24</text><g transform="translate(1007 428) scale(0.03125)">
+  <!-- WMonitor app icon proposal A - pulse, light theme -->
+  <defs>
+    <linearGradient id="aLp58-aL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="aLp58-aL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aLp58-aL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aLp58-aL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aLp58-aL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#aLp58-aL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aLp58-aL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#aLp58-aL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aLp58-aL-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(0,0,0,.10)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aLp58-aL-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#11A36B"/>
+</g><text x="1015" y="462" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">16</text>
+    <g>
+    <rect x="760" y="558" width="340" height="46" rx="10" fill="rgba(244,244,244,.97)" stroke="rgba(0,0,0,.10)" stroke-width="1"/>
+    <g transform="translate(773 573) scale(0.03125)">
+  <!-- WMonitor app icon proposal A - pulse, light theme -->
+  <defs>
+    <linearGradient id="aLp59-aL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="aLp59-aL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aLp59-aL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aLp59-aL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aLp59-aL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#aLp59-aL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aLp59-aL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#aLp59-aL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aLp59-aL-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(0,0,0,.10)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aLp59-aL-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#11A36B"/>
+</g>
+    <rect x="802" y="569" width="92" height="24" rx="7" fill="rgba(0,0,0,.05)"/>
+    <circle cx="826" cy="581" r="3.2" fill="#0A84FF"/><circle cx="842" cy="581" r="3.2" fill="#7C5CE0"/><circle cx="858" cy="581" r="3.2" fill="#11A36B"/><circle cx="874" cy="581" r="3.2" fill="#D18400"/>
+    <text x="1086" y="585" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="end">14:32</text>
+  </g>
+  </g>
+    <text x="8" y="668" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="15" font-weight="600" fill="#141414">方案 B · 仪表</text>
+    <text x="157" y="668" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="12" fill="#5C636E">资源水位与阈值：270° 轨道 + 68% 弧 + 指针</text>
+    <g>
+    <rect x="8" y="680" width="604" height="422" rx="20" fill="#0E1014" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+    <text x="310" y="720" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="13" letter-spacing="1.5" fill="#9AA3B2" text-anchor="middle">深色主题 · WindowBg #0E1014</text>
+    <g transform="translate(245 742) scale(0.25390625)">
+  <!-- WMonitor app icon proposal B - gauge, dark theme -->
+  <defs>
+    <linearGradient id="bDp60-bD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="bDp60-bD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bDp60-bD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bDp60-bD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bDp60-bD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#bDp60-bD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bDp60-bD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#bDp60-bD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bDp60-bD-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bDp60-bD-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bDp60-bD-glyph)"/>
+</g>
+    <g transform="translate(217 906) scale(0.09375)">
+  <!-- WMonitor app icon proposal B - gauge, dark theme -->
+  <defs>
+    <linearGradient id="bDp61-bD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="bDp61-bD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bDp61-bD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bDp61-bD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bDp61-bD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#bDp61-bD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bDp61-bD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#bDp61-bD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bDp61-bD-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bDp61-bD-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bDp61-bD-glyph)"/>
+</g><text x="241" y="972" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">48</text><g transform="translate(287 906) scale(0.0625)">
+  <!-- WMonitor app icon proposal B - gauge, dark theme -->
+  <defs>
+    <linearGradient id="bDp62-bD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="bDp62-bD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bDp62-bD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bDp62-bD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bDp62-bD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#bDp62-bD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bDp62-bD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#bDp62-bD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bDp62-bD-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bDp62-bD-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bDp62-bD-glyph)"/>
+</g><text x="303" y="956" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">32</text><g transform="translate(341 906) scale(0.046875)">
+  <!-- WMonitor app icon proposal B - gauge, dark theme -->
+  <defs>
+    <linearGradient id="bDp63-bD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="bDp63-bD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bDp63-bD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bDp63-bD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bDp63-bD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#bDp63-bD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bDp63-bD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#bDp63-bD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bDp63-bD-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bDp63-bD-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bDp63-bD-glyph)"/>
+</g><text x="353" y="948" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">24</text><g transform="translate(387 906) scale(0.03125)">
+  <!-- WMonitor app icon proposal B - gauge, dark theme -->
+  <defs>
+    <linearGradient id="bDp64-bD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="bDp64-bD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bDp64-bD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bDp64-bD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bDp64-bD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#bDp64-bD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bDp64-bD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#bDp64-bD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bDp64-bD-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bDp64-bD-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bDp64-bD-glyph)"/>
+</g><text x="395" y="940" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">16</text>
+    <g>
+    <rect x="140" y="1036" width="340" height="46" rx="10" fill="rgba(34,36,40,.965)" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+    <g transform="translate(153 1051) scale(0.03125)">
+  <!-- WMonitor app icon proposal B - gauge, dark theme -->
+  <defs>
+    <linearGradient id="bDp65-bD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="bDp65-bD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bDp65-bD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bDp65-bD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bDp65-bD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#bDp65-bD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bDp65-bD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#bDp65-bD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bDp65-bD-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bDp65-bD-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bDp65-bD-glyph)"/>
+</g>
+    <rect x="182" y="1047" width="92" height="24" rx="7" fill="rgba(255,255,255,.07)"/>
+    <circle cx="206" cy="1059" r="3.2" fill="#4CC2FF"/><circle cx="222" cy="1059" r="3.2" fill="#B39DFF"/><circle cx="238" cy="1059" r="3.2" fill="#3DDC97"/><circle cx="254" cy="1059" r="3.2" fill="#FFB340"/>
+    <text x="466" y="1063" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="end">14:32</text>
+  </g>
+  </g>
+    <g>
+    <rect x="628" y="680" width="604" height="422" rx="20" fill="#EDEFF3" stroke="rgba(0,0,0,.06)" stroke-width="1"/>
+    <text x="930" y="720" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="13" letter-spacing="1.5" fill="#5C636E" text-anchor="middle">浅色主题 · WindowBg #EDEFF3</text>
+    <g transform="translate(865 742) scale(0.25390625)">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bLp66-bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bLp66-bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bLp66-bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bLp66-bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bLp66-bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#bLp66-bL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bLp66-bL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bLp66-bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bLp66-bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bLp66-bL-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bLp66-bL-glyph)"/>
+</g>
+    <g transform="translate(837 906) scale(0.09375)">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bLp67-bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bLp67-bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bLp67-bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bLp67-bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bLp67-bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#bLp67-bL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bLp67-bL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bLp67-bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bLp67-bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bLp67-bL-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bLp67-bL-glyph)"/>
+</g><text x="861" y="972" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">48</text><g transform="translate(907 906) scale(0.0625)">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bLp68-bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bLp68-bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bLp68-bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bLp68-bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bLp68-bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#bLp68-bL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bLp68-bL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bLp68-bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bLp68-bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bLp68-bL-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bLp68-bL-glyph)"/>
+</g><text x="923" y="956" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">32</text><g transform="translate(961 906) scale(0.046875)">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bLp69-bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bLp69-bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bLp69-bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bLp69-bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bLp69-bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#bLp69-bL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bLp69-bL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bLp69-bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bLp69-bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bLp69-bL-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bLp69-bL-glyph)"/>
+</g><text x="973" y="948" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">24</text><g transform="translate(1007 906) scale(0.03125)">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bLp70-bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bLp70-bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bLp70-bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bLp70-bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bLp70-bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#bLp70-bL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bLp70-bL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bLp70-bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bLp70-bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bLp70-bL-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bLp70-bL-glyph)"/>
+</g><text x="1015" y="940" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">16</text>
+    <g>
+    <rect x="760" y="1036" width="340" height="46" rx="10" fill="rgba(244,244,244,.97)" stroke="rgba(0,0,0,.10)" stroke-width="1"/>
+    <g transform="translate(773 1051) scale(0.03125)">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bLp71-bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bLp71-bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bLp71-bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bLp71-bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bLp71-bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#bLp71-bL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bLp71-bL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bLp71-bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bLp71-bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bLp71-bL-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bLp71-bL-glyph)"/>
+</g>
+    <rect x="802" y="1047" width="92" height="24" rx="7" fill="rgba(0,0,0,.05)"/>
+    <circle cx="826" cy="1059" r="3.2" fill="#0A84FF"/><circle cx="842" cy="1059" r="3.2" fill="#7C5CE0"/><circle cx="858" cy="1059" r="3.2" fill="#11A36B"/><circle cx="874" cy="1059" r="3.2" fill="#D18400"/>
+    <text x="1086" y="1063" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="end">14:32</text>
+  </g>
+  </g>
+    <text x="8" y="1146" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="15" font-weight="600" fill="#141414">方案 C · 雷达</text>
+    <text x="157" y="1146" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="12" fill="#5C636E">看护巡视：双环 + 扫描扇面 + 目标点</text>
+    <g>
+    <rect x="8" y="1158" width="604" height="422" rx="20" fill="#0E1014" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+    <text x="310" y="1198" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="13" letter-spacing="1.5" fill="#9AA3B2" text-anchor="middle">深色主题 · WindowBg #0E1014</text>
+    <g transform="translate(245 1220) scale(0.25390625)">
+  <!-- WMonitor app icon proposal C - radar, dark theme -->
+  <defs>
+    <linearGradient id="cDp72-cD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="cDp72-cD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cDp72-cD-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cDp72-cD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cDp72-cD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cDp72-cD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#cDp72-cD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cDp72-cD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#cDp72-cD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cDp72-cD-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cDp72-cD-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#3DDC97"/>
+  <circle cx="196" cy="208" r="11" fill="#4CC2FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cDp72-cD-glyph)"/>
+</g>
+    <g transform="translate(217 1384) scale(0.09375)">
+  <!-- WMonitor app icon proposal C - radar, dark theme -->
+  <defs>
+    <linearGradient id="cDp73-cD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="cDp73-cD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cDp73-cD-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cDp73-cD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cDp73-cD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cDp73-cD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#cDp73-cD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cDp73-cD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#cDp73-cD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cDp73-cD-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cDp73-cD-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#3DDC97"/>
+  <circle cx="196" cy="208" r="11" fill="#4CC2FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cDp73-cD-glyph)"/>
+</g><text x="241" y="1450" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">48</text><g transform="translate(287 1384) scale(0.0625)">
+  <!-- WMonitor app icon proposal C - radar, dark theme -->
+  <defs>
+    <linearGradient id="cDp74-cD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="cDp74-cD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cDp74-cD-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cDp74-cD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cDp74-cD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cDp74-cD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#cDp74-cD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cDp74-cD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#cDp74-cD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cDp74-cD-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cDp74-cD-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#3DDC97"/>
+  <circle cx="196" cy="208" r="11" fill="#4CC2FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cDp74-cD-glyph)"/>
+</g><text x="303" y="1434" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">32</text><g transform="translate(341 1384) scale(0.046875)">
+  <!-- WMonitor app icon proposal C - radar, dark theme -->
+  <defs>
+    <linearGradient id="cDp75-cD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="cDp75-cD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cDp75-cD-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cDp75-cD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cDp75-cD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cDp75-cD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#cDp75-cD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cDp75-cD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#cDp75-cD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cDp75-cD-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cDp75-cD-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#3DDC97"/>
+  <circle cx="196" cy="208" r="11" fill="#4CC2FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cDp75-cD-glyph)"/>
+</g><text x="353" y="1426" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">24</text><g transform="translate(387 1384) scale(0.03125)">
+  <!-- WMonitor app icon proposal C - radar, dark theme -->
+  <defs>
+    <linearGradient id="cDp76-cD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="cDp76-cD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cDp76-cD-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cDp76-cD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cDp76-cD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cDp76-cD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#cDp76-cD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cDp76-cD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#cDp76-cD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cDp76-cD-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cDp76-cD-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#3DDC97"/>
+  <circle cx="196" cy="208" r="11" fill="#4CC2FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cDp76-cD-glyph)"/>
+</g><text x="395" y="1418" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="middle">16</text>
+    <g>
+    <rect x="140" y="1514" width="340" height="46" rx="10" fill="rgba(34,36,40,.965)" stroke="rgba(255,255,255,.15)" stroke-width="1"/>
+    <g transform="translate(153 1529) scale(0.03125)">
+  <!-- WMonitor app icon proposal C - radar, dark theme -->
+  <defs>
+    <linearGradient id="cDp77-cD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="cDp77-cD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cDp77-cD-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cDp77-cD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cDp77-cD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cDp77-cD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#cDp77-cD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cDp77-cD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#cDp77-cD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cDp77-cD-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cDp77-cD-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#3DDC97"/>
+  <circle cx="196" cy="208" r="11" fill="#4CC2FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cDp77-cD-glyph)"/>
+</g>
+    <rect x="182" y="1525" width="92" height="24" rx="7" fill="rgba(255,255,255,.07)"/>
+    <circle cx="206" cy="1537" r="3.2" fill="#4CC2FF"/><circle cx="222" cy="1537" r="3.2" fill="#B39DFF"/><circle cx="238" cy="1537" r="3.2" fill="#3DDC97"/><circle cx="254" cy="1537" r="3.2" fill="#FFB340"/>
+    <text x="466" y="1541" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#9AA3B2" text-anchor="end">14:32</text>
+  </g>
+  </g>
+    <g>
+    <rect x="628" y="1158" width="604" height="422" rx="20" fill="#EDEFF3" stroke="rgba(0,0,0,.06)" stroke-width="1"/>
+    <text x="930" y="1198" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="13" letter-spacing="1.5" fill="#5C636E" text-anchor="middle">浅色主题 · WindowBg #EDEFF3</text>
+    <g transform="translate(865 1220) scale(0.25390625)">
+  <!-- WMonitor app icon proposal C - radar, light theme -->
+  <defs>
+    <linearGradient id="cLp78-cL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="cLp78-cL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cLp78-cL-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#0A84FF" stop-opacity=".80"/>
+      <stop offset="1" stop-color="#0A84FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cLp78-cL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cLp78-cL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cLp78-cL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#cLp78-cL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cLp78-cL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#cLp78-cL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cLp78-cL-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(0,0,0,.13)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cLp78-cL-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#11A36B"/>
+  <circle cx="196" cy="208" r="11" fill="#3FA1FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cLp78-cL-glyph)"/>
+</g>
+    <g transform="translate(837 1384) scale(0.09375)">
+  <!-- WMonitor app icon proposal C - radar, light theme -->
+  <defs>
+    <linearGradient id="cLp79-cL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="cLp79-cL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cLp79-cL-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#0A84FF" stop-opacity=".80"/>
+      <stop offset="1" stop-color="#0A84FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cLp79-cL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cLp79-cL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cLp79-cL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#cLp79-cL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cLp79-cL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#cLp79-cL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cLp79-cL-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(0,0,0,.13)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cLp79-cL-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#11A36B"/>
+  <circle cx="196" cy="208" r="11" fill="#3FA1FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cLp79-cL-glyph)"/>
+</g><text x="861" y="1450" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">48</text><g transform="translate(907 1384) scale(0.0625)">
+  <!-- WMonitor app icon proposal C - radar, light theme -->
+  <defs>
+    <linearGradient id="cLp80-cL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="cLp80-cL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cLp80-cL-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#0A84FF" stop-opacity=".80"/>
+      <stop offset="1" stop-color="#0A84FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cLp80-cL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cLp80-cL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cLp80-cL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#cLp80-cL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cLp80-cL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#cLp80-cL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cLp80-cL-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(0,0,0,.13)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cLp80-cL-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#11A36B"/>
+  <circle cx="196" cy="208" r="11" fill="#3FA1FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cLp80-cL-glyph)"/>
+</g><text x="923" y="1434" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">32</text><g transform="translate(961 1384) scale(0.046875)">
+  <!-- WMonitor app icon proposal C - radar, light theme -->
+  <defs>
+    <linearGradient id="cLp81-cL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="cLp81-cL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cLp81-cL-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#0A84FF" stop-opacity=".80"/>
+      <stop offset="1" stop-color="#0A84FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cLp81-cL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cLp81-cL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cLp81-cL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#cLp81-cL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cLp81-cL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#cLp81-cL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cLp81-cL-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(0,0,0,.13)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cLp81-cL-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#11A36B"/>
+  <circle cx="196" cy="208" r="11" fill="#3FA1FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cLp81-cL-glyph)"/>
+</g><text x="973" y="1426" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">24</text><g transform="translate(1007 1384) scale(0.03125)">
+  <!-- WMonitor app icon proposal C - radar, light theme -->
+  <defs>
+    <linearGradient id="cLp82-cL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="cLp82-cL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cLp82-cL-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#0A84FF" stop-opacity=".80"/>
+      <stop offset="1" stop-color="#0A84FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cLp82-cL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cLp82-cL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cLp82-cL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#cLp82-cL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cLp82-cL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#cLp82-cL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cLp82-cL-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(0,0,0,.13)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cLp82-cL-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#11A36B"/>
+  <circle cx="196" cy="208" r="11" fill="#3FA1FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cLp82-cL-glyph)"/>
+</g><text x="1015" y="1418" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="middle">16</text>
+    <g>
+    <rect x="760" y="1514" width="340" height="46" rx="10" fill="rgba(244,244,244,.97)" stroke="rgba(0,0,0,.10)" stroke-width="1"/>
+    <g transform="translate(773 1529) scale(0.03125)">
+  <!-- WMonitor app icon proposal C - radar, light theme -->
+  <defs>
+    <linearGradient id="cLp83-cL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="cLp83-cL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cLp83-cL-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#0A84FF" stop-opacity=".80"/>
+      <stop offset="1" stop-color="#0A84FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cLp83-cL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cLp83-cL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cLp83-cL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#cLp83-cL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cLp83-cL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#cLp83-cL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cLp83-cL-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(0,0,0,.13)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cLp83-cL-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#11A36B"/>
+  <circle cx="196" cy="208" r="11" fill="#3FA1FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cLp83-cL-glyph)"/>
+</g>
+    <rect x="802" y="1525" width="92" height="24" rx="7" fill="rgba(0,0,0,.05)"/>
+    <circle cx="826" cy="1537" r="3.2" fill="#0A84FF"/><circle cx="842" cy="1537" r="3.2" fill="#7C5CE0"/><circle cx="858" cy="1537" r="3.2" fill="#11A36B"/><circle cx="874" cy="1537" r="3.2" fill="#D18400"/>
+    <text x="1086" y="1541" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E" text-anchor="end">14:32</text>
+  </g>
+  </g><text x="8" y="1618" font-family="Segoe UI, Microsoft YaHei, system-ui, sans-serif" font-size="11" fill="#5C636E">小尺寸行（48/32/24/16）为等比缩略示意；落地 .ico 时 32px 以下会按规范简化细节。</text></svg>

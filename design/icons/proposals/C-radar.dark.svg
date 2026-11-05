@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- WMonitor app icon proposal C - radar, dark theme -->
+  <defs>
+    <linearGradient id="cD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="cD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="cD-wedge" x1="0" y1="0" x2="1" y2="0.72">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity=".95"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="cD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#cD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#cD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#cD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#cD-gloss)"/>
+  </g>
+  <!-- rings -->
+  <circle cx="256" cy="256" r="116" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="20"/>
+  <circle cx="256" cy="256" r="58" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="12"/>
+  <!-- sweep wedge -->
+  <path d="M256 256 L256 150 A106 106 0 0 1 355.6 219.7 Z" fill="url(#cD-wedge)"/>
+  <!-- leading edge -->
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
+  <!-- blips -->
+  <circle cx="318" cy="300" r="16" fill="#3DDC97"/>
+  <circle cx="196" cy="208" r="11" fill="#4CC2FF"/>
+  <circle cx="256" cy="256" r="16" fill="url(#cD-glyph)"/>
+</svg>

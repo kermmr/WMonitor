@@ -157,6 +157,27 @@ internal static class Gfx
         return new SizeF(m.Width, m.Height);
     }
 
+    private static Bitmap? _mBmp;
+    private static Graphics? _mG;
+
+    /// <summary>共用量宽 Graphics（Pixel 单位）。Bitmap 必须静态持有 —— Graphics 不给 native 位图当
+    /// GC 根，临时位图被回收后 MeasureString/GetHeight 会抛「Parameter is not valid」
+    /// （2026-11-05 实测，同 BentoButton.MeasureG）。</summary>
+    public static Graphics MeasureG
+    {
+        get
+        {
+            if (_mG == null)
+            {
+                _mBmp = new Bitmap(1, 1);
+                _mG = Graphics.FromImage(_mBmp);
+                _mG.PageUnit = GraphicsUnit.Pixel;
+                _mG.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+            }
+            return _mG;
+        }
+    }
+
     public static void DisposeFonts()
     {
         foreach (var f in Fonts.Values) f.Dispose();

@@ -189,12 +189,12 @@ public sealed class ActionConfirmDialog : Form
                        + 20            // 影响范围
                        + 18            // 错误行（常驻槽位，空则不画）
                        + 6) * _s);
-        if (IsCritical) h += (int)(36 * _s);
+        if (IsCritical) h += (int)(40 * _s);   // C9 联动：两行 12px 墨迹 ~32，槽位 36→40
         if (_limited) h += (int)(18 * _s);
-        if (_priority.Visible) h += (int)(56 * _s);
+        if (_priority.Visible) h += (int)(54 * _s);
         if (_batchCheck.Visible) h += (int)(30 * _s);
         h += (int)(30 * _s);            // 确认勾选
-        h += (int)(52 * _s);            // 按钮行
+        h += (int)(50 * _s);            // 按钮行（C17：视觉高 32 + 投影 6 + 间距 12）
         h += (int)(16 * _s);            // 底边距
         return new Size(w, h);
     }
@@ -204,9 +204,12 @@ public sealed class ActionConfirmDialog : Form
         float s = _s;
         int pad = (int)(20 * s);
         int w = ClientSize.Width - pad * 2;
-        int y = ClientSize.Height - (int)(14 * s) - (int)(40 * s);
-        _btnConfirm.SetBounds(ClientSize.Width - pad - (int)(120 * s), y, (int)(120 * s), (int)(40 * s));
-        _btnCancel.SetBounds(_btnConfirm.Left - (int)(10 * s) - (int)(86 * s), y, (int)(86 * s), (int)(40 * s));
+        // A7（C5）：取消/确认组内等宽 = 组内最宽者（B4 目标值 ≈120 保底）；间距 8（B4）
+        int group = Math.Max(BentoButton.GroupWidth(s, "取消", _btnConfirm.Text), (int)(120 * s));
+        int bh = (int)(38 * s);         // C17/A10：视觉高 32 + 投影预留 6（原 40 废弃）
+        int y = ClientSize.Height - (int)(14 * s) - bh;
+        _btnConfirm.SetBounds(ClientSize.Width - pad - group, y, group, bh);
+        _btnCancel.SetBounds(_btnConfirm.Left - (int)(8 * s) - group, y, group, bh);
 
         y -= (int)(8 * s) + _confirmCheck.Height;
         _confirmCheck.SetBounds(pad, y, w, _confirmCheck.Height);
@@ -218,8 +221,8 @@ public sealed class ActionConfirmDialog : Form
         }
         if (_priority.Visible)
         {
-            y -= (int)(10 * s) + (int)(34 * s);
-            _priority.SetBounds(pad, y, w, (int)(34 * s));
+            y -= (int)(10 * s) + (int)(32 * s);
+            _priority.SetBounds(pad, y, w, (int)(32 * s));   // C11：段控 32（原 34 废弃）
         }
     }
 
@@ -246,11 +249,11 @@ public sealed class ActionConfirmDialog : Form
         float y = 22 * s;
 
         using (var tb = new SolidBrush(_kind == DashboardAction.Terminate ? _th.Alert : _th.Text))
-            g.DrawString(TitleText, Gfx.F("Segoe UI", 13.5f * s, FontStyle.Bold), tb, pad, y, StringFormat.GenericTypographic);
+            g.DrawString(TitleText, Gfx.F("Segoe UI", 14f * s, FontStyle.Bold), tb, pad, y, StringFormat.GenericTypographic);   // A3：对话框标题 Title 14（原 13.5 废弃）
         y += 28 * s;
 
-        var fBody = Gfx.F("Segoe UI", 10.5f * s, FontStyle.Regular);
-        var fLabel = Gfx.F("Segoe UI", 10f * s, FontStyle.Regular);
+        var fBody = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);   // A3：正文 Body 12（原 10.5 废弃）
+        var fLabel = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);  // A3：辅助说明 Body 12（原 10 废弃）
 
         using (var lb = new SolidBrush(_th.Text))
         {
@@ -283,8 +286,8 @@ public sealed class ActionConfirmDialog : Form
         {
             using var rb = new SolidBrush(_th.Alert);
             g.DrawString("⚠ 这是 Windows 外壳 / 系统体验组件，误伤可能导致任务栏、开始菜单或资源管理器异常（注销后可恢复）。",
-                fLabel, rb, new RectangleF(pad, y, w, 30 * s), StringFormat.GenericTypographic);
-            y += 36 * s;
+                fLabel, rb, new RectangleF(pad, y, w, 34 * s), StringFormat.GenericTypographic);
+            y += 40 * s;
         }
         if (_limited)
         {
@@ -383,11 +386,10 @@ public sealed class ConfirmCheck : Control
         var r = new RectangleF(0, (Height - box) / 2f, box, box);
         using (var p = Gfx.RoundRect(r, 4 * s))
         {
-            using var bg = new SolidBrush(Checked
-                ? Color.FromArgb(255, _th.Accent.R, _th.Accent.G, _th.Accent.B)
-                : (_th.IsDark ? Color.FromArgb(255, 32, 36, 42) : Color.FromArgb(255, 236, 238, 242)));
+            // A8（C2/C7）：未选 = SecondaryBg + InputBorder，选中 = Accent + 白勾
+            using var bg = new SolidBrush(Checked ? _th.Accent : _th.SecondaryBg);
             g.FillPath(bg, p);
-            using var pen = new Pen(Checked ? _th.Accent : (_th.IsDark ? Color.FromArgb(90, 255, 255, 255) : Color.FromArgb(70, 0, 0, 0)), 1f);
+            using var pen = new Pen(Checked ? _th.Accent : _th.InputBorder, 1f);
             g.DrawPath(pen, p);
         }
         if (Checked)
@@ -399,7 +401,7 @@ public sealed class ConfirmCheck : Control
         }
 
         using var tb = new SolidBrush(_th.Text);
-        g.DrawString(Text, Gfx.F("Segoe UI", 10.5f * s, FontStyle.Regular), tb,
+        g.DrawString(Text, Gfx.F("Segoe UI", 12f * s, FontStyle.Regular), tb,
             box + 8 * s, Height / 2f - 8 * s, StringFormat.GenericTypographic);
     }
 
@@ -417,6 +419,7 @@ public sealed class MessageDialog : Form
     private readonly string _body;
     private readonly bool _error;
     private readonly float _s;
+    private readonly int _lineH;   // C22：Body 12 真实行距（随 DPI 缩放，含 scale）
 
     public MessageDialog(Theme th, string title, string body, bool error, float scale)
     {
@@ -438,15 +441,20 @@ public sealed class MessageDialog : Form
         btn.Th = th;
         Controls.Add(btn);
 
-        // 量正文高度：11px/行 + 余量
+        // C22：行距按 Body 12 的真实行距重算（Segoe UI 12px ≈16px；旧 17 是对旧小字号的手量值）
+        var fBody = Gfx.F("Segoe UI", 12f * scale, FontStyle.Regular);
+        _lineH = (int)Math.Ceiling(fBody.GetHeight(Gfx.MeasureG));
         int lines = body.Count(c => c == '\n') + 1;
         int w = (int)(440 * scale);
-        int h = (int)((30 + 20 + lines * 17 + 52 + 16) * scale);
+        int h = (int)((30 + 20 + 50 + 16) * scale) + lines * _lineH;   // C17：按钮行 50（38 高钮）
         ClientSize = new Size(w, h);
-        btn.SetBounds(w - (int)(20 * scale) - (int)(110 * scale), h - (int)(14 * scale) - (int)(40 * scale),
-            (int)(110 * scale), (int)(40 * scale));
 
         CancelButton = btn;
+        // A7/B4（C5）：对话框主按钮组内等宽保底 ≈120
+        int bw = Math.Max(BentoButton.WidthFor("确定", scale), (int)(120 * scale));
+        btn.SetBounds(w - (int)(20 * scale) - bw, h - (int)(14 * scale) - (int)(38 * scale),
+            bw, (int)(38 * scale));   // C17/A10：视觉高 32 + 投影 6（原 40 废弃）
+
         KeyDown += (_, e) =>
         {
             if (e.KeyCode == Keys.Escape || e.KeyCode == Keys.Enter) DialogResult = DialogResult.OK;
@@ -473,15 +481,15 @@ public sealed class MessageDialog : Form
 
         int pad = (int)(20 * s);
         using (var tb = new SolidBrush(_error ? _th.Alert : _th.Text))
-            g.DrawString(Text, Gfx.F("Segoe UI", 13f * s, FontStyle.Bold), tb, pad, 20 * s, StringFormat.GenericTypographic);
+            g.DrawString(Text, Gfx.F("Segoe UI", 14f * s, FontStyle.Bold), tb, pad, 20 * s, StringFormat.GenericTypographic);   // A3：标题 Title 14（原 13 废弃）
 
-        var f = Gfx.F("Segoe UI", 10.5f * s, FontStyle.Regular);
+        var f = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);   // A3：正文 Body 12（原 10.5 废弃）
         using var bb = new SolidBrush(_th.Text);
         float y = 52 * s;
         foreach (string line in _body.Split('\n'))
         {
             g.DrawString(line.TrimEnd('\r'), f, bb, pad, y, StringFormat.GenericTypographic);
-            y += 17 * s;
+            y += _lineH;   // C22：真实行距（含 scale），不再乘 s
         }
     }
 }

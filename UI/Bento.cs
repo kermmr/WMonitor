@@ -27,7 +27,8 @@ public sealed class BentoCard : Panel
     /// <summary>标题前的小圆点（配色语义：CPU 蓝、内存紫、GPU 绿…）。</summary>
     public Color Accent = Color.Empty;
 
-    public int Radius = 14;
+    /// <summary>卡片圆角（03 §A5/C6：所有卡片级容器统一 R12，原 14 废弃）。</summary>
+    public int Radius = 12;
     public int PadX = 18;
 
     /// <summary>标题区高度，内容从这一行往下排。</summary>
@@ -55,8 +56,10 @@ public sealed class BentoCard : Panel
 
     private void EnsureFonts()
     {
-        _titleFont ??= new Font("Segoe UI", 10.5f, FontStyle.Bold);
-        _noteFont ??= new Font("Segoe UI", 8.5f, FontStyle.Regular);
+        // C10：pt → px（A3）。标题 10.5pt 渲染恰 ≈14px（Title 档，仅单位规范化）；
+        // 注释 8.5pt ≈11.3px 低于 12px 下限，真变值 → Body 12
+        _titleFont ??= new Font("Segoe UI", 14f, FontStyle.Bold, GraphicsUnit.Pixel);
+        _noteFont ??= new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel);
     }
 
     protected override void OnPaintBackground(PaintEventArgs e)
@@ -187,6 +190,15 @@ public sealed class BentoButton : Control, IButtonControl
     /// <summary>字号缩放（高 DPI 容器传 DeviceDpi/96）：字体按需重建，默认 1 行为不变。</summary>
     public float FontScale = 1f;
 
+    /// <summary>
+    /// Ghost 幽灵按钮（A7/C19）：透明底 + <see cref="Theme.Label"/> 字 Regular，hover/按下变
+    /// <see cref="Theme.Text"/>；永不投影、无 DisabledBg 底（禁用 = 字 Label@190）。低强调操作
+    /// （表格列头、状态栏操作等）。高度建议 32（Ghost 无投影预留，BodyH = Height）。
+    /// 注意：标题栏窗口钮不走这里 —— B1 有自己的规格（hover 底 Hover + 关闭钮红底 + Text 图标），
+    /// 由 ChromeForm 自绘（2026-11-05 入档偏差，见 docs/14 P3 日志）。
+    /// </summary>
+    public bool Ghost;
+
     public int Radius = 10;
 
     /// <summary>控件底部留给投影的高度。</summary>
@@ -205,11 +217,11 @@ public sealed class BentoButton : Control, IButtonControl
         DoubleBuffered = true;
         Cursor = Cursors.Hand;
         TabStop = true;
-        Height = 44;
+        Height = 38;    // A6/A10（C11）：视觉高 32 + 投影预留 6（原 44 = 视觉 38 废弃）
         Width = 100;
     }
 
-    private int BodyH => Height - Shadow;
+    private int BodyH => Height - (Ghost ? 0 : Shadow);   // Ghost 无投影，不预留（C19）
 
     private static Color Mix(Color a, Color b, float t) => Color.FromArgb(
         a.A,
@@ -221,23 +233,68 @@ public sealed class BentoButton : Control, IButtonControl
 
     private Color Body()
     {
+        if (!Enabled) return Th.DisabledBg;                       // A7 Disabled（C3）：禁用不参与 hover/pressed
         if (_down)
             return Primary ? Mix(AccentColor, Color.Black, 0.24f)
-                           : Mix(Th.Soft, Color.Black, Th.IsDark ? 0.30f : 0.14f);
+                           : Mix(Th.SecondaryBg, Color.Black, Th.IsDark ? 0.30f : 0.14f);
         if (_hover)
             return Primary ? Mix(AccentColor, Color.White, 0.20f)
-                           : Mix(Th.Soft, Th.IsDark ? Color.White : Color.Black, Th.IsDark ? 0.14f : 0.07f);
-        return Primary ? AccentColor : (Th.IsDark ? Th.Soft : Th.SoftLight);
+                           : Mix(Th.SecondaryBg, Th.IsDark ? Color.White : Color.Black, Th.IsDark ? 0.14f : 0.07f);
+        return Primary ? AccentColor : Th.SecondaryBg;
     }
 
-    private Color TextColor() => Primary ? Color.White : Th.Text;
+    private Color TextColor()
+    {
+        if (!Enabled) return Color.FromArgb(190, Th.Label);
+        if (Ghost) return _hover || _down ? Th.Text : Th.Label;   // A7 Ghost：Label，hover 变 Text（C19）
+        return Primary ? Color.White : Th.Text;
+    }
+
+    // ---------------- 尺寸规则（03 §A7，C5） ----------------
+
+    private static Bitmap? _measureBmp;
+    private static Graphics? _measureG;
+
+    /// <summary>共用量宽 Graphics（Pixel 单位）。按钮宽度一律以主按钮 Bold 字宽为基准。
+    /// Bitmap 必须静态持有 —— Graphics 不给 native 位图当 GC 根，临时位图被回收后
+    /// MeasureString 会抛「Parameter is not valid」（2026-11-05 action-ui-probe 实测）。</summary>
+    private static Graphics MeasureG
+    {
+        get
+        {
+            if (_measureG == null)
+            {
+                _measureBmp = new Bitmap(1, 1);
+                _measureG = Graphics.FromImage(_measureBmp);
+                _measureG.PageUnit = GraphicsUnit.Pixel;
+                _measureG.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+            }
+            return _measureG;
+        }
+    }
+
+    /// <summary>
+    /// A7 宽度规则①：内容宽 = Bold 12 字宽 + 32（水平内边距 16×2）。同字数的按钮无论类型宽度一致。
+    /// </summary>
+    public static int WidthFor(string text, float scale) =>
+        (int)Math.Ceiling(Gfx.Measure(MeasureG, text, Gfx.F("Segoe UI", 12f * scale, FontStyle.Bold)).Width + 32 * scale);
+
+    /// <summary>A7 宽度规则②：组内等宽 —— 并排按钮组统一取组内最宽者。</summary>
+    public static int GroupWidth(float scale, params string[] texts)
+    {
+        int w = 0;
+        foreach (var t in texts) w = Math.Max(w, WidthFor(t, scale));
+        return w;
+    }
 
     protected override void OnPaint(PaintEventArgs e)
     {
         if (_fontScale != FontScale || _font == null)
         {
-            _font?.Dispose();
-            _font = new Font("Segoe UI", 9.5f * FontScale, Primary ? FontStyle.Bold : FontStyle.Regular);
+            // A3/C5：Body 12px（Gfx.F 像素单位），主按钮 Bold、次按钮 Regular（9.5pt 旧值废弃）
+            // 注意：_font 来自 Gfx 进程级缓存，绝不能 Dispose（否则等于销毁共享字体，
+            // 下一个 MeasureString/DrawString 直接「Parameter is not valid」，2026-11-05 实测）
+            _font = Gfx.F("Segoe UI", 12f * FontScale, Primary ? FontStyle.Bold : FontStyle.Regular);
             _fontScale = FontScale;
         }
 
@@ -248,10 +305,10 @@ public sealed class BentoButton : Control, IButtonControl
 
         float h = BodyH;
 
-        // 投影：常态不画（平贴）；hover 抬高，按下收回。
+        // 投影：常态不画（平贴）；hover 抬高，按下收回。禁用态与 Ghost 不投影（A7/A10，C19）。
         // 必须由外向内叠 —— 外圈最淡、内圈最深。反过来（外圈最深）会在按钮下面留一条硬边，
         // 浅色底上尤其难看。
-        int layers = _down ? 2 : _hover ? 10 : 0;
+        int layers = !Ghost && !_down && _hover && Enabled ? 10 : !Ghost && _down && Enabled ? 2 : 0;
         if (layers > 0)
         {
             var shade = Th.IsDark && Primary ? Mix(AccentColor, Color.Black, 0.68f) : Color.Black;
@@ -271,15 +328,18 @@ public sealed class BentoButton : Control, IButtonControl
         }
 
         var rect = new RectangleF(0.5f, 0.5f, Width - 1f, h - 1f);
-        using (var path = Gfx.RoundRect(rect, Radius))
-        using (var bg = new SolidBrush(Body()))
-            g.FillPath(bg, path);
+        if (!Ghost || !Enabled)      // C19/A7：Ghost 常态透明（禁用也不铺 DisabledBg，只把字压到 Label@190）
+        {
+            using (var path = Gfx.RoundRect(rect, Radius))
+            using (var bg = new SolidBrush(Body()))
+                g.FillPath(bg, path);
+        }
 
-        // 焦点环（键盘 Tab 过来时）
-        if (Focused)
+        // 焦点环（键盘 Tab 过来时）；禁用态不画。Ghost 用 Text 定色（不随 hover 的 Label↔Text 抖动）
+        if (Focused && Enabled)
         {
             using var fp = Gfx.RoundRect(new RectangleF(2.5f, 2.5f, Width - 5f, h - 5f), Radius - 3);
-            using var pen = new Pen(Color.FromArgb(120, TextColor()), 1f);
+            using var pen = new Pen(Color.FromArgb(120, Ghost ? Th.Text : TextColor()), 1f);
             g.DrawPath(pen, fp);
         }
 
@@ -290,6 +350,13 @@ public sealed class BentoButton : Control, IButtonControl
     }
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+
+    protected override void OnEnabledChanged(EventArgs e)
+    {
+        _hover = _down = false;      // A7（C3）：UserPaint 控件禁用不自动置灰，切状态必须自己重画
+        Invalidate();
+        base.OnEnabledChanged(e);
+    }
 
     protected override void OnMouseLeave(EventArgs e)
     {
@@ -343,7 +410,7 @@ public sealed class BentoButton : Control, IButtonControl
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) _font?.Dispose();
+        // _font 来自 Gfx 缓存（进程级共享），这里不 Dispose —— 见 OnPaint 内注释
         base.Dispose(disposing);
     }
 }

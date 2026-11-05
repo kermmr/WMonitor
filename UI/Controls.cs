@@ -17,7 +17,8 @@ public sealed class Segmented : Control
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        Height = 34;
+        Height = 32;    // A6（C11）：统一视觉高 32（原 34 废弃）
+        TabStop = true; // C18：可与 BentoButton 一同 Tab 导航
     }
 
     // 自绘控件必须自己刷底色：默认的 OnPaintBackground 用 BackColor（白），
@@ -34,14 +35,25 @@ public sealed class Segmented : Control
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
         g.Clear(Parent?.BackColor ?? Th.PanelBg);
 
+        // A8（C2/C7）：容器 = SecondaryBg + 1px InputBorder，圆角 R8；选中块 SelectedBg；hover 块 Hover 叠加
         var full = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
         using (var path = Gfx.RoundRect(full, 8f))
-        using (var bg = new SolidBrush(Th.IsDark ? Color.FromArgb(255, 32, 36, 42) : Color.FromArgb(255, 236, 238, 242)))
-            g.FillPath(bg, path);
+        {
+            using (var bg = new SolidBrush(Th.SecondaryBg)) g.FillPath(bg, path);
+            using (var pen = new Pen(Th.InputBorder, 1f)) g.DrawPath(pen, path);
+        }
+
+        // C18/A7：键盘 Tab 焦点环 —— 内缩 2.5px 处 1px Text@47%（与 BentoButton 同规格）
+        if (Focused && Enabled)
+        {
+            using var fp = Gfx.RoundRect(new RectangleF(2.5f, 2.5f, Width - 5f, Height - 5f), 5f);
+            using var pen = new Pen(Color.FromArgb(120, Th.Text), 1f);
+            g.DrawPath(pen, fp);
+        }
 
         if (Items.Length == 0) return;
         float seg = Width / (float)Items.Length;
-        var font = Gfx.F("Segoe UI", 11.5f * FontScale, FontStyle.Regular);
+        var font = Gfx.F("Segoe UI", 12f * FontScale, FontStyle.Regular);
 
         for (int i = 0; i < Items.Length; i++)
         {
@@ -50,9 +62,7 @@ public sealed class Segmented : Control
             if (sel || i == _hover)
             {
                 using var p = Gfx.RoundRect(r, 6f);
-                using var b = new SolidBrush(sel
-                    ? (Th.IsDark ? Color.FromArgb(255, 62, 68, 78) : Color.White)
-                    : (Th.IsDark ? Color.FromArgb(90, 70, 76, 86) : Color.FromArgb(90, 220, 223, 228)));
+                using var b = new SolidBrush(sel ? Th.SelectedBg : Th.Hover);
                 g.FillPath(b, p);
             }
 
@@ -94,6 +104,32 @@ public sealed class Segmented : Control
         base.OnMouseDown(e);
     }
 
+    protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+    protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        // C18：方向键切换选项（单选段控惯例，立即生效并触发 SelectionChanged）
+        int d = e.KeyCode switch
+        {
+            Keys.Left or Keys.Up => -1,
+            Keys.Right or Keys.Down => 1,
+            _ => 0
+        };
+        if (d != 0 && Items.Length > 0)
+        {
+            int i = Math.Clamp(SelectedIndex + d, 0, Items.Length - 1);
+            if (i != SelectedIndex)
+            {
+                SelectedIndex = i;
+                Invalidate();
+                SelectionChanged?.Invoke(this, EventArgs.Empty);
+            }
+            e.Handled = true;
+        }
+        base.OnKeyDown(e);
+    }
+
     private int HitTest(int x)
     {
         if (Items.Length == 0 || Width == 0) return -1;
@@ -110,13 +146,17 @@ public sealed class Chip : Control
     public float FontScale = 1f;
     public event EventHandler? CheckedChanged;
 
+    private bool _hover;
+
     public Chip(string text)
     {
         Text = text;
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        Height = 30;
-        Width = TextRenderer.MeasureText(text, Font).Width + 30;
+        Height = 32;    // A6（C11）：统一视觉高 32（原 30 废弃）
+        TabStop = true; // C18：可与 BentoButton 一同 Tab 导航
+        // A8（C11 备注）：默认宽随 12px 字号新算（原用控件默认 Font ≈11px 会偏窄）
+        Width = TextRenderer.MeasureText(text, Gfx.F("Segoe UI", 12f, FontStyle.Regular)).Width + 30;
     }
 
     // 自绘控件必须自己刷底色：默认的 OnPaintBackground 用 BackColor（白），
@@ -133,28 +173,41 @@ public sealed class Chip : Control
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
         g.Clear(Parent?.BackColor ?? Th.PanelBg);
 
+        // A8（C2/C4/C7）：未选 = SecondaryBg + InputBorder；选中 = Accent 淡底 + Accent 描边；
+        // hover：未选叠 Hover，选中提亮到 Accent@24%
         var full = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
         using (var p = Gfx.RoundRect(full, Height / 2f))
         {
             var fill = Checked
-                ? (Th.IsDark ? Color.FromArgb(46, 76, 194, 255) : Color.FromArgb(38, 10, 132, 255))
-                : (Th.IsDark ? Color.FromArgb(255, 34, 38, 44) : Color.FromArgb(255, 240, 241, 244));
+                ? Color.FromArgb(_hover ? 61 : Th.IsDark ? 46 : 38, Th.Accent)
+                : Th.SecondaryBg;
             using var b = new SolidBrush(fill);
             g.FillPath(b, p);
+            if (!Checked && _hover)
+                using (var hb = new SolidBrush(Th.Hover))
+                    g.FillPath(hb, p);
             using var pen = new Pen(Checked
-                ? (Th.IsDark ? Color.FromArgb(150, 76, 194, 255) : Color.FromArgb(120, 10, 132, 255))
-                : (Th.IsDark ? Color.FromArgb(38, 255, 255, 255) : Color.FromArgb(26, 0, 0, 0)), 1f);
+                ? Color.FromArgb(Th.IsDark ? 150 : 120, Th.Accent)
+                : Th.InputBorder, 1f);
             g.DrawPath(pen, p);
+        }
+
+        // C18/A7：键盘 Tab 焦点环 —— 内缩 2.5px 处 1px Text@47%（与 BentoButton 同规格）
+        if (Focused && Enabled)
+        {
+            using var fp = Gfx.RoundRect(new RectangleF(2.5f, 2.5f, Width - 5f, Height - 5f), (Height - 5f) / 2f);
+            using var pen = new Pen(Color.FromArgb(120, Th.Text), 1f);
+            g.DrawPath(pen, fp);
         }
 
         var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         using var tb = new SolidBrush(Checked ? Th.Text : Th.Label);
-        g.DrawString(Text, Gfx.F("Segoe UI", 11f * FontScale, FontStyle.Regular), tb,
+        g.DrawString(Text, Gfx.F("Segoe UI", 12f * FontScale, FontStyle.Regular), tb,
             new RectangleF(0, 0, Width, Height), sf);
     }
 
-    protected override void OnMouseEnter(EventArgs e) { Invalidate(); base.OnMouseEnter(e); }
-    protected override void OnMouseLeave(EventArgs e) { Invalidate(); base.OnMouseLeave(e); }
+    protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e) { _hover = false; Invalidate(); base.OnMouseLeave(e); }
 
     protected override void OnMouseDown(MouseEventArgs e)
     {
@@ -162,6 +215,22 @@ public sealed class Chip : Control
         Invalidate();
         CheckedChanged?.Invoke(this, EventArgs.Empty);
         base.OnMouseDown(e);
+    }
+
+    protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+    protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        // C18：Space 切换开关（Enter 不拦 —— 对话框里 Enter 是确认键）
+        if (e.KeyCode == Keys.Space)
+        {
+            Checked = !Checked;
+            Invalidate();
+            CheckedChanged?.Invoke(this, EventArgs.Empty);
+            e.Handled = true;
+        }
+        base.OnKeyDown(e);
     }
 }
 
@@ -279,7 +348,7 @@ public sealed class Stepper : Control
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint |
                  ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
-        Height = 30;
+        Height = 32;    // A6（C11）：统一视觉高 32（原 30 废弃）
         Width = 104;
         Cursor = Cursors.Hand;
         _repeat = new System.Windows.Forms.Timer { Interval = 380 };
@@ -318,13 +387,10 @@ public sealed class Stepper : Control
         var full = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
         using (var p = Gfx.RoundRect(full, 8f))
         {
-            using var bg = new SolidBrush(Th.IsDark
-                ? Color.FromArgb(255, 32, 36, 42)
-                : Color.FromArgb(255, 236, 238, 242));
+            // A9（C2/C7）：容器 SecondaryBg + 1px InputBorder；± 区 hover 叠加 Hover
+            using var bg = new SolidBrush(Th.SecondaryBg);
             g.FillPath(bg, p);
-            using var pen = new Pen(Th.IsDark
-                ? Color.FromArgb(38, 255, 255, 255)
-                : Color.FromArgb(26, 0, 0, 0), 1f);
+            using var pen = new Pen(Th.InputBorder, 1f);
             g.DrawPath(pen, p);
         }
 
@@ -333,9 +399,7 @@ public sealed class Stepper : Control
         {
             var r = new RectangleF(_hot == 0 ? 2.5f : Width - BtnW - 2.5f, 2.5f, BtnW, Height - 5f);
             using var hp = Gfx.RoundRect(r, 6f);
-            using var hb = new SolidBrush(Th.IsDark
-                ? Color.FromArgb(90, 70, 76, 86)
-                : Color.FromArgb(90, 220, 223, 228));
+            using var hb = new SolidBrush(Th.Hover);
             g.FillPath(hb, hp);
         }
 
@@ -355,7 +419,7 @@ public sealed class Stepper : Control
 
         var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         using var tb = new SolidBrush(Th.Text);
-        g.DrawString(_value.ToString(), Gfx.F("Segoe UI", 11.5f, FontStyle.Bold), tb,
+        g.DrawString(_value.ToString(), Gfx.F("Segoe UI", 12f, FontStyle.Bold), tb,
             new RectangleF(BtnW, 0, Width - BtnW * 2, Height), sf);
     }
 

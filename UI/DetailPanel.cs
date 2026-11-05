@@ -33,7 +33,7 @@ public sealed class DetailPanel : LayeredWindow
     {
         ("1m", 1), ("5m", 5), ("1h", 60), ("24h", 1440)
     };
-    private const float ChipW = 26f, ChipH = 16f, ChipGap = 4f;
+    private const float ChipW = 30f, ChipH = 18f, ChipGap = 4f;   // C9：文字 12px 后 26×16 装不下「24h」
     private readonly RectangleF[] _winRects = new RectangleF[Windows.Length];
 
     private readonly float[]?[] _cache = new float[]?[7];
@@ -164,8 +164,8 @@ public sealed class DetailPanel : LayeredWindow
         float right = w - pad;
 
         // ---- 标题 + 时间窗 ----
-        Gfx.Text(g, "系统监视", Gfx.F("Segoe UI", 12.5f, FontStyle.Bold), th.Text, pad, 13f);
-        float titleW = Gfx.Measure(g, "系统监视", Gfx.F("Segoe UI", 12.5f, FontStyle.Bold)).Width;
+        Gfx.Text(g, "系统监视", Gfx.F("Segoe UI", 14f, FontStyle.Bold), th.Text, pad, 13f);   // A3：Title 14（原 12.5 废弃）
+        float titleW = Gfx.Measure(g, "系统监视", Gfx.F("Segoe UI", 14f, FontStyle.Bold)).Width;
         DrawWindowChips(g, cfg, th, right);
 
         // 资源面板入口（主面板 v0.18）：标题右侧的四格图标；总开关关闭时不画。
@@ -188,7 +188,7 @@ public sealed class DetailPanel : LayeredWindow
         float footY = rowY + rowH * rows.Count + 4;
         using (var sep = new Pen(th.Sep, 1f)) g.DrawLine(sep, pad, footY, right, footY);
 
-        var f = Gfx.F("Segoe UI", 9.5f, FontStyle.Regular);
+        var f = Gfx.F("Segoe UI", 12f, FontStyle.Regular);   // A3 最小 12（原 9.5 废弃）
         float fx = pad;
         fx += DrawMeta(g, fx, footY + 12, "CPU", $"{s.CpuGhz:0.0} GHz", th.Label, th.Text, f);
         fx += DrawMeta(g, fx, footY + 12, "GPU", double.IsNaN(s.GpuTempC) ? "—" : $"{s.GpuTempC:0}°C", th.Label, th.Text, f);
@@ -326,11 +326,11 @@ public sealed class DetailPanel : LayeredWindow
         float x = pad + 26 + 11;
         const float numW = 66;
 
-        // 名称 + 副标题
-        var fName = Gfx.F("Segoe UI", 11.5f, FontStyle.Bold);
-        Gfx.Text(g, name, fName, th.Text, x, cy - 15);
-        var subFont = Gfx.F("Segoe UI", 9.5f, FontStyle.Regular);
-        Gfx.Text(g, sub, subFont, th.Label, x + Gfx.Measure(g, name, fName).Width + 8, cy - 13.5f);
+        // 名称 + 副标题（A3：行名 Title 14 Bold（原 11.5）、副题 Body 12（原 9.5））
+        var fName = Gfx.F("Segoe UI", 14f, FontStyle.Bold);
+        Gfx.Text(g, name, fName, th.Text, x, cy - 17);
+        var subFont = Gfx.F("Segoe UI", 12f, FontStyle.Regular);
+        Gfx.Text(g, sub, subFont, th.Label, x + Gfx.Measure(g, name, fName).Width + 8, cy - 15);
 
         // 曲线区域（bar 让位给它）
         var spark = new RectangleF(right - numW - 100, cy - 12, 92, 24);
@@ -350,14 +350,14 @@ public sealed class DetailPanel : LayeredWindow
 
         DrawSpark(g, spark, Series(kind, cfg), color);
 
-        // 数值 + 单位（整体右对齐）
-        var fNum = Gfx.F("Segoe UI", 15f, FontStyle.Bold);
-        var fUnit = Gfx.F("Segoe UI", 9f, FontStyle.Regular);
+        // 数值 + 单位（整体右对齐；A3：数值 Value 16 Bold（原 15）、单位 Body 12（原 9））
+        var fNum = Gfx.F("Segoe UI", 16f, FontStyle.Bold);
+        var fUnit = Gfx.F("Segoe UI", 12f, FontStyle.Regular);
         float vw = Gfx.Measure(g, value, fNum).Width;
         float uw = Gfx.Measure(g, unit, fUnit).Width;
         float sx = right - (vw + 3 + uw);
-        Gfx.Text(g, value, fNum, th.Text, sx, cy - 10);
-        Gfx.Text(g, unit, fUnit, th.Label, sx + vw + 3, cy + 1);
+        Gfx.Text(g, value, fNum, th.Text, sx, cy - 11);
+        Gfx.Text(g, unit, fUnit, th.Label, sx + vw + 3, cy - 2);
     }
 
     // ---------------- 时间窗 ----------------
@@ -369,7 +369,7 @@ public sealed class DetailPanel : LayeredWindow
         if (History is not { Enabled: true })
         {
             string cap = $"{Math.Max(1, cfg.RefreshMs / 1000.0):0.#}s · 60 点";
-            var cf = Gfx.F("Segoe UI", 9.5f, FontStyle.Regular);
+            var cf = Gfx.F("Segoe UI", 12f, FontStyle.Regular);   // A3 最小 12（原 9.5 废弃）
             Gfx.Text(g, cap, cf, th.Label, right - Gfx.Measure(g, cap, cf).Width, 16f);
             for (int i = 0; i < _winRects.Length; i++) _winRects[i] = RectangleF.Empty;
             return;
@@ -377,7 +377,7 @@ public sealed class DetailPanel : LayeredWindow
 
         int count = LongWindowAvailable() ? Windows.Length : Windows.Length - 1;
         float x = right - count * ChipW - (count - 1) * ChipGap;
-        var f = Gfx.F("Segoe UI", 9f, FontStyle.Regular);
+        var f = Gfx.F("Segoe UI", 12f, FontStyle.Regular);   // A3 最小 12（原 9 废弃）
         var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
 
         for (int i = 0; i < count; i++)

@@ -7,13 +7,14 @@ namespace WMonitor.UI;
 /// <summary>
 /// 资源管控主面板（plan §2）：普通 Form —— 可缩放、有任务栏项、正常焦点策略；
 /// 不继承 LayeredWindow（plan §10.5），不复用 DetailPanel。
+/// C1（03 §B1）：全自绘无边框标题栏（ChromeForm），标题只画一遍。
 ///
 /// 数据流（plan §3）：自己的 WinForms Timer（DashboardRefreshMs，0 = 跟随全局）驱动
 /// AppMetricsHub.Combine(_global())；全局快照引用 MonitorAppContext._last，不重复建全局 PDH。
 /// 过滤 / 排序在这里完成，DashboardTable 只收排好序的行。
 /// 生命周期（plan §4.3）：打开时创建 Hub、关闭时 Dispose，不常驻。
 /// </summary>
-public sealed class MainDashboardForm : Form
+public sealed class MainDashboardForm : ChromeForm
 {
     private readonly AppConfig _cfg;
     private readonly Func<MetricsSnapshot> _global;
@@ -65,7 +66,7 @@ public sealed class MainDashboardForm : Form
         _hub = new AppMetricsHub(cfg.DashboardGpuRefreshMs);   // GPU 子采样间隔（默认 2s，plan §3）
 
         Text = "WMonitor 资源面板";
-        Font = new Font("Segoe UI", 9f);
+        Font = new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel);   // C10：px 单位（原 9pt 废弃）
         AutoScaleMode = AutoScaleMode.None;
         MinimumSize = new Size(1040, 660);
         Size = new Size(1280, 800);
@@ -74,8 +75,6 @@ public sealed class MainDashboardForm : Form
         BackColor = th.WindowBg;
         DoubleBuffered = true;
         KeyPreview = true;
-        try { if (Icon == null) Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
-
         // ---- 总览卡 ----
         _cardCpu = new MetricCard { Accent = th.Cpu, LabelText = "CPU" };
         _cardRam = new MetricCard { Accent = th.Ram, LabelText = "内存" };
@@ -221,7 +220,21 @@ public sealed class MainDashboardForm : Form
 
         RestoreWindowBounds();
 
-        // 首次同步采样，避免空列表首帧（plan §3.3.8）
+        _timer.Tick += (_, _) => Tick();
+        _timer.Start();
+
+        DpiChanged += (_, _) => OnScaleChanged();
+    }
+
+    private bool _firstSampleDone;
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        if (_firstSampleDone) return;
+        _firstSampleDone = true;
+        // 首帧先画出来（构造函数里同步采样会把窗口出现前的 UI 线程卡住 1~2s，
+        // 用户实测表现为「透明窗口要拖一下才有反应」）——Shown 之后再做首次采样填数据
         try
         {
             _snap = _hub.Combine(_global());
@@ -230,11 +243,7 @@ public sealed class MainDashboardForm : Form
             RebuildRows();
         }
         catch { }
-
-        _timer.Tick += (_, _) => Tick();
-        _timer.Start();
-
-        DpiChanged += (_, _) => OnScaleChanged();
+        Invalidate(true);
     }
 
     private int EffectiveInterval()
@@ -242,6 +251,12 @@ public sealed class MainDashboardForm : Form
         int ms = _cfg.DashboardRefreshMs == 0 ? _cfg.RefreshMs : _cfg.DashboardRefreshMs;
         return Math.Clamp(ms, 250, 10000);
     }
+
+    // ---------------- C1 标题栏（03 §B1） ----------------
+
+    protected override float ChromeScale => _s;
+    protected override bool ShowMinButton => true;
+    protected override bool ShowMaxButton => true;
 
     private static DashboardTable.Column MapCol(DashboardSort s) => s switch
     {
@@ -749,26 +764,32 @@ public sealed class MainDashboardForm : Form
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        if (IsHandleCreated) DoLayout();
+        if (IsHandleCreated)
+        {
+            DoLayout();
+            Invalidate();       // 最大化/还原时标题栏 restore 图标要跟着换
+        }
     }
 
     private void DoLayout()
     {
         int W = ClientSize.Width, H = ClientSize.Height;
-        int pad = R(14), gap = R(10);
+        int pad = R(16), gap = R(12);   // A4（C12）：页面边距 16、区块间距 12（原 14/10 废弃）
 
-        int headH = R(50);
+        int capH = R(44);        // C1：自绘标题栏（B1）
+        int ctrlH = R(44);       // 控制行带（B1：高 44，控件 32 垂直居中）
         int cardsH = R(106);
         int toolH = R(40);
         int detailH = R(94);
         int statusH = R(24);
 
-        // 顶栏：标题左，控制右（阶段 3 加「系统进程」Chip）
+        // 控制行：标题栏下方整带（B1），控件垂直居中
         int btnW = R(96), chipW = R(96), refW = R(280);
-        _btnSettings.SetBounds(W - pad - btnW, R(9), btnW, R(32));
-        _bgChip.SetBounds(W - pad - btnW - gap - chipW, R(9), chipW, R(32));
-        _sysChip.SetBounds(W - pad - btnW - gap - chipW - gap - chipW, R(9), chipW, R(32));
-        _refreshSwitch.SetBounds(W - pad - btnW - gap - chipW - gap - chipW - gap - refW, R(9), refW, R(32));
+        int ctrlY = capH + (ctrlH - R(32)) / 2;
+        _btnSettings.SetBounds(W - pad - btnW, ctrlY, btnW, R(32));
+        _bgChip.SetBounds(W - pad - btnW - gap - chipW, ctrlY, chipW, R(32));
+        _sysChip.SetBounds(W - pad - btnW - gap - chipW - gap - chipW, ctrlY, chipW, R(32));
+        _refreshSwitch.SetBounds(W - pad - btnW - gap - chipW - gap - chipW - gap - refW, ctrlY, refW, R(32));
         _btnSettings.Th = _th;
         _btnSettings.FontScale = _s;
         _bgChip.Th = _th;
@@ -778,9 +799,9 @@ public sealed class MainDashboardForm : Form
         _refreshSwitch.Th = _th;
         _refreshSwitch.FontScale = _s;
 
-        // 总览卡
+        // 总览卡（B1：标题栏 → 控制行 44 → gap → 卡片）
         int cw = (W - pad * 2 - gap * 3) / 4;
-        int cy = headH + gap;
+        int cy = capH + ctrlH + gap;
         SetCard(_cardCpu, pad, cw); SetCard(_cardRam, pad + (cw + gap), cw);
         SetCard(_cardGpu, pad + (cw + gap) * 2, cw); SetCard(_cardVram, pad + (cw + gap) * 3, cw);
         void SetCard(MetricCard c, int x, int w)
@@ -791,26 +812,28 @@ public sealed class MainDashboardForm : Form
         }
 
         // 工具栏：视图切换 | 搜索 … 阈值段控 + 多卡下拉（右对齐，多卡下拉仅多卡机器可见）
+        // C11：段控/搜索框统一 32 高（原 34/整带 40 拉伸废弃），带高 40 保留（节奏值）
         int ty = cy + cardsH + gap;
         int segW = R(300);
-        _viewSwitch.SetBounds(pad, ty, segW, toolH);
+        _viewSwitch.SetBounds(pad, ty + (toolH - R(32)) / 2, segW, R(32));
         _viewSwitch.Th = _th;
         _viewSwitch.FontScale = _s;
 
-        int minW = R(230), gpuW = R(240);
+        // 多卡筛选 264（B1 写 240）：A3 最小 12px 后「全部显卡」在 4 段 240 里截断，A3 硬约束优先（偏差记录 docs/14）
+        int minW = R(230), gpuW = R(264);
         int rx = W - pad;
-        _minSwitch.SetBounds(rx - minW, ty + (toolH - R(34)) / 2, minW, R(34));
+        _minSwitch.SetBounds(rx - minW, ty + (toolH - R(32)) / 2, minW, R(32));
         _minSwitch.Th = _th;
         _minSwitch.FontScale = _s;
         rx -= minW + gap;
-        _gpuFilter.SetBounds(rx - gpuW, ty + (toolH - R(34)) / 2, gpuW, R(34));
+        _gpuFilter.SetBounds(rx - gpuW, ty + (toolH - R(32)) / 2, gpuW, R(32));
         _gpuFilter.Th = _th;
         _gpuFilter.FontScale = _s;
 
         int rightUsed = (_gpuFilter.Visible ? gpuW + gap : 0) + minW + gap;
         int searchX = pad + segW + gap;
         int searchW = Math.Min(W - pad - searchX - rightUsed, R(430));
-        _search.SetBounds(searchX, ty + (toolH - R(34)) / 2, Math.Max(R(160), searchW), R(34));
+        _search.SetBounds(searchX, ty + (toolH - R(32)) / 2, Math.Max(R(160), searchW), R(32));
         _search.UiScale = _s;
 
         // 列表 + 详情 + GPU 占位
@@ -842,11 +865,9 @@ public sealed class MainDashboardForm : Form
         var g = e.Graphics;
         g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
 
-        var fTitle = Gfx.F("Segoe UI", 14f * _s, FontStyle.Bold);
-        using (var tb = new SolidBrush(_th.Text))
-            g.DrawString("WMonitor 资源面板", fTitle, tb, R(14), R(14), StringFormat.GenericTypographic);
+        DrawChrome(g, _th);   // C1：图标 + 标题 + 窗口钮（旧「面板内再画一遍标题」废弃）
 
-        var fStatus = Gfx.F("Segoe UI", 10f * _s, FontStyle.Regular);
+        var fStatus = Gfx.F("Segoe UI", 12f * _s, FontStyle.Regular);   // A3：状态栏 Body 12（原 10 废弃）
         string gpuPart = _snap.Gpu.Available
             ? $"GPU {_snap.Gpu.Rows.Count} 项 · GPU 采样 {_snap.GpuMs:0.0} ms"
             : "GPU 进程数据不可用";
@@ -880,11 +901,22 @@ public sealed class MainDashboardForm : Form
             {
                 if (!sc.WorkingArea.IntersectsWith(bounds)) continue;
                 StartPosition = FormStartPosition.Manual;
-                Bounds = bounds;
+                Bounds = FitToWorkArea(bounds, sc.WorkingArea);
                 return;
             }
         }
         StartPosition = FormStartPosition.CenterScreen;   // 记忆无效 / 不可见：回默认
+    }
+
+    /// <summary>记忆矩形可能来自更大的屏幕（换屏 / 改分辨率），恢复前夹回工作区，
+    /// 否则面板大部分开在屏幕外（IntersectsWith 只保证看得见一条边）。</summary>
+    private static Rectangle FitToWorkArea(Rectangle b, Rectangle work)
+    {
+        int w = Math.Min(b.Width, work.Width);
+        int h = Math.Min(b.Height, work.Height);
+        int left = Math.Clamp(b.Left, work.Left, Math.Max(work.Left, work.Right - w));
+        int top = Math.Clamp(b.Top, work.Top, Math.Max(work.Top, work.Bottom - h));
+        return new Rectangle(left, top, w, h);
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)

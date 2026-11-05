@@ -65,6 +65,7 @@ public sealed class DashboardTable : Control
 
     private int _scroll;
     private int _hover = -1;
+    private int _headHover = -1;
     private bool _dragBar;
     private readonly RectangleF[] _headRects = new RectangleF[6];
 
@@ -140,7 +141,7 @@ public sealed class DashboardTable : Control
             g.DrawString(EmptyText, f, b, new RectangleF(0, HeadH, Width, Height - HeadH), sf);
             if (EmptyHint.Length > 0)
             {
-                var f2 = Gfx.F("Segoe UI", 10f * s, FontStyle.Regular);
+                var f2 = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);
                 g.DrawString(EmptyHint, f2, b, new RectangleF(0, HeadH + 26 * s, Width, Height - HeadH), sf);
             }
             g.ResetClip();
@@ -181,14 +182,14 @@ public sealed class DashboardTable : Control
     {
         float s = UiScale;
 
-        // 表头底：比卡片底色深/浅一档
+        // 表头底（C14：token 化，内联 rgb(30,33,39)/rgb(246,247,250) 废弃）
         var headBg = new RectangleF(1, 1, Width - 2, HeadH - 1);
-        using (var hb = new SolidBrush(Th.IsDark ? Color.FromArgb(255, 30, 33, 39) : Color.FromArgb(255, 246, 247, 250)))
+        using (var hb = new SolidBrush(Th.HeadBg))
             g.FillRectangle(hb, headBg);
         using (var sep = new Pen(Th.Sep, 1f))
             g.DrawLine(sep, 1, HeadH, Width - 1, HeadH);
 
-        var f = Gfx.F("Segoe UI", 11f * s, FontStyle.Bold);
+        var f = Gfx.F("Segoe UI", 12f * s, FontStyle.Bold);   // A3：表头 Body Bold 12（原 11 废弃）
         string[] titles = { NameTitle, "PID", "CPU", "内存", "GPU", "显存" };
         var colsEnum = new[] { Column.Name, Column.Pid, Column.Cpu, Column.Memory, Column.Gpu, Column.Vram };
 
@@ -197,6 +198,14 @@ public sealed class DashboardTable : Control
             var r = cols[i];
             _headRects[i] = r;
             bool active = SortCol == colsEnum[i];
+            bool headHot = i == _headHover && !active;
+
+            if (headHot)
+            {
+                // 列头 hover（A7 Ghost 语言）：单元格叠 Hover，文字 Label→Text
+                using var hov = new SolidBrush(Th.Hover);
+                g.FillRectangle(hov, r.X, 1, r.Width, HeadH - 1);
+            }
 
             // 数值列右对齐，列头留出箭头空间
             var rect = colsEnum[i] == Column.Name
@@ -209,7 +218,7 @@ public sealed class DashboardTable : Control
                 Trimming = StringTrimming.None,
                 FormatFlags = StringFormatFlags.NoWrap
             };
-            using var tb = new SolidBrush(active ? Th.Text : Th.Label);
+            using var tb = new SolidBrush(active || headHot ? Th.Text : Th.Label);
             g.DrawString(titles[i], f, tb, rect, sf);
 
             if (active)
@@ -276,7 +285,7 @@ public sealed class DashboardTable : Control
             }
             string letter = Fmt.NameOr(r);
             letter = letter.Length == 0 ? "?" : char.ToUpperInvariant(letter[0]).ToString();
-            var fIcon = Gfx.F("Segoe UI", 13f * s, FontStyle.Bold);
+            var fIcon = Gfx.F("Segoe UI", 14f * s, FontStyle.Bold);   // A11：首字母 14 Bold（原 13 废弃）
             var sfC = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             using (var wbr = new SolidBrush(Color.White))
                 g.DrawString(letter, fIcon, wbr, iconRect, sfC);
@@ -284,8 +293,8 @@ public sealed class DashboardTable : Control
 
         float textX = iconRect.Right + 10 * s;
         var nameRect = cols[(int)Column.Name];
-        var fName = Gfx.F("Segoe UI", 12.5f * s, FontStyle.Bold);
-        var fPath = Gfx.F("Segoe UI", 9.5f * s, FontStyle.Regular);
+        var fName = Gfx.F("Segoe UI", 14f * s, FontStyle.Bold);     // A3：表格行名 Title 14（原 12.5 废弃）
+        var fPath = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);  // A3 最小 12（原 9.5 废弃）
 
         string displayName = Fmt.NameOr(r);
         if (r.Limited) displayName += "（受限）";
@@ -305,7 +314,7 @@ public sealed class DashboardTable : Control
 
         // 前台标记：名称左侧圆点已在图标里体现，这里给名称加粗即可（ fName 已 Bold）
         // ---- PID ----
-        var fVal = Gfx.F("Segoe UI", 11.5f * s, FontStyle.Regular);
+        var fVal = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);   // A3：表格数值 Body 12（原 11.5 废弃）
         string pidText = r.MemberCount > 1 ? $"{r.Pid} ×{r.MemberCount}" : r.Pid.ToString();
         DrawCell(g, pidText, cols[(int)Column.Pid], cy, fVal, dim ? Th.Label : Th.Text, bold: false);
 
@@ -391,14 +400,31 @@ public sealed class DashboardTable : Control
         int hover = e.Y > HeadH && e.X < Width - BarW ? _scroll + (e.Y - HeadH) / RowH : -1;
         if (hover >= Rows.Count) hover = -1;
         if (hover != _hover) { _hover = hover; Invalidate(); }
+
+        int headHover = e.Y < HeadH ? HeaderHit(e.Location) : -1;
+        if (headHover != _headHover)
+        {
+            _headHover = headHover;
+            Cursor = headHover >= 0 ? Cursors.Hand : Cursors.Default;
+            Invalidate();
+        }
         base.OnMouseMove(e);
     }
 
     protected override void OnMouseLeave(EventArgs e)
     {
         _hover = -1;
+        _headHover = -1;
+        Cursor = Cursors.Default;
         Invalidate();
         base.OnMouseLeave(e);
+    }
+
+    private int HeaderHit(Point p)
+    {
+        for (int i = 0; i < _headRects.Length; i++)
+            if (_headRects[i].Contains(p)) return i;
+        return -1;
     }
 
     protected override void OnMouseDown(MouseEventArgs e)

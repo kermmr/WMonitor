@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#0E1014" flood-opacity=".14"/>
+    </filter>
+  </defs>
+  <g filter="url(#bL-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#bL-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="30" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bL-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#0A84FF" stroke-width="20" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="24" fill="url(#bL-glyph)"/>
+</svg>

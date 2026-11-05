@@ -1,5 +1,55 @@
 # 07 · 版本记录
 
+## v0.26 — 2026-11-05
+
+**UI 整改 P3 批次（docs/03 Part C C18~C22，P1~P3 全部收官）**
+
+- **修复（真鼠标验收发现）**：主面板记忆位置恢复后大部分开在屏幕外 —— `RestoreWindowBounds` 原来只检查
+  `IntersectsWith`（有交集就照搬），记忆矩形来自更大屏幕（换屏 / 改分辨率）时右侧/底部整块出屏。
+  恢复前先 `FitToWorkArea` 把矩形夹回工作区（超出的宽高收缩、位置夹紧）。
+- **修复（用户实测反馈）**：① 任务栏 / 标题栏图标没换 —— `if (Icon == null)` 永远不成立（`Form.Icon`
+  未设置时返回默认图标不是 null），一直在画 WinForms 默认双方块图标；`ChromeForm.OnHandleCreated`
+  统一 `ExtractAssociatedIcon` 取 exe 内嵌图标（portable bundle 可用路径），静态缓存一次。② 打开主面板
+  卡顿 + 首帧透明 —— 构造函数里的首次同步采样（GPU Engine 首采 + NtQuery + 版本缓存）在 `Show()` 前
+  卡住 UI 线程 1~2s；挪到 `OnShown` 之后，窗口先画出来再填数据。portable 冷启动还有 1~2s 自包含
+  解压成本，与本次修复无关。
+- **列头 hover（用户实测反馈）**：`DashboardTable` 表头补 hover 交互 —— 单元格叠 `Hover` 底色、
+  文字 `Label→Text` 提亮、光标变手型（激活排序列不重复叠加，仍 Text 常亮 + 三角）。
+
+- **焦点（C18）**：Segmented / Chip 支持 Tab 焦点，按 A7 补焦点环（内缩 2.5px 处 1px Text@47%，与 BentoButton 同规格）；Segmented 加方向键切换选项（立即生效并触发 SelectionChanged）、Chip 加 Space 切换（Enter 不拦，对话框里是确认键）。
+- **Ghost 按钮（C19）**：`BentoButton.Ghost` 分支落地（A7：透明底 + Label 字 Regular，hover/按下变 Text，永不投影，禁用只压字不铺 DisabledBg；BodyH 不再预留投影高度）。**入档偏差：标题栏窗口钮不走 Ghost**——B1 有自己的规格（hover 底 Hover + 关闭钮红底 + Text 图标，Win11 惯例），保持 v0.25 刚修好的 ChromeForm 自绘路径不动；Ghost 分支待表格列头/状态栏操作控件化时接入。
+- **标题栏右键（C20）**：无边框窗口右键标题栏在光标处弹系统菜单（SetForegroundWindow + GetSystemMenu + TrackPopupMenu TPM_RETURNCMD，选中项 PostMessage WM_SYSCOMMAND 走系统标准路径；拦截后不再交给 DefWindowProc 防双菜单）。移动/大小/最小化/最大化/还原/关闭全部复用现有处理。
+- **行距（C22）**：MessageDialog 正文行距 17（旧小字号手量值）→ `Font.GetHeight` 实算（Body 12 ≈16px，含 DPI 缩放），高度公式同步；按钮行与正文间隙恒 12px 不再随行数漂移。
+- **圆角双画验证（C21）**：PrintWindow 抓主面板 + 挂起/结束两对话框共 12 张四角 4x 放大图——自绘层全部干净（单条 R12 弧 + 均匀 WindowBg 外圈，无第二弧、无裁角）；DWM 圆角偏好读回 main=2/settings=2（ROUND）。局限：DWM 合成圆角发生在窗口表面之外，PrintWindow 截不到（本环境 CopyFromScreen 不可用），合成弧观感留用户晨检一眼。
+- 探针扩容：`--dashboard-chrome-probe` 11 项 → **18 项**（+右键系统菜单拦截路径正/反例、DWM 偏好读回、Segmented/Chip 程序化焦点 + 焦点环像素 diff、Ghost 透明底像素断言），18/18 PASS；`--dashboard-action-ui-probe` 三轮 PASS；`--dashboard-probe` 正常；error.log 无新异常。
+
+
+## v0.25 — 2026-11-05
+
+**修复标题栏窗口钮无响应 + UI 整改 P2 批次（docs/03 Part C C9~C17）**
+
+- **修复（用户实测反馈）**：自绘标题栏「最大化 / 最小化 / 关闭」三个窗口钮点击无响应——`WM_NCLBUTTONDOWN` 后 `SetCapture` 接管的鼠标消息是**客户区坐标**，旧代码又做了一次 `PointToClient`（平移一个窗口原点），只有窗口恰在屏幕 (0,0) 时碰巧能用。同时补 `WM_NCLBUTTONUP` 兜底（SetCapture 失败时 UP 走 NC 消息）与 `WM_CAPTURECHANGED` 按下态复位。新增 `--dashboard-chrome-probe` 消息级回归探针（非原点窗口 + 真实点击消息序列），11/11 PASS。
+- **字号（C9）**：全站档外字号按 A3 映射——表格行名 12.5→14、首字母 13→14、表头 11→12 Bold、行数值 11.5→12、路径 9.5/10→12、详情面板标题 12.5→14 / 数值 15→16 / 单位·副题·底栏 9~11.5→12、对话框标题 13/13.5→14 / 正文 10.5→12、飞出菜单 13/13.5→14 / 11/10.5→12、详情条 hint/meta/sub 10~11.5→12、状态栏 10→12；详情面板时间窗胶囊 26×16→30×18（装得下 12px「24h」）。
+- **单位（C10）**：SearchBox 输入字 10pt→12px（真变值）、BentoCard 标题 10.5pt→14px / 注释 8.5pt→12px、主面板/设置窗默认 Font 9pt→12px、设置窗品牌 15pt→20px、Cap/Inline/Small 8.5pt→12px（全部 `GraphicsUnit.Pixel`，附带消除高 DPI 下 pt 字与固定布局的膨胀错位）。
+- **控件高（C11）**：Segmented/Chip/Stepper/SearchBox 34/30/34/30 → 32；BentoButton 默认 44→38（视觉 32+投影 6）；对话框按钮 40→38（C17）；设置窗 CtrlH 34→32、ChipH 30→32、告警规则胶囊 28→32、完成/恢复默认 44→38、选择脚本按钮视觉高对齐 32（Radius 9→10 补齐 v0.24 漏改）。
+- **间距（C12/C13）**：主面板 pad 14→16、gap 10→12；设置网格 Gap 14→12（ColW 287→288 自适应）。
+- **token（C14）**：表头底内联 rgb(30,33,39)/rgb(246,247,250) → `HeadBg`（C15/C16 已随 v0.24 完成，本轮复核无残留）。
+- 联动调整：对话框关键进程红字槽位 36→40（两行 12px 墨迹 ~32）；设置窗 Cap 标题格 16→18、行内标题/偏移格对齐 32。
+- 验证：`--dashboard-probe` / `--dashboard-chrome-probe` 11 项 / `--dashboard-action-ui-probe`（新 38 高钮对话框真点击路径）全 PASS；portable 发布版 chrome + action 探针全 PASS；PrintWindow 截图（深浅主题常态/最大化/还原/设置窗/贴片 372px/确认对话框）；内存 84.3MB 与 v0.24 持平。
+
+## v0.24 — 2026-11-05
+
+**UI 整改 P1 批次（docs/03 Part C C1~C8）+ 应用图标方案 B 落地**
+
+- **自绘无边框标题栏（C1）**：新基类 `UI/WindowChrome.cs`，主面板与设置窗换成全自绘 44 高标题栏（图标 16 + 标题 14 Bold + 窗口钮 46×32，关闭钮 hover #C42B1C），保留系统边框样式（Aero Snap / Snap Layouts / 系统菜单 / 原生最大化动画不受影响），DWM Win11 圆角；主面板删除面板内重复大标题。最大化时客户区按边框厚度内缩，内容不裁切。
+- **控件全面 token 化（C2/C4/C7）**：Segmented / Stepper / Chip / ConfirmCheck 内联色全部换成 Theme token（SecondaryBg / InputBorder / SelectedBg / Hover）；Segmented 补 1px InputBorder 描边；Chip 补 hover 反馈；Theme.cs 新增 SelectedBg / HeadBg / InputBorder / DisabledBg，Soft/SoftLight 合并 SecondaryBg。
+- **按钮（C3/C5）**：BentoButton 新增 Disabled 态（DisabledBg + Label@190）——未选中行时「优先级/挂起/结束任务」终于有视觉禁用；字号 9.5pt → 12px（主 Bold / 次 Regular）；宽度规则 A7 落地：`WidthFor` / `GroupWidth`（同字数同宽、组内等宽），DetailBar 四钮与对话框按钮组内等宽。
+- **圆角与贴片（C6/C8）**：指标卡 / Bento 卡 14→12，贴片 7→8；贴片字号 8.5/12/9 → 12/14/12、圆点 6、间距 5/5/3（总宽 +30%，托盘间距目检无碰撞）。
+- **应用图标**：提案方案 B「仪表」落 `app.ico`（256/128/64/48/32/24/16，≤32 按规范简化，深色版固定；设计源文件见 `design/icons/app/`、提案文档 docs/15）。
+- **修复**：BentoButton 共享缓存字体被 Dispose 导致对话框二连开崩溃（Parameter is not valid）；portable 单文件 exe 上标题栏图标每帧重试读取 66MB bundle 造成 ~70MB/s 内存泄漏（改为一次性闸门 + Form.Icon 优先）。
+- **偏差**：多卡筛选段控 240→264（A3 最小 12px 下「全部显卡」截断）；对话框按钮组等宽保底 120（B4 目标值优先于 A7 公式）。
+- 验证：PrintWindow 多轮截图（常态/最大化/设置窗/对话框/浅色主题/贴片）、`--dashboard-action-ui-probe` 全 PASS、portable `--dashboard-action-probe` 6/6 PASS、内存平台无增长（详见 docs/14 施工日志 2026-11-05 (3)）。
+
 ## v0.23 — 2026-11-04
 
 **主面板 UI 细节修复**

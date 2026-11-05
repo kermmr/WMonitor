@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using WMonitor.Interop;
 using WMonitor.Metrics;
@@ -70,6 +71,12 @@ internal static class Program
         if (args.Contains("--dashboard-action-ui-probe"))
         {
             DashboardActionUiProbe();
+            return;
+        }
+
+        if (args.Contains("--dashboard-chrome-probe"))
+        {
+            DashboardChromeProbe();
             return;
         }
 
@@ -460,6 +467,232 @@ internal static class Program
             Directory.CreateDirectory(@"D:/Hermes/output/results");
             File.WriteAllText(@"D:/Hermes/output/results/wmonitor-action-ui-probe.txt", sb.ToString());
         }
+    }
+
+    /// <summary>
+    /// 诊断用：标题栏窗口钮消息级点击回归（2026-11-05 修复「最大化/最小化/关闭无响应」）。
+    /// 复现真实鼠标按下后的完整消息序列：WM_NCLBUTTONDOWN(HT*, 屏幕坐标) →
+    /// WM_MOUSEMOVE / WM_LBUTTONUP（捕获后的客户区消息，坐标已是客户区）。
+    /// 窗口故意摆在非 (0,0)：旧 bug 对客户区坐标又 PointToClient 一次（平移一个窗口原点），
+    /// 只有窗口恰在屏幕原点时碰巧能用。结果写 D:/Hermes/output/results/wmonitor-chrome-probe.txt。
+    /// </summary>
+    private static void DashboardChromeProbe()
+    {
+        var sb = new StringBuilder();
+        try
+        {
+            Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            var cfg = AppConfig.Load();
+            string rect0 = cfg.DashboardWindowRect;
+            cfg.DashboardWindowRect = "";
+            cfg.Save();
+
+            using var global = new MetricSampler();
+            var form = new MainDashboardForm(cfg, Theme.Resolve(cfg.Theme), () => global.Sample());
+            bool closed = false;
+            form.FormClosed += (_, _) => closed = true;
+
+            form.Shown += async (_, _) =>
+            {
+                try
+                {
+                    await Task.Delay(300);
+                    form.SetDesktopLocation(220, 140);   // 非原点：旧 bug 的必现场景
+                    await Task.Delay(400);
+
+                    // hover：post NC 消息（屏幕坐标）后看 ProbeHoverFired。本探针进程的
+                    // SetCursorPos 被输入桌面拒绝（真实光标进不来），且真实光标不在窗口上
+                    // 时系统立刻回发 WM_NCMOUSELEAVE 清掉 _hot —— 瞬态在外部看不见，
+                    // 断言走 ChromeForm 内部旗标。
+                    var (minR, maxR, closeR) = (form.ProbeButtonRect(ChromeForm.ChromeProbeBtn.Min),
+                        form.ProbeButtonRect(ChromeForm.ChromeProbeBtn.Max),
+                        form.ProbeButtonRect(ChromeForm.ChromeProbeBtn.Close));
+                    Post(form, WM_NCMOUSEMOVE, 0, Lp(form.PointToScreen(Center(closeR))));
+                    await Task.Delay(300);
+                    sb.AppendLine($"hover close -> fired={form.ProbeHoverFired} last={form.ProbeHot} " +
+                        $"{(form.ProbeHoverFired && form.ProbeHot == "None" ? "PASS" : "FAIL")}");
+                    sb.AppendLine($"hover settle(LEAVE 清理) -> hot={form.ProbeHot} {(form.ProbeHot == "None" ? "PASS" : "FAIL")}");
+
+                    // pressed 生命周期：按下 → 滑出(取消) → 滑回(恢复)
+                    Post(form, WM_NCLBUTTONDOWN, HTMAXBUTTON, Lp(form.PointToScreen(Center(maxR))));
+                    await Task.Delay(120);
+                    sb.AppendLine($"press max -> press={form.ProbePress} inside={form.ProbePressInside} " +
+                        $"{(form.ProbePress == "Max" && form.ProbePressInside ? "PASS" : "FAIL")}");
+                    Post(form, WM_MOUSEMOVE, 0, Lp(new Point(60, 20)));       // 客户区坐标，滑出
+                    await Task.Delay(120);
+                    sb.AppendLine($"slide out -> inside={form.ProbePressInside} {(!form.ProbePressInside ? "PASS" : "FAIL")}");
+                    Post(form, WM_MOUSEMOVE, 0, Lp(Center(maxR)));            // 滑回
+                    await Task.Delay(120);
+                    sb.AppendLine($"slide back -> inside={form.ProbePressInside} {(form.ProbePressInside ? "PASS" : "FAIL")}");
+                    Post(form, WM_LBUTTONUP, 0, Lp(Center(maxR)));
+                    await Task.Delay(400);
+                    sb.AppendLine($"click max -> state={form.WindowState} press={form.ProbePress} " +
+                        $"{(form.WindowState == FormWindowState.Maximized && form.ProbePress == "None" ? "PASS" : "FAIL")}");
+                    await Task.Delay(600);   // 等最大化动画/布局
+
+                    // 还原（再点一次最大化钮）
+                    maxR = form.ProbeButtonRect(ChromeForm.ChromeProbeBtn.Max);
+                    await ClickChrome(form, HTMAXBUTTON, Center(maxR));
+                    await Task.Delay(400);
+                    sb.AppendLine($"click restore -> state={form.WindowState} " +
+                        $"{(form.WindowState == FormWindowState.Normal ? "PASS" : "FAIL")}");
+
+                    // 最小化
+                    minR = form.ProbeButtonRect(ChromeForm.ChromeProbeBtn.Min);
+                    await ClickChrome(form, HTMINBUTTON, Center(minR));
+                    await Task.Delay(500);
+                    sb.AppendLine($"click min -> state={form.WindowState} " +
+                        $"{(form.WindowState == FormWindowState.Minimized ? "PASS" : "FAIL")}");
+                    form.WindowState = FormWindowState.Normal;
+                    form.SetDesktopLocation(220, 140);
+                    await Task.Delay(400);
+
+                    // C20：右键标题栏 → 系统菜单拦截路径。探针模式只置旗标不真弹
+                    // TrackPopupMenu（会阻塞消息循环）；真实弹菜单的观感留用户晨检。
+                    form.ProbeInterceptSysMenu = true;
+                    Post(form, WM_NCRBUTTONUP, HTCAPTION, Lp(form.PointToScreen(new Point(300, 20))));
+                    await Task.Delay(200);
+                    sb.AppendLine($"caption rclick -> sysmenu={form.ProbeSysMenuFired} {(form.ProbeSysMenuFired ? "PASS" : "FAIL")}");
+                    form.ProbeResetSysMenu();
+                    Post(form, WM_NCRBUTTONUP, 1 /*HTCLIENT*/, Lp(form.PointToScreen(new Point(300, 300))));
+                    await Task.Delay(200);
+                    sb.AppendLine($"client rclick -> sysmenu={form.ProbeSysMenuFired} {(!form.ProbeSysMenuFired ? "PASS" : "FAIL")}");
+                    form.ProbeInterceptSysMenu = false;
+
+                    // 设置窗（FixedSingle，只有关闭钮）走同一基类
+                    var set = new SettingsForm(cfg, Theme.Resolve(cfg.Theme), new List<TaskbarInfo>());
+                    set.Show(form);
+                    await Task.Delay(500);
+                    sb.AppendLine($"dwm corner pref (C21) -> main={DwmPref(form.Handle)} settings={DwmPref(set.Handle)} " +
+                        $"{(DwmPref(form.Handle) == 2 && DwmPref(set.Handle) == 2 ? "PASS" : "FAIL")}");
+                    var sc = set.ProbeButtonRect(ChromeForm.ChromeProbeBtn.Close);
+                    await ClickChrome(set, HTCLOSE, Center(sc));
+                    await Task.Delay(500);
+                    sb.AppendLine($"settings close -> disposed={set.IsDisposed} {(set.IsDisposed ? "PASS" : "FAIL")}");
+
+                    // C18/C19：焦点环与 Ghost 渲染。小探针窗 + DrawToBitmap 像素断言
+                    //（探针进程没有真实鼠标/键盘，焦点用程序化 Focus()，与真实 Tab 同一条 GotFocus 路径）。
+                    var pf = new Form
+                    {
+                        FormBorderStyle = FormBorderStyle.None,
+                        ShowInTaskbar = false,
+                        StartPosition = FormStartPosition.Manual,
+                        Location = new Point(260, 180),
+                        Size = new Size(420, 130),
+                        BackColor = Theme.Dark.WindowBg
+                    };
+                    var seg = new Segmented { Items = new[] { "A", "B", "C" }, Th = Theme.Dark, Left = 16, Top = 16, Width = 300 };
+                    var chip = new Chip("显示后台") { Th = Theme.Dark, Left = 16, Top = 62 };
+                    var ghost = new BentoButton
+                    {
+                        Text = "低强调", Ghost = true, Th = Theme.Dark,
+                        Left = 170, Top = 62, Width = 88, Height = 32, Shadow = 0
+                    };
+                    pf.Controls.AddRange(new Control[] { seg, chip, ghost });
+                    pf.Show(form);
+                    await Task.Delay(400);
+
+                    static Bitmap Snap(Control c)
+                    {
+                        var b = new Bitmap(c.Width, c.Height);
+                        c.DrawToBitmap(b, new Rectangle(0, 0, c.Width, c.Height));
+                        return b;
+                    }
+                    static bool Diff(Bitmap a, Bitmap b)
+                    {
+                        if (a.Size != b.Size) return true;
+                        for (int y = 0; y < a.Height; y++)
+                            for (int x = 0; x < a.Width; x++)
+                                if (a.GetPixel(x, y) != b.GetPixel(x, y)) return true;
+                        return false;
+                    }
+
+                    seg.Focus();
+                    await Task.Delay(150);
+                    sb.AppendLine($"segmented focus -> focused={seg.Focused} {(seg.Focused ? "PASS" : "FAIL")}");
+                    var seg1 = Snap(seg);           // 有焦点（焦点环）
+                    chip.Focus();
+                    await Task.Delay(150);
+                    var seg0 = Snap(seg);           // 无焦点
+                    sb.AppendLine($"segmented ring -> diff={Diff(seg0, seg1)} {(Diff(seg0, seg1) ? "PASS" : "FAIL")}");
+                    sb.AppendLine($"chip focus -> focused={chip.Focused} {(chip.Focused ? "PASS" : "FAIL")}");
+                    var chip1 = Snap(chip);
+                    ghost.Focus();
+                    await Task.Delay(150);
+                    var chip0 = Snap(chip);
+                    sb.AppendLine($"chip ring -> diff={Diff(chip0, chip1)} {(Diff(chip0, chip1) ? "PASS" : "FAIL")}");
+
+                    // Ghost：常态无底色（采样点避开焦点环 2.5px 内缩带）、无投影、文字 Label 起步
+                    var g0 = Snap(ghost);
+                    var tl = g0.GetPixel(0, 0);
+                    var bl = g0.GetPixel(g0.Width / 2, g0.Height - 1);
+                    sb.AppendLine($"ghost transparent -> tl={tl} bl={bl} " +
+                        $"{(tl == Theme.Dark.WindowBg && bl == Theme.Dark.WindowBg ? "PASS" : "FAIL")}");
+                    seg0.Dispose(); seg1.Dispose(); chip0.Dispose(); chip1.Dispose(); g0.Dispose();
+                    pf.Close();
+                    pf.Dispose();
+
+                    // 关闭主面板（收尾；Run 随之返回）
+                    closeR = form.ProbeButtonRect(ChromeForm.ChromeProbeBtn.Close);
+                    await ClickChrome(form, HTCLOSE, Center(closeR));
+                }
+                catch (Exception ex)
+                {
+                    sb.AppendLine("PROBE-FAIL " + ex);
+                    form.Close();
+                }
+            };
+            Application.Run(form);
+
+            sb.AppendLine($"click close -> closed={closed} {(closed ? "PASS" : "FAIL")}");
+            cfg.DashboardWindowRect = rect0;
+            cfg.Save();
+        }
+        finally
+        {
+            Directory.CreateDirectory(@"D:/Hermes/output/results");
+            File.WriteAllText(@"D:/Hermes/output/results/wmonitor-chrome-probe.txt", sb.ToString());
+        }
+    }
+
+    private const int WM_NCMOUSEMOVE = 0x00A0;
+    private const int WM_NCLBUTTONDOWN = 0x00A1;
+    private const int WM_NCRBUTTONUP = 0x00A5;
+    private const int WM_MOUSEMOVE = 0x0200;
+    private const int WM_LBUTTONUP = 0x0202;
+    private const int HTCAPTION = 2;
+    private const int HTMINBUTTON = 8, HTMAXBUTTON = 9, HTCLOSE = 20;
+    private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmGetWindowAttribute(IntPtr hwnd, int attr, out int value, int size);
+
+    /// <summary>C21：读回 DWM 圆角偏好（2 = ROUND）。这只是「偏好已生效」；
+    /// 系统合成圆角本身 PrintWindow 截不到（合成发生在窗口表面之外，docs/14 P3 日志）。</summary>
+    private static int DwmPref(IntPtr hwnd) =>
+        DwmGetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, out int v, 4) == 0 ? v : -1;
+
+    private static void Post(Control c, int msg, IntPtr wParam, IntPtr lParam) =>
+        PostMessage(c.Handle, msg, wParam, lParam);
+
+    private static IntPtr Lp(Point p) => (IntPtr)(uint)(p.X & 0xFFFF | (p.Y & 0xFFFF) << 16);
+
+    private static Point Center(Rectangle r) => new(r.Left + r.Width / 2, r.Top + r.Height / 2);
+
+    /// <summary>一次完整点击：按下（屏幕坐标）→ 移动 → 抬起（客户区坐标）。</summary>
+    private static async Task ClickChrome(Control c, int ht, Point clientCenter)
+    {
+        Post(c, WM_NCLBUTTONDOWN, ht, Lp(((Form)c).PointToScreen(clientCenter)));
+        await Task.Delay(120);
+        Post(c, WM_MOUSEMOVE, 0, Lp(clientCenter));
+        await Task.Delay(60);
+        Post(c, WM_LBUTTONUP, 0, Lp(clientCenter));
+        await Task.Delay(200);
     }
 
     private static void LogCrash(Exception? ex)

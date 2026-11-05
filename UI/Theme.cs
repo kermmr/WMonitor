@@ -36,10 +36,16 @@ public sealed class Theme
     public Color CardBg { get; init; }
     /// <summary>卡片 1px 描边。</summary>
     public Color CardBorder { get; init; }
-    /// <summary>次要按钮底色（深色主题）。</summary>
-    public Color Soft { get; init; }
-    /// <summary>次要按钮底色（浅色主题）：要比窗口底色暗一档，否则按钮和背景糊在一起。</summary>
-    public Color SoftLight { get; init; }
+    /// <summary>次级容器底色：次级按钮 / 输入与选择控件底（03 §A2.1；C16 把原 Soft/SoftLight 合并成它）。</summary>
+    public Color SecondaryBg { get; init; }
+    /// <summary>分段控件选中块底色（03 §A2.1 新增）。</summary>
+    public Color SelectedBg { get; init; }
+    /// <summary>表格表头底色（03 §A2.1 新增，C14 起供 DashboardTable 使用）。</summary>
+    public Color HeadBg { get; init; }
+    /// <summary>输入 / 选择控件 1px 描边（03 §A2.1 新增）：Segmented/Stepper/Chip 未选中描边统一走它。</summary>
+    public Color InputBorder { get; init; }
+    /// <summary>禁用控件底色（03 §A2.1 新增，A7 Disabled 态）。</summary>
+    public Color DisabledBg { get; init; }
     /// <summary>主色（主按钮、选中态）。</summary>
     public Color Accent { get; init; }
 
@@ -75,8 +81,11 @@ public sealed class Theme
         WindowBg = Color.FromArgb(0xFF, 0x0E, 0x10, 0x14),
         CardBg = Color.FromArgb(0xFF, 0x19, 0x1C, 0x22),
         CardBorder = Color.FromArgb(18, 255, 255, 255),
-        Soft = Color.FromArgb(0xFF, 0x26, 0x2A, 0x31),
-        SoftLight = Color.FromArgb(0xFF, 0xDD, 0xE2, 0xE8),
+        SecondaryBg = Color.FromArgb(0xFF, 0x26, 0x2A, 0x31),
+        SelectedBg = Color.FromArgb(0xFF, 0x3E, 0x44, 0x4E),
+        HeadBg = Color.FromArgb(0xFF, 0x1E, 0x21, 0x27),
+        InputBorder = Color.FromArgb(38, 255, 255, 255),
+        DisabledBg = Color.FromArgb(0xFF, 0x20, 0x24, 0x2B),
         Accent = Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF),
         MenuBg = Color.FromArgb(250, 0x1E, 0x22, 0x29),
         MenuBorder = Color.FromArgb(34, 255, 255, 255)
@@ -103,8 +112,11 @@ public sealed class Theme
         WindowBg = Color.FromArgb(0xFF, 0xED, 0xEF, 0xF3),
         CardBg = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF),
         CardBorder = Color.FromArgb(16, 0, 0, 0),
-        Soft = Color.FromArgb(0xFF, 0xE8, 0xEA, 0xEE),
-        SoftLight = Color.FromArgb(0xFF, 0xD8, 0xDE, 0xE6),
+        SecondaryBg = Color.FromArgb(0xFF, 0xD8, 0xDE, 0xE6),
+        SelectedBg = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF),
+        HeadBg = Color.FromArgb(0xFF, 0xF6, 0xF7, 0xFA),
+        InputBorder = Color.FromArgb(26, 0, 0, 0),
+        DisabledBg = Color.FromArgb(0xFF, 0xF0, 0xF1, 0xF4),
         Accent = Color.FromArgb(0xFF, 0x0A, 0x84, 0xFF),
         MenuBg = Color.FromArgb(250, 0xFB, 0xFC, 0xFE),
         MenuBorder = Color.FromArgb(26, 0, 0, 0)

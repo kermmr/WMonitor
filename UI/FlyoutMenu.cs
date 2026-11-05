@@ -343,10 +343,11 @@ public sealed class FlyoutMenu : LayeredWindow
         DrawPanel(g);
 
         bool hasRadio = _rows.Exists(r => r.Kind == MenuRowKind.Radio);
-        var fText = Gfx.F("Segoe UI", 13f, FontStyle.Regular);
-        var fTitle = Gfx.F("Segoe UI", 11f, FontStyle.Bold);
-        var fHead = Gfx.F("Segoe UI", 13.5f, FontStyle.Bold);
-        var fSub = Gfx.F("Segoe UI", 10.5f, FontStyle.Regular);
+        // A3（C9）：≤12→12、12.5~13.5→14（原 13/11/13.5/10.5 废弃）
+        var fText = Gfx.F("Segoe UI", 14f, FontStyle.Regular);
+        var fTitle = Gfx.F("Segoe UI", 12f, FontStyle.Bold);
+        var fHead = Gfx.F("Segoe UI", 14f, FontStyle.Bold);
+        var fSub = Gfx.F("Segoe UI", 12f, FontStyle.Regular);
 
         for (int i = 0; i < _rows.Count; i++)
         {
@@ -443,7 +444,7 @@ public sealed class FlyoutMenu : LayeredWindow
             if (i == r.Selected)
             {
                 using var sp = Gfx.RoundRect(opt, 5f);
-                using var sb = new SolidBrush(Th.IsDark ? Th.Soft : Color.White);
+                using var sb = new SolidBrush(Th.SecondaryBg);   // 原 Soft/SoftLight 合并（03 §C16）；深色值不变，浅色比纯白多一档对比
                 g.FillPath(sb, sp);
             }
             using var tb = new SolidBrush(i == r.Selected ? Th.Text : Th.Label);

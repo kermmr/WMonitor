@@ -22,7 +22,7 @@ namespace WMonitor;
 /// 统一排版：一行的高度 = 该行最高卡片的内容高度。条件控件出现/消失（多屏、四段条、
 /// 关历史、开告警…）时窗口自动伸缩，正常情况下全程不出现滚动条。
 /// </summary>
-public sealed class SettingsForm : Form
+public sealed class SettingsForm : ChromeForm
 {
     private readonly AppConfig _cfg;
     private Theme _th;
@@ -102,14 +102,14 @@ public sealed class SettingsForm : Form
     private readonly List<CardSpec> _cards = new();
 
     private const int Pad = 24;
-    private const int Gap = 14;
+    private const int Gap = 12;            // A4/C13：设置网格 Gap 14→12
     private const int FormW = 1238;
-    private const int ColW = 287;          // (1238 - 24*2 - 14*3) / 4
+    private const int ColW = 288;          // (1238 - 24*2 - 12*3) / 4
     private const int InnerW = ColW - 36;  // 卡片左右各 18 内边距
     private const int HeadH = 64;
     private const int FootH = 56;
-    private const int CtrlH = 34;
-    private const int ChipH = 30;
+    private const int CtrlH = 32;          // A6/C11：段控统一视觉高 32（原 34 废弃）
+    private const int ChipH = 32;          // A6/C11：胶囊统一视觉高 32（原 30 废弃）
     private const int ChipGap = 8;
 
     private static readonly int[] Rates = { 500, 1000, 2000, 5000 };
@@ -131,7 +131,7 @@ public sealed class SettingsForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         BackColor = th.WindowBg;
         ForeColor = th.Text;
-        Font = new Font("Segoe UI", 9f);
+        Font = new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel);   // C10：px（原 9pt 废弃）
         ShowInTaskbar = true;
         TopMost = true;
         ShowIcon = false;
@@ -173,14 +173,14 @@ public sealed class SettingsForm : Form
         {
             Text = "WMonitor",
             Left = Pad, Top = 11, Width = 220, Height = 30,
-            Font = new Font("Segoe UI", 15f, FontStyle.Bold),
+            Font = new Font("Segoe UI", 20f, FontStyle.Bold, GraphicsUnit.Pixel),   // C10：15pt≈20px，px 化（偶数步进）
             ForeColor = _th.Text, BackColor = _th.WindowBg, Tag = "brand"
         };
         _tagline = new Label
         {
             Text = "系统监视器设置",
             Left = Pad + 2, Top = 40, Width = 280, Height = 18,
-            Font = new Font("Segoe UI", 9f),
+            Font = new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel),   // C10：9pt→Body 12px
             ForeColor = _th.Label, BackColor = _th.WindowBg, Tag = "caption"
         };
         _ver = new Label
@@ -188,7 +188,7 @@ public sealed class SettingsForm : Form
             Text = AppVersion(),
             Left = FormW - Pad - 140, Top = 22, Width = 140, Height = 18,
             TextAlign = ContentAlignment.MiddleRight,
-            Font = new Font("Segoe UI", 9f),
+            Font = new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel),
             ForeColor = _th.Label, BackColor = _th.WindowBg, Tag = "caption"
         };
 
@@ -199,14 +199,14 @@ public sealed class SettingsForm : Form
             Text = "改动即时保存并生效",
             Left = Pad, Top = 19, Width = 320, Height = 20,
             TextAlign = ContentAlignment.MiddleLeft,
-            Font = new Font("Segoe UI", 9f),
+            Font = new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel),
             ForeColor = _th.Label, BackColor = _th.WindowBg, Tag = "caption"
         };
 
         _done = new BentoButton
         {
             Text = "完成",
-            Width = 100, Height = 44,
+            Width = 100, Height = 38,   // C11：视觉 32 + 投影 6（原 44 废弃）
             Primary = true, Th = _th,
             DialogResult = DialogResult.OK
         };
@@ -215,7 +215,7 @@ public sealed class SettingsForm : Form
         _reset = new BentoButton
         {
             Text = "恢复默认",
-            Width = 100, Height = 44,
+            Width = 100, Height = 38,
             Th = _th
         };
         _reset.Click += (_, _) => ResetDefaults();
@@ -261,20 +261,20 @@ public sealed class SettingsForm : Form
 
     // ================= 小控件工厂 =================
 
-    /// <summary>字段标题（在控件上方，粗体小字）。</summary>
+    /// <summary>字段标题（在控件上方，粗体小字）。C10：8.5pt≈11.3px 低于 12px 下限 → Body 12 Bold。</summary>
     private Label Cap(string text, int w) => new()
     {
-        Text = text, Width = w, Height = 16, AutoSize = false,
-        Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+        Text = text, Width = w, Height = 18, AutoSize = false,
+        Font = new Font("Segoe UI", 12f, FontStyle.Bold, GraphicsUnit.Pixel),
         ForeColor = _th.Label, BackColor = _th.CardBg, Tag = "caption"
     };
 
     /// <summary>行内标题（在控件左侧，垂直居中）。</summary>
     private Label Inline(string text, int w) => new()
     {
-        Text = text, Width = w, Height = 30, AutoSize = false,
+        Text = text, Width = w, Height = 32, AutoSize = false,
         TextAlign = ContentAlignment.MiddleLeft,
-        Font = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+        Font = new Font("Segoe UI", 12f, FontStyle.Bold, GraphicsUnit.Pixel),
         ForeColor = _th.Label, BackColor = _th.CardBg, Tag = "caption"
     };
 
@@ -283,7 +283,7 @@ public sealed class SettingsForm : Form
     {
         Text = text, Width = w, Height = 18, AutoSize = false,
         TextAlign = ContentAlignment.MiddleLeft,
-        Font = new Font("Segoe UI", 8.5f),
+        Font = new Font("Segoe UI", 12f, FontStyle.Regular, GraphicsUnit.Pixel),
         ForeColor = _th.Label, BackColor = _th.CardBg, Tag = "caption"
     };
 
@@ -334,8 +334,8 @@ public sealed class SettingsForm : Form
         _strip.SelectionChanged += (_, _) => { _cfg.Strip = (StripStyle)_strip.SelectedIndex; Apply(); };
 
         AddRow(card, 62, null,
-            new Cell(capPos, 0, 0, half, 16), new Cell(_pos, 0, 22, half, CtrlH),
-            new Cell(capStyle, right, 0, half, 16), new Cell(_strip, right, 22, half, CtrlH));
+            new Cell(capPos, 0, 0, half, 18), new Cell(_pos, 0, 22, half, CtrlH),
+            new Cell(capStyle, right, 0, half, 18), new Cell(_strip, right, 22, half, CtrlH));
 
         // 所在屏幕（只有多屏才有意义）
         var capScreen = Cap("所在屏幕", half);
@@ -365,17 +365,17 @@ public sealed class SettingsForm : Form
 
         // 水平微调：和「所在屏幕」共用一行；单屏时自动挪到左半，不留空洞
         var capOff = Inline("水平微调", 66);
-        _offset = new Stepper { Width = 84, Height = 30, Th = _th, Minimum = -200, Maximum = 200 };
+        _offset = new Stepper { Width = 84, Height = 32, Th = _th, Minimum = -200, Maximum = 200 };   // C11：32（原 30 废弃）
         _offset.Value = Math.Clamp(_cfg.OffsetX, -200, 200);
         _offset.ValueChanged += (_, _) => { _cfg.OffsetX = _offset.Value; Apply(); };
         var hint = Small("负 左移 · 正 右移", 150);
         int dx() => _bars.Count > 1 ? 0 : -right;   // 单屏时整组左移半个卡片宽
 
         AddRow(card, 66, null,
-            new Cell(capScreen, 0, 0, half, 16, () => _bars.Count > 1),
+            new Cell(capScreen, 0, 0, half, 18, () => _bars.Count > 1),
             new Cell(_screen, 0, 22, half, CtrlH, () => _bars.Count > 1),
-            new Cell(capOff, right, 0, 66, 16, null, () => right + dx()),
-            new Cell(_offset, right + 4, 22, 84, 30, null, () => right + 4 + dx()),
+            new Cell(capOff, right, 0, 66, 18, null, () => right + dx()),
+            new Cell(_offset, right + 4, 22, 84, 32, null, () => right + 4 + dx()),
             new Cell(hint, right + 96, 26, 150, 20, null, () => right + 96 + dx()));
 
         AddRow(card, 22, null,
@@ -401,7 +401,7 @@ public sealed class SettingsForm : Form
             Apply();
             Recolor();
         };
-        AddRow(card, 62, null, new Cell(capTheme, 0, 0, w, 16), new Cell(_theme, 0, 22, w, CtrlH));
+        AddRow(card, 62, null, new Cell(capTheme, 0, 0, w, 18), new Cell(_theme, 0, 22, w, CtrlH));
 
         int rateIdx = Array.IndexOf(Rates, _cfg.RefreshMs);
         var capRate = Cap("刷新间隔", w);
@@ -416,7 +416,7 @@ public sealed class SettingsForm : Form
             _cfg.RefreshMs = Rates[Math.Clamp(_rate.SelectedIndex, 0, Rates.Length - 1)];
             Apply();
         };
-        AddRow(card, 62, null, new Cell(capRate, 0, 0, w, 16), new Cell(_rate, 0, 22, w, CtrlH));
+        AddRow(card, 62, null, new Cell(capRate, 0, 0, w, 18), new Cell(_rate, 0, 22, w, CtrlH));
 
         var capOp = Inline("不透明度", 84);
         _opacity = new Slider { Width = 118, Height = 26, Th = _th, Value = _cfg.StripOpacity };
@@ -492,7 +492,7 @@ public sealed class SettingsForm : Form
             RefreshPreview();
             Apply();
         };
-        AddRow(card, 62, null, new Cell(capStyle, 0, 0, w, 16), new Cell(_tray, 0, 22, w, CtrlH));
+        AddRow(card, 62, null, new Cell(capStyle, 0, 0, w, 18), new Cell(_tray, 0, 22, w, CtrlH));
 
         // 每行都读写「当前样式」的槽位：切样式时 RefreshTraySlots 把值换过去
         _trayP = MetricSeg(() => _cfg.TrayCurrent.Primary, m => _cfg.TrayCurrent.Primary = m);
@@ -545,7 +545,7 @@ public sealed class SettingsForm : Form
     {
         var cap = Inline(caption, 76);
         AddRow(card, 42, show,
-            new Cell(cap, 0, 2, 76, 30),
+            new Cell(cap, 0, 2, 76, 32),
             new Cell(ctrl, 80, 0, w - 80, CtrlH));
     }
 
@@ -607,7 +607,7 @@ public sealed class SettingsForm : Form
             RefreshHistoryInfo();
         };
         AddRow(card, 62, () => _cfg.HistoryEnabled && _cfg.HistoryPersist,
-            new Cell(capRet, 0, 0, w, 16), new Cell(_retention, 0, 22, w, CtrlH));
+            new Cell(capRet, 0, 0, w, 18), new Cell(_retention, 0, 22, w, CtrlH));
 
         // 面板默认时间窗
         var capWin = Cap("面板默认时间窗", w);
@@ -620,7 +620,7 @@ public sealed class SettingsForm : Form
         };
         RefreshWindowSeg();
         AddRow(card, 62, () => _cfg.HistoryEnabled,
-            new Cell(capWin, 0, 0, w, 16), new Cell(_win, 0, 22, w, CtrlH));
+            new Cell(capWin, 0, 0, w, 18), new Cell(_win, 0, 22, w, CtrlH));
 
         _histInfo = Small("", w);
         _histInfo.Height = 20;
@@ -719,8 +719,8 @@ public sealed class SettingsForm : Form
 
         _scriptBtn = new BentoButton
         {
-            Text = "选择脚本…", Width = 104, Height = 38,
-            Radius = 9, Shadow = 8, Th = _th
+            Text = "选择脚本…", Width = 104, Height = 38,   // C11：视觉 32 + 投影 6
+            Radius = 10, Shadow = 6, Th = _th   // A5 按钮 R10 / A10 预留 6（v0.24 日志记 9→10，实际漏改，本批补齐）
         };
         _scriptBtn.Click += (_, _) => PickScript();
 
@@ -734,8 +734,8 @@ public sealed class SettingsForm : Form
 
         // 关着的时候给一句说明，别让这张卡空着
         var offHint = Small("开启后可设置 CPU / 内存 / GPU / 显存 / 温度的阈值与持续时间", 460);
-        offHint.Height = 30;
-        top.Add(new Cell(offHint, 116, 0, 460, 30, () => !_cfg.AlertsEnabled));
+        offHint.Height = 32;
+        top.Add(new Cell(offHint, 116, 0, 460, 32, () => !_cfg.AlertsEnabled));
 
         top.Add(new Cell(_scriptBtn, x + 12, 0, 104, 38, () => _cfg.AlertsEnabled && _cfg.AlertScript));
         top.Add(new Cell(_scriptPath, x + 124, 5, 300, 26, () => _cfg.AlertsEnabled && _cfg.AlertScript));
@@ -752,13 +752,13 @@ public sealed class SettingsForm : Form
             bool temp = m == AlertMetric.GpuTemp;
             int cx = i * (cellW + 12);
 
-            var chip = new Chip(AlertNames[i]) { Checked = rule.Enabled, Th = _th, Width = cellW, Height = 28 };
+            var chip = new Chip(AlertNames[i]) { Checked = rule.Enabled, Th = _th, Width = cellW, Height = 32 };   // C11：32（原 28 废弃）
             chip.CheckedChanged += (_, _) => { rule.Enabled = chip.Checked; Apply(); };
             _alertChips[i] = chip;
 
             var thr = new Stepper
             {
-                Width = 78, Height = 30, Th = _th,
+                Width = 78, Height = 32, Th = _th,   // C11：32（原 30 废弃）
                 Minimum = 40, Maximum = temp ? 110 : 100
             };
             thr.Value = (int)Math.Clamp(rule.Threshold, thr.Minimum, thr.Maximum);
@@ -766,12 +766,12 @@ public sealed class SettingsForm : Form
             _alertThr[i] = thr;
 
             var unit = Small(temp ? "°" : "%", 16);
-            unit.Height = 30;
+            unit.Height = 32;
             unit.TextAlign = ContentAlignment.MiddleLeft;
 
             var dur = new Stepper
             {
-                Width = 78, Height = 30, Th = _th,
+                Width = 78, Height = 32, Th = _th,
                 Minimum = 1, Maximum = 300
             };
             dur.Value = Math.Clamp(rule.DurationSec, 1, 300);
@@ -779,14 +779,14 @@ public sealed class SettingsForm : Form
             _alertDur[i] = dur;
 
             var sec = Small("秒", 16);
-            sec.Height = 30;
+            sec.Height = 32;
             sec.TextAlign = ContentAlignment.MiddleLeft;
 
-            ruleCells.Add(new Cell(chip, cx, 0, cellW, 28, () => _cfg.AlertsEnabled));
-            ruleCells.Add(new Cell(thr, cx, 34, 78, 30, () => _cfg.AlertsEnabled));
-            ruleCells.Add(new Cell(unit, cx + 80, 34, 16, 30, () => _cfg.AlertsEnabled));
-            ruleCells.Add(new Cell(dur, cx + 98, 34, 78, 30, () => _cfg.AlertsEnabled));
-            ruleCells.Add(new Cell(sec, cx + 178, 34, 16, 30, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(chip, cx, 0, cellW, 32, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(thr, cx, 36, 78, 32, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(unit, cx + 80, 36, 16, 32, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(dur, cx + 98, 36, 78, 32, () => _cfg.AlertsEnabled));
+            ruleCells.Add(new Cell(sec, cx + 178, 36, 16, 32, () => _cfg.AlertsEnabled));
         }
 
         AddRow(card, 72, () => _cfg.AlertsEnabled, ruleCells.ToArray());
@@ -869,9 +869,10 @@ public sealed class SettingsForm : Form
         for (int r = 0; r < rowCount; r++) { rowTop[r] = top; top += rowH[r] + Gap; }
         int contentH = top - Gap + 6;
 
-        int maxH = Math.Max(360, Screen.PrimaryScreen!.WorkingArea.Height - 140 - HeadH - FootH);
+        int capH = CaptionHeight;   // C1：自绘标题栏 44，卡片网格整体下移
+        int maxH = Math.Max(360, Screen.PrimaryScreen!.WorkingArea.Height - 140 - capH - HeadH - FootH);
         int hostH = Math.Min(contentH, maxH);
-        int clientH = HeadH + hostH + FootH;
+        int clientH = capH + HeadH + hostH + FootH;
         bool grow = clientH > ClientSize.Height;
 
         SuspendLayout();
@@ -879,10 +880,10 @@ public sealed class SettingsForm : Form
         // 容器就不可能在重排过程中弹出一条瞬时滚动条（切样式时闪的那条）。
         _host.AutoScroll = contentH > hostH;
         if (grow) ClientSize = new Size(FormW, clientH);      // 长窗口放前面，露出来的底色是窗口底色
-        _host.SetBounds(0, HeadH, FormW, hostH);
-        _header.SetBounds(0, 0, FormW, HeadH);
-        _footer.SetBounds(0, HeadH + hostH, FormW, FootH);
-        _divider.SetBounds(Pad, HeadH + hostH, FormW - Pad * 2, 1);
+        _host.SetBounds(0, capH + HeadH, FormW, hostH);
+        _header.SetBounds(0, capH, FormW, HeadH);
+        _footer.SetBounds(0, capH + HeadH + hostH, FormW, FootH);
+        _divider.SetBounds(Pad, capH + HeadH + hostH, FormW - Pad * 2, 1);
 
         // 4) 摆卡片：矮的卡片把多出来的高度均摊到各行，避免底部一大块空白
         for (int r = 0; r < rowCount; r++)
@@ -962,13 +963,16 @@ public sealed class SettingsForm : Form
         base.WndProc(ref m);
     }
 
-    [DllImport("dwmapi.dll")]
-    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
+    // ---------------- C1 自绘标题栏（03 §B1/B5） ----------------
+    // 系统标题栏已不存在（原 DWM 深色属性随之移除）；标题栏随 ChromeForm 自绘，
+    // 顶栏 64（品牌区）/ 底栏 56 不进网格，整体下移一个标题栏高度。
 
-    protected override void OnHandleCreated(EventArgs e)
+    protected override float ChromeScale => DeviceDpi / 96f;
+
+    protected override void OnPaint(PaintEventArgs e)
     {
-        base.OnHandleCreated(e);
-        ApplyTitleBarTheme();
+        base.OnPaint(e);
+        DrawChrome(e.Graphics, _th);
     }
 
     protected override void Dispose(bool disposing)
@@ -980,14 +984,6 @@ public sealed class SettingsForm : Form
             _layoutTimer = null;
         }
         base.Dispose(disposing);
-    }
-
-    private void ApplyTitleBarTheme()
-    {
-        if (!IsHandleCreated) return;
-        int dark = _th.IsDark ? 1 : 0;
-        if (DwmSetWindowAttribute(Handle, 20, ref dark, sizeof(int)) != 0)
-            DwmSetWindowAttribute(Handle, 19, ref dark, sizeof(int));
     }
 
     private void Apply()
@@ -1100,7 +1096,6 @@ public sealed class SettingsForm : Form
         _divider.BackColor = _th.Line;
 
         RecolorControl(this);
-        ApplyTitleBarTheme();
         InvalidateAll(this);
     }
 

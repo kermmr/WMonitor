@@ -9,7 +9,7 @@ namespace WMonitor.UI;
 public sealed class TaskbarStrip : LayeredWindow
 {
     private const int BaseHeight = 30;      // 96dpi 下的贴片高度
-    private const float BaseRadius = 7f;
+    private const float BaseRadius = 8f;    // C6：贴片圆角 7→8（03 §A5/B6）
     private const float BasePad = 10f;
     private const int HistLen = 5;
 
@@ -236,18 +236,19 @@ public sealed class TaskbarStrip : LayeredWindow
 
     private float MeasureRow(Graphics g, List<Cell> cells, StripStyle style, float k)
     {
+        // C8（B6/A3 最小 12 规则）：标签 12 Regular 指标色@65% → 数值 14 Bold → 单位 12 Regular
         float pad = BasePad * k, x = 0;
-        var fLabel = Gfx.F(BaseFont, 8.5f * k, FontStyle.Bold);
-        var fValue = Gfx.F(BaseFont, 12f * k, FontStyle.Bold);
-        var fUnit = Gfx.F(BaseFont, 9f * k, FontStyle.Regular);
+        var fLabel = Gfx.F(BaseFont, 12f * k, FontStyle.Regular);
+        var fValue = Gfx.F(BaseFont, 14f * k, FontStyle.Bold);
+        var fUnit = Gfx.F(BaseFont, 12f * k, FontStyle.Regular);
 
         for (int i = 0; i < cells.Count; i++)
         {
             var c = cells[i];
             if (i > 0) x += 16 * k;
-            x += 5 * k + 5 * k;                              // dot + gap
-            x += Gfx.Measure(g, c.Label, fLabel).Width + 4 * k;
-            x += ValueBox(g, c, fValue, k) + 2 * k;
+            x += 6 * k + 5 * k;                              // dot 6 + gap 5
+            x += Gfx.Measure(g, c.Label, fLabel).Width + 5 * k;
+            x += ValueBox(g, c, fValue, k) + 3 * k;
             if (c.Unit.Length > 0) x += Gfx.Measure(g, c.Unit, fUnit).Width;
             if (style == StripStyle.Bars && c.Bar) x += 7 * k + 5 * (3f + 2f) * k;
         }
@@ -263,9 +264,9 @@ public sealed class TaskbarStrip : LayeredWindow
 
     private void DrawRow(Graphics g, List<Cell> cells, StripStyle style, float k, float pad, int h, Theme th)
     {
-        var fLabel = Gfx.F(BaseFont, 8.5f * k, FontStyle.Bold);
-        var fValue = Gfx.F(BaseFont, 12f * k, FontStyle.Bold);
-        var fUnit = Gfx.F(BaseFont, 9f * k, FontStyle.Regular);
+        var fLabel = Gfx.F(BaseFont, 12f * k, FontStyle.Regular);
+        var fValue = Gfx.F(BaseFont, 14f * k, FontStyle.Bold);
+        var fUnit = Gfx.F(BaseFont, 12f * k, FontStyle.Regular);
 
         float cy = h / 2f;
         float x = pad;
@@ -282,28 +283,28 @@ public sealed class TaskbarStrip : LayeredWindow
                 x += 16 * k;
             }
 
-            // dot
+            // dot 6（B6：5→6）
             using (var dot = new SolidBrush(c.Color))
-                g.FillEllipse(dot, x, cy - 2.5f * k, 5 * k, 5 * k);
-            x += 10 * k;
+                g.FillEllipse(dot, x, cy - 3f * k, 6 * k, 6 * k);
+            x += 11 * k;
 
             // label
             float lw = Gfx.Measure(g, c.Label, fLabel).Width;
-            Gfx.Text(g, c.Label, fLabel, Color.FromArgb(165, c.Color), x, cy - 4.5f * k);
-            x += lw + 4 * k;
+            Gfx.Text(g, c.Label, fLabel, Color.FromArgb(165, c.Color), x, cy - 6f * k);
+            x += lw + 5 * k;
 
             // value（右对齐到固定盒，数字不跳）；告警时整格变红
             float bw = ValueBox(g, c, fValue, k);
             float vw = Gfx.Measure(g, c.Value, fValue).Width;
             bool hot = c.Color == th.Alert;
-            Gfx.Text(g, c.Value, fValue, hot ? th.Alert : th.Text, x + (bw - vw), cy - 6.5f * k);
-            x += bw + 2 * k;
+            Gfx.Text(g, c.Value, fValue, hot ? th.Alert : th.Text, x + (bw - vw), cy - 7f * k);
+            x += bw + 3 * k;
 
             // unit
             if (c.Unit.Length > 0)
             {
                 float uw = Gfx.Measure(g, c.Unit, fUnit).Width;
-                Gfx.Text(g, c.Unit, fUnit, th.Label, x, cy - 2f * k);
+                Gfx.Text(g, c.Unit, fUnit, th.Label, x, cy - 6f * k);
                 x += uw;
             }
 
@@ -468,6 +469,7 @@ public sealed class TaskbarStrip : LayeredWindow
 
     private const string BaseFont = "Segoe UI";
 
+    private static Bitmap? _measureBmp;
     private static Graphics? _measureG;
     private static Graphics MeasureG
     {
@@ -475,7 +477,10 @@ public sealed class TaskbarStrip : LayeredWindow
         {
             if (_measureG == null)
             {
-                _measureG = Graphics.FromImage(new Bitmap(1, 1));
+                // Bitmap 必须静态持有，否则 GC 回收后 MeasureString 抛「Parameter is not valid」
+                //（同 BentoButton，2026-11-05 实测）
+                _measureBmp = new Bitmap(1, 1);
+                _measureG = Graphics.FromImage(_measureBmp);
                 _measureG.PageUnit = GraphicsUnit.Pixel;
             }
             return _measureG;

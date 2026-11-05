@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- WMonitor app icon proposal A - pulse, dark theme -->
+  <defs>
+    <linearGradient id="aD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="aD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="aD-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="aD-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="aD-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <g filter="url(#aD-shadow)">
+    <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#aD-container)"/>
+  </g>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="2.5"/>
+  <g clip-path="url(#aD-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#aD-gloss)"/>
+  </g>
+  <!-- sampling track -->
+  <line x1="136" y1="276" x2="376" y2="276" stroke="rgba(255,255,255,.13)" stroke-width="28" stroke-linecap="round"/>
+  <!-- ecg line -->
+  <path d="M136 276 H226 L244 190 L266 342 L282 276 H322" fill="none" stroke="url(#aD-glyph)" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- live dot -->
+  <circle cx="356" cy="276" r="17" fill="#3DDC97"/>
+</svg>

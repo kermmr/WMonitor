@@ -41,9 +41,9 @@ public sealed class MetricCard : Control
         if (_fontScale == s && _fLabel != null) return;
         _fontScale = s;
         _fLabel?.Dispose(); _fValue?.Dispose(); _fSub?.Dispose();
-        _fLabel = new Font("Segoe UI", 12.5f * s, FontStyle.Regular, GraphicsUnit.Pixel);
-        _fValue = new Font("Segoe UI", 30f * s, FontStyle.Bold, GraphicsUnit.Pixel);
-        _fSub = new Font("Segoe UI", 11f * s, FontStyle.Regular, GraphicsUnit.Pixel);
+        _fLabel = new Font("Segoe UI", 14f * s, FontStyle.Regular, GraphicsUnit.Pixel);   // A3：卡片标题 Title 14（原 12.5 废弃）
+        _fValue = new Font("Segoe UI", 30f * s, FontStyle.Bold, GraphicsUnit.Pixel);      // Display 30
+        _fSub = new Font("Segoe UI", 12f * s, FontStyle.Regular, GraphicsUnit.Pixel);     // Body 12（原 11 废弃）
     }
 
     protected override void OnPaintBackground(PaintEventArgs e) =>
@@ -58,7 +58,7 @@ public sealed class MetricCard : Control
 
         float s = UiScale;
         var full = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
-        using (var path = Gfx.RoundRect(full, 14 * s))
+        using (var path = Gfx.RoundRect(full, 12 * s))   // C6：卡片级圆角统一 R12（原 14 废弃）
         {
             using var bg = new SolidBrush(Th.CardBg);
             g.FillPath(bg, path);
@@ -120,7 +120,6 @@ public sealed class MetricCard : Control
 public sealed class SearchBox : Control
 {
     public Theme Th = Theme.Dark;
-    public float UiScale = 1f;
     public string Placeholder = "搜索应用 / 进程 / PID / 路径";
 
     /// <summary>TextChanged 已被 Control 占用，用这个名字。</summary>
@@ -128,6 +127,18 @@ public sealed class SearchBox : Control
 
     private readonly TextBox _box = new();
     private bool _focused;
+
+    /// <summary>C10：输入文字 A3 Body 12px（原 10pt≈13.3px 真变值）；随 UiScale 重建。</summary>
+    public float UiScale
+    {
+        get => _uiScale;
+        set
+        {
+            _uiScale = value;
+            _box.Font = Gfx.F("Segoe UI", 12f * value, FontStyle.Regular);
+        }
+    }
+    private float _uiScale = 1f;
 
     public SearchBox()
     {
@@ -137,7 +148,7 @@ public sealed class SearchBox : Control
         Cursor = Cursors.IBeam;
 
         _box.BorderStyle = BorderStyle.None;
-        _box.Font = new Font("Segoe UI", 10f);
+        _box.Font = Gfx.F("Segoe UI", 12f, FontStyle.Regular);
         _box.TextChanged += (_, _) => SearchChanged?.Invoke(_box.Text);
         _box.GotFocus += (_, _) => { _focused = true; Invalidate(); };
         _box.LostFocus += (_, _) => { _focused = false; Invalidate(); };
@@ -145,7 +156,7 @@ public sealed class SearchBox : Control
         Controls.Add(_box);
 
         Click += (_, _) => _box.Focus();
-        Height = 34;
+        Height = 32;      // A6（C11）：交互控件统一视觉高 32（原 34 废弃）
         Width = 300;
     }
 
@@ -311,24 +322,28 @@ public sealed class DetailBar : Control
         // 挂起/恢复互斥：按钮永远显示「当前可执行的那个动作」
         _btnSuspend.Enabled = controlAllowed;
         _btnSuspend.Text = Suspended ? "恢复" : "挂起";
+        LayoutButtons();     // C5 组内等宽：文字变了宽度规则跟着算（挂起/恢复同字数，通常无变化）
     }
 
     private int ActionAreaWidth()
     {
-        float s = UiScale;
-        return (int)((78 + 72 + 72 + 86 + 8 * 3 + 14) * s);
+        // B3/C5：四钮组内等宽 = 组内最宽者（A7 公式），间距 8，右缩 16
+        int group = BentoButton.GroupWidth(UiScale, "打开位置", "优先级", "挂起", "结束任务");
+        return group * 4 + (int)(8 * UiScale) * 3 + (int)(16 * UiScale);
     }
 
     private void LayoutButtons()
     {
         float s = UiScale;
-        int h = (int)(32 * s);
+        int group = BentoButton.GroupWidth(s, _btnOpen.Text, _btnPriority.Text, _btnSuspend.Text, _btnTerminate.Text);
+        int shadow = (int)Math.Round(6 * s);          // 投影预留：Height = 视觉高 32 + Shadow（A10）
+        int h = (int)(32 * s) + shadow;
         int y = (Height - h) / 2;
-        int x = Width - (int)(14 * s);
-        _btnTerminate.SetBounds(x - (int)(86 * s), y, (int)(86 * s), h); x -= (int)((86 + 8) * s);
-        _btnSuspend.SetBounds(x - (int)(72 * s), y, (int)(72 * s), h); x -= (int)((72 + 8) * s);
-        _btnPriority.SetBounds(x - (int)(72 * s), y, (int)(72 * s), h); x -= (int)((72 + 8) * s);
-        _btnOpen.SetBounds(x - (int)(78 * s), y, (int)(78 * s), h);
+        int x = Width - (int)(16 * s);                // B3 右缩 16（原 14 废弃）
+        _btnTerminate.SetBounds(x - group, y, group, h); x -= group + (int)(8 * s);
+        _btnSuspend.SetBounds(x - group, y, group, h); x -= group + (int)(8 * s);
+        _btnPriority.SetBounds(x - group, y, group, h); x -= group + (int)(8 * s);
+        _btnOpen.SetBounds(x - group, y, group, h);
     }
 
     protected override void OnResize(EventArgs e)
@@ -362,7 +377,7 @@ public sealed class DetailBar : Control
 
         if (_row == null)
         {
-            var fHint = Gfx.F("Segoe UI", 11.5f * s, FontStyle.Regular);
+            var fHint = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);   // A3 最小 12（原 11.5 废弃）
             using var hb = new SolidBrush(Th.Label);
             g.DrawString("选中列表中的一行查看详情", fHint, hb, pad, Height / 2f - fHint.Height / 2,
                 StringFormat.GenericTypographic);
@@ -393,7 +408,7 @@ public sealed class DetailBar : Control
             g.DrawString(name, fName, tb, textPad, 11 * s, StringFormat.GenericTypographic);
         float x = textPad + Math.Min(Gfx.Measure(g, name, fName).Width + 10 * s, w * 0.6f);
 
-        var fMeta = Gfx.F("Segoe UI", 10.5f * s, FontStyle.Regular);
+        var fMeta = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);   // A3：详情行 Body 12（原 10.5 废弃）
         string meta = r.IsApp
             ? $"{r.MemberCount} 个进程 · 主 PID {r.Pid}"
             : $"PID {r.Pid}" + (r.Architecture != null ? $" · {r.Architecture}" : "");
@@ -406,7 +421,7 @@ public sealed class DetailBar : Control
             g.DrawString(meta, fMeta, mb, x, 14 * s, StringFormat.GenericTypographic);
 
         // ---- 行 2：路径 + 公司/描述 ----
-        var fSub = Gfx.F("Segoe UI", 10f * s, FontStyle.Regular);
+        var fSub = Gfx.F("Segoe UI", 12f * s, FontStyle.Regular);   // A3：路径/正文 Body 12（原 10 废弃）
         string line2 = r.Path ?? "路径不可读（受限进程）";
         string extra = JoinNonEmpty(" · ", r.Description, r.Company);
         if (extra.Length > 0) line2 += "  ·  " + extra;

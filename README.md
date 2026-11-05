@@ -91,7 +91,7 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
-| `WMonitor-v0.26-framework.exe` | 663 KB | 需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
+| `WMonitor-v0.26-framework.exe` | 669 KB | 需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
 | `WMonitor-v0.26-portable.exe` | 63 MB | 自包含，双击即用，适合拷给别人 |
 
 双击运行，贴片自动出现在任务栏托盘左侧，托盘区出现图标。没有安装程序，删掉 exe 就卸载干净（配置与历史在 `%APPDATA%\WMonitor\`）。

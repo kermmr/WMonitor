@@ -79,8 +79,8 @@ D:\WMonitor\
 │  │  └─ Theme.cs              深/浅两套配色 + 系统主题判定 + 告警色
 │  └─ docs\                    详细文档
 ├─ WMonitor\                   ← 安装版（framework 依赖，多文件）
-├─ WMonitor-v0.23-framework.exe
-└─ WMonitor-v0.23-portable.exe
+├─ WMonitor-v0.26-framework.exe
+└─ WMonitor-v0.26-portable.exe
 ```
 
 **改代码只改 `wmonitor-eidt\`**，然后重新发布到另外两个位置。
@@ -104,13 +104,13 @@ dotnet publish -c Release -r win-x64 --self-contained false \
 # ② 单文件 · 框架依赖
 dotnet publish -c Release -r win-x64 --self-contained false \
   -p:PublishSingleFile=true -o build/framework
-cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.23-framework.exe"
+cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.26-framework.exe"
 
 # ③ 单文件 · 自包含
 dotnet publish -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true -o build/portable
-cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.23-portable.exe"
+cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.26-portable.exe"
 ```
 
 **发布前必须先杀掉运行中的进程**，否则 exe 被锁、编译报 `MSB3027 / MSB3021`：
@@ -210,6 +210,7 @@ v0.10 新增诊断（都不开 UI，跑完就退，结果写 `D:/Hermes/output/r
 | `--dashboard-icon-probe` | 验证图标三层缓存（v0.20）：取运行中进程路径逐个 Get 两遍，输出抽取耗时 / LRU 命中 / 磁盘缓存文件与 .miss 负缓存统计，写 `D:/Hermes/output/results/wmonitor-icon-probe.txt` |
 | `--dashboard-action-probe` | 管控动作端到端（v0.22，无 UI）：单进程 ping 牺牲对象 挂起→线程级验证→恢复→优先级→结束，另测死 PID 与 pid=4 错误映射，写 `D:/Hermes/output/results/wmonitor-action-probe.txt` |
 | `--dashboard-action-ui-probe` | 真面板+真对话框动作验收（v0.22）：程序化选中牺牲进程行走确认框→真执行，config 用后恢复，写 `D:/Hermes/output/results/wmonitor-action-ui-probe.txt` |
+| `--dashboard-chrome-probe` | 标题栏回归（v0.25 建立探针，v0.26 扩到 18 项）：非原点窗口消息级点击 hover/pressed 生命周期/最大化/还原/最小化/关闭/设置窗关闭 + 右键标题栏系统菜单拦截 + DWM 圆角偏好读回 + Segmented/Chip 焦点环与 Ghost 分支像素断言，写 `D:/Hermes/output/results/wmonitor-chrome-probe.txt` |
 
 调试钩子：`WMONITOR_DPI_SCALE=1.5` 可在 96 DPI 机器上预览 150% 排版；`WMONITOR_DEBUG=1` 写 `debug.log`（blit 坐标与尺寸）。
 

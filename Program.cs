@@ -11,6 +11,9 @@ internal static class Program
 {
     private const string MutexName = @"Global\WMonitor.SingleInstance.v1";
 
+    /// <summary>第二实例唤醒事件:已运行的实例收到信号后打开资源面板（无弹窗）。</summary>
+    public const string ActivateEventName = @"Local\WMonitor.ShowDashboard.v1";
+
     [STAThread]
     private static void Main(string[] args)
     {
@@ -96,8 +99,15 @@ internal static class Program
         }
         if (!owned)
         {
-            MessageBox.Show("WMonitor 已经在运行（看托盘区图标）。", "WMonitor",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
+            // 已有实例在跑：不再弹「已经在运行」对话框——双击 exe 的预期是打开面板，不是看提示，
+            // 且阻塞式弹框在快速多次启动时会叠好几层。唤醒首实例打开资源面板后静默退出；
+            // 唤醒失败（首实例尚在初始化或正在退出）同样静默退出，托盘里本来就有图标。
+            try
+            {
+                using var evt = EventWaitHandle.OpenExisting(ActivateEventName);
+                evt.Set();
+            }
+            catch { }
             return;
         }
 
@@ -108,7 +118,9 @@ internal static class Program
         Application.ThreadException += (_, e) => LogCrash(e.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, e) => LogCrash(e.ExceptionObject as Exception);
 
+        using var activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEventName);
         var ctx = new MonitorAppContext();
+        ctx.AttachActivateEvent(activateEvent);
         if (args.Contains("--panel"))
         {
             var tp = new System.Windows.Forms.Timer { Interval = 900 };

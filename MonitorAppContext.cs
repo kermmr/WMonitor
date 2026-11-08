@@ -8,6 +8,12 @@ namespace WMonitor;
 
 internal sealed class MonitorAppContext : ApplicationContext
 {
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern uint RegisterWindowMessage(string lpString);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindow(string lpClassName, string? lpWindowName);
+
     private readonly AppConfig _cfg;
     private readonly MetricSampler _sampler;
     private readonly DetailPanel _panel;
@@ -38,6 +44,15 @@ internal sealed class MonitorAppContext : ApplicationContext
     private volatile bool _paused;
     private string _trayKey = "";
     private int _tick;
+    private TrayRefreshFilter? _trayFilter;
+    private uint _taskbarCreated;
+
+    /// <summary>
+    /// 启动时任务栏（Shell_TrayWnd）还没起来 = NIM_ADD 必然失败且被 WinForms 静默吞掉
+    /// （NotifyIcon.UpdateIcon 无条件置 _added=true，之后只会 NIM_MODIFY，图标永久消失而进程照常跑）。
+    /// true 期间每个采样周期探测任务栏，就绪后翻转一次 Visible 强制重加。TaskbarCreated 到来也会清除。
+    /// </summary>
+    private bool _trayWaitTaskbar;
 
     /// <summary>当前打开的托盘右键菜单（每次重开重建，勾选状态直接读配置）。</summary>
     private FlyoutMenu? _menu;
@@ -47,6 +62,10 @@ internal sealed class MonitorAppContext : ApplicationContext
 
     /// <summary>左键点击去抖：双击托盘图标只算一次，别开一下又关掉。</summary>
     private DateTime _lastTrayClick = DateTime.MinValue;
+
+    /// <summary>第二实例唤醒事件 + 轮询定时器（AttachActivateEvent 接线）。</summary>
+    private EventWaitHandle? _activateEvent;
+    private System.Windows.Forms.Timer? _activateTimer;
 
     public MonitorAppContext()
     {
@@ -75,6 +94,10 @@ internal sealed class MonitorAppContext : ApplicationContext
         // 左键 = 开/关详情面板；右键 = 自绘弹出菜单（不用 ContextMenuStrip，见 UI/FlyoutMenu.cs）
         _tray.MouseUp += OnTrayMouseUp;
         _tray.Icon = TrayIconRenderer.Render(_cfg, _last, _theme, TraySize);
+        _taskbarCreated = RegisterWindowMessage("TaskbarCreated");
+        _trayFilter = new TrayRefreshFilter(this);
+        Application.AddMessageFilter(_trayFilter);
+        _trayWaitTaskbar = FindWindow("Shell_TrayWnd", null) == IntPtr.Zero;
 
         if (AppConfig.LastLoadError != null)
             _tray.ShowBalloonTip(8000, "WMonitor",
@@ -90,6 +113,22 @@ internal sealed class MonitorAppContext : ApplicationContext
         _timer.Tick += (_, _) => Tick();
         _timer.Start();
         Tick();
+    }
+
+    /// <summary>第二实例唤醒：收到信号就打开资源面板（未启用主面板则开详情面板）。见 Program.Main 单实例分支。</summary>
+    public void AttachActivateEvent(EventWaitHandle activateEvent)
+    {
+        _activateEvent = activateEvent;
+        _activateTimer = new System.Windows.Forms.Timer { Interval = 500 };
+        _activateTimer.Tick += (_, _) =>
+        {
+            if (_activateEvent != null && _activateEvent.WaitOne(0))
+            {
+                if (_cfg.DashboardEnabled) OpenDashboard();
+                else OpenPanel(null);
+            }
+        };
+        _activateTimer.Start();
     }
 
     private static int TraySize => Math.Max(16, SystemInformation.SmallIconSize.Width);
@@ -283,6 +322,7 @@ internal sealed class MonitorAppContext : ApplicationContext
 
     private void Tick()
     {
+        if (_trayWaitTaskbar) RetryTrayAdd();
         if (_paused) return;
         MetricsSnapshot s;
         try { s = _sampler.Sample(); }
@@ -666,6 +706,8 @@ internal sealed class MonitorAppContext : ApplicationContext
 
     private void Quit()
     {
+        _activateTimer?.Stop();
+        _activateTimer?.Dispose();
         _timer.Stop();
         _timer.Dispose();
         StopFlash();
@@ -675,6 +717,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         _tray.Visible = false;
         _tray.Icon = null;
         _tray.Dispose();
+        if (_trayFilter != null) Application.RemoveMessageFilter(_trayFilter);
         foreach (var st in _strips) st.Dispose();
         _strips.Clear();
         _panel.Dispose();
@@ -682,5 +725,37 @@ internal sealed class MonitorAppContext : ApplicationContext
         _sampler.Dispose();
         _cfg.Save();
         ExitThread();
+    }
+
+    /// <summary>任务栏未就绪重试：探测到 Shell_TrayWnd 后翻转 Visible（NIM_DELETE + NIM_ADD）补上首加。</summary>
+    private void RetryTrayAdd()
+    {
+        if (FindWindow("Shell_TrayWnd", null) == IntPtr.Zero) return;
+        _trayWaitTaskbar = false;
+        _tray.Visible = false;
+        _tray.Visible = true;
+    }
+
+    private void OnTaskbarRecreated()
+    {
+        // 原生 NotifyIcon 收到 TaskbarCreated 也会重加；这里再兜一层（自家 filter 不依赖框架行为）。
+        // 不重新 Render：当前 Icon 句柄仍有效，重画反而泄漏旧句柄（v0.27 的问题）。
+        _trayWaitTaskbar = false;
+        _tray.Visible = false;
+        _tray.Visible = true;
+    }
+
+    private sealed class TrayRefreshFilter : IMessageFilter
+    {
+        private readonly MonitorAppContext _owner;
+
+        public TrayRefreshFilter(MonitorAppContext owner) => _owner = owner;
+
+        public bool PreFilterMessage(ref Message m)
+        {
+            if (_owner._taskbarCreated != 0 && m.Msg == (int)_owner._taskbarCreated)
+                _owner.OnTaskbarRecreated();
+            return false;
+        }
     }
 }

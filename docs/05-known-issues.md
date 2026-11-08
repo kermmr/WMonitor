@@ -173,6 +173,54 @@ AMD / Intel 走 PDH 的 `GPU Engine` 聚合，采样开销从 0.3 ms 升到约 2
 **原因**：`AlertRules` 是 JSON 数组，用户手改或旧版本长度不足时，下标与 `AlertMetric` 不再对应。
 **解法**：`AlertEngine.Configure` 与 `SettingsForm.NormalizeRules` 都按 `Metric` 字段归位，并补齐到 5 条。
 
+### 22. 托盘图标消失（进程还在但托盘里没有图标）
+
+**现象**：任务管理器能看到 WMonitor 进程、贴片照常，但托盘里找不到 WMonitor 图标。
+**原因**（两条路径，v0.28 都已堵上）：
+① **Explorer 重启**：任务栏重建时发 `TaskbarCreated` 广播，旧 `NotifyIcon` 注册随旧任务栏销毁。
+② **启动早于任务栏就绪**（开机自启动竞态）：`Shell_NotifyIcon(NIM_ADD)` 失败时 WinForms
+`NotifyIcon.UpdateIcon` **无条件置 `_added = true` 且不检查返回值** —— 之后永远只发 `NIM_MODIFY`
+（修改一个不存在的条目），图标永久消失，直到下次 Explorer 重启才能靠 `TaskbarCreated` 自愈。
+**解法**：① 注册 `TaskbarCreated` 消息并挂 `IMessageFilter`，收到广播时翻转 `_tray.Visible` 重新注册
+（v0.27，v0.28 去掉了其中多余的重画 —— 旧 Icon 句柄仍有效，重画反而泄漏）；② 构造时探测
+`Shell_TrayWnd`，不存在则置 `_trayWaitTaskbar`，每个采样周期重试，任务栏就绪后翻转 `Visible`
+强制重走 NIM_ADD（v0.28）。
+
+### 23. 分层窗口吞 `WM_PAINT` 必须校验脏区域（v0.29 事故：整面板数值冻结 + 单核 100%）
+
+**现象**（2026-11-08 用户报告，触发于 11-08 凌晨 ~02:20，对应 ComfyUI 跑了一晚 GPU）：
+面板/贴片所有数值冻结不动，但窗口还能响应点击；`Get-Process WMonitor` 的
+`TotalProcessorTime` 累计 10 小时+（折合单核 100% 持续空转），debug.log 的贴片绘制日志停更。
+
+**定位**（dump 三件套，脚本存 `wmonitor-eidt/diag/`）：① 线程 CPU 差分（3 秒窗口）锁定
+主线程 99%；② `comsvcs.dll,MiniDump` + `dotnet-dump analyze clrstack` 两次抓栈，主线程在
+`GetMessage`/`DispatchMessage` 之间打转 —— 泵活着但在被消息灌满；③ `GetUpdateRect` 发现
+贴片窗口**整窗脏区永远清不掉** → 无限 `WM_PAINT`。`WM_PAINT`/`WM_TIMER` 都是队列空闲时
+才生成的低优先级消息：风暴一起，WinForms 采样定时器被饿死 → 数值冻结；而能结束风暴的
+`Blit()`（`UpdateLayeredWindow` 会顺带校验整窗）只能由被饿死的定时器触发 → 死锁，无法自愈。
+
+**原因**：`LayeredWindow.WndProc` 吞掉 `WM_PAINT` 时既不 `BeginPaint` 也不 `ValidateRect`。
+分层窗口平时靠 `UpdateLayeredWindow` 呈现、不会脏；但 GPU 驱动 TDR / DWM cloak / 主题切换
+等外部事件会把更新区域弄脏一次 —— 之后 USER32 在队列空闲时永远重发 `WM_PAINT`。
+
+**解法**：`WM_PAINT` 分支里 `Native.ValidateRect(Handle, IntPtr.Zero)` 后再 return（v0.29）。
+回归验证：对运行中的 v0.29 强制 `InvalidateRect` 贴片（= 复现 TDR 触发条件），300 ms 内
+脏区清空、CPU 0%；v0.28 同条件即永久风暴。
+
+**教训**：任何「自绘/分层窗口屏蔽默认绘制」的 `WndProc`，吞 `WM_PAINT` 必须校验区域，
+否则一次外部弄脏就是永久消息风暴。`Responding=True` + 数值冻结 + 单核 100% 的组合拳
+优先查脏区，不要猜采样线程。
+
+### 24. `SendMessagePtr` 不是 user32 导出（v0.28 任务栏小图标修复静默失效）
+
+**现象**：debug.log 反复出现 `taskbar icon fail: Unable to find an entry point named
+'SendMessagePtr' in DLL 'user32.dll'`。
+**原因**：v0.28 的 `Native.cs` 里 `[DllImport("user32.dll")] SendMessagePtr(...)` 按方法名
+找导出 —— user32 只有 `SendMessageW/A`，没有 `SendMessagePtr`。异常被 `OnHandleCreated`
+的 catch 吞掉，`WM_SETICON`（24px ICON_SMALL 修复）从未发出，任务栏方块修复整条链路失效。
+**解法**：声明补 `EntryPoint = "SendMessageW"`（v0.29）。**教训**：新 P/Invoke 上线时
+开一次 `WMONITOR_DEBUG=1` 看 Dbg 日志，别让 catch 掩盖 Entry point 错误。
+
 ---
 
 ## 三、当前已知小问题（不阻塞使用）

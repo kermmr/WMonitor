@@ -39,7 +39,7 @@ D:\WMonitor\
 │  ├─ AppConfig.cs             JSON 配置（%APPDATA%\WMonitor\config.json）
 │  ├─ Startup.cs               HKCU Run 开机自启
 │  ├─ Dbg.cs                   诊断日志（默认关闭，SYSMON_DEBUG=1 开启）
-│  ├─ app.ico                  应用图标（PIL 生成的多尺寸 ico）
+│  ├─ app.ico                  应用图标（design/icons/tools/render-gdi.ps1 + build-ico.ps1 生成，满幅仪表）
 │  ├─ run.sh                   开发迭代脚本：杀进程→编译→启动→截任务栏
 │  ├─ SettingsForm.cs          设置窗口（4 列 Bento 卡片网格 + 顶栏/底栏）
 │  ├─ Interop\Native.cs        Win32 / PDH / GDI / 多屏 / DPI P/Invoke 声明

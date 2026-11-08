@@ -241,7 +241,7 @@
 |---|---|
 | 形制 | `FormBorderStyle.None` + DWM `CORNER_PREFERENCE=ROUNDED`（Win11 系统圆角，顶部）；Aero Snap/贴边分屏由 WM_NCHITTEST 返回 HTCAPTION/HT* 自动获得 |
 | 高度 | 44，底色 `WindowBg`，无描边、无分隔线（内容区卡片自带边界） |
-| 左侧 | 应用图标 16 + 标题 Title 14 Bold `Text`，左距 16 |
+| 左侧 | 应用图标 **24**（B1 初版 16，v0.28 按用户拍板与任务栏按钮同步放大 ×1.5）+ 标题 Title 14 Bold `Text`，左距 16 |
 | 右侧窗口钮 | 最小化 / 最大化 / 关闭，各 **46×32** 垂直居中；图标 10px 线 1px `Text` |
 | 窗口钮 Hover | 底 `Hover`；**关闭钮 `#C42B1C`** + 白图标（Win11 惯例，深浅同值）；Pressed 加深一档 |
 | 最大化态 | 顶部圆角自动消失（DWM）；Snap Layouts：最大化钮 hover 须返回 `HTMAXBUTTON` |
@@ -270,11 +270,12 @@
 | 项 | 值 |
 |---|---|
 | 容器 | 圆角 R12，底 `CardBg`，1px `CardBorder`，内裁剪 1px |
-| 表头 | 高 38，底 `HeadBg`，下沿 1px `Sep`；文字 Body Bold 12；排序列 `Text`，其余 `Label` |
+| 表头 | 高 38，底 `HeadBg`，下沿 1px `Sep`；文字 Body Bold 12；排序列 = **紧贴列头内容的对称圆角块**（内容盒 = 文字 + 排序三角，左右 pad 7s、R6、块高 32，底 `SelectedBg` + 文字 `Text`；**A8 互斥单选语言**；v0.28 复检定稿：整列块左空当远大于右，用户拍板「减少左边宽度和右边一样」，列宽/文字/数据位置不动）；未选 `Label` |
 | 排序三角 | 文字右侧 6px（名称列）/ 右缩 14（数值列） |
 | 列 | 名称(弹性 36%) / PID 88 / CPU 92 / 内存 106 / GPU 88 / 显存 106；数值列右对齐右缩 16 |
 | 行 | 高 48，图标 28；名称 Title 14 Bold `Text`，路径 Body 12 `Label`，值 12 |
 | 数值着色 | ≥1% 指标色 + Bold；0.05~1% `Text`；<0.05% 或 — `Label` |
+| 表头 Hover | 排序列复用选中块；未选叠同规格贴内容圆角块 `Hover`，文字 `Label→Text` |
 | Hover 行 | 圆角 R8 `Hover` 叠加 |
 | 选中行 | 圆角 R8 `Accent@24%`（深）/`@10%`（浅） |
 | 滚动条 | 见 A11；滚轮 3 行/格，thumb 可拖、轨道翻页 |

@@ -107,7 +107,7 @@ cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.01-portable.exe"
 2. 成品文件名：`WMonitor-v0.0N-framework.exe`、`WMonitor-v0.0N-portable.exe`
 3. `docs/07-changelog.md` 增加一条
 
-当前：**v0.01**，对应 csproj `0.0.1`。
+当前：**v0.28**，对应 csproj `0.28.0`。
 
 ---
 

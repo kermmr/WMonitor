@@ -232,7 +232,7 @@ public abstract class ChromeForm : Form
             }
             Dbg.Log($"chrome icon loaded={_captionIcon != null} formIcon={(Icon != null ? Icon.Width + "x" + Icon.Height : "null")}");
         }
-        int iconD = S(16);
+        int iconD = S(24);    // B1 初版 16,v0.28 按用户拍板与任务栏同步放大(16→24,×1.5)
         if (_captionIcon != null)
         {
             var prev = g.InterpolationMode;
@@ -502,18 +502,59 @@ public abstract class ChromeForm : Form
         {
             _appIconApplied = true;
             Icon = _appIcon;
+            // Win11 任务栏按钮按 ICON_SMALL 的原生尺寸绘制、不放大小图标：WinForms 发的
+            // ICON_SMALL 只有 16px（SM_CXSMICON），方块只剩 24px 槽位的 2/3，比邻居小一圈
+            // （2026-11-07 用户实测 + 8x 截图/活体实验定位：按钮创建后任务栏不再响应 WM_SETICON，
+            // 所以必须在窗口创建时就发对）。这里补发 24×(dpi/96) 小图标 + 32×(dpi/96) 大图标，
+            // 由 32px 源（ExtractAssociatedIcon，bundle 可用）高质量缩放。
+            try
+            {
+                using var src = _appIcon.ToBitmap();
+                int small = Math.Max(16, 24 * DeviceDpi / 96);
+                int big = Math.Max(32, 32 * DeviceDpi / 96);
+                _iconSmall = ScaledIcon(src, small);
+                _iconBig = ScaledIcon(src, big);
+                Native.SendMessagePtr(Handle, Native.WM_SETICON, Native.ICON_SMALL, _iconSmall.Handle);
+                Native.SendMessagePtr(Handle, Native.WM_SETICON, Native.ICON_BIG, _iconBig.Handle);
+            }
+            catch (Exception ex) { Dbg.Log("taskbar icon fail: " + ex.Message); }
         }
         int pref = DWMWCP_ROUND;    // Win11 系统圆角（最大化时系统自动变直角，B1）
         DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref pref, sizeof(int));
     }
 
+    /// <summary>32px 源位图缩放到 size 后转 Icon（句柄归 Icon 所有，随字段生命周期）。</summary>
+    private static Icon ScaledIcon(Bitmap src, int size)
+    {
+        using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        using (var g = Graphics.FromImage(bmp))
+        {
+            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+            g.DrawImage(src, new Rectangle(0, 0, size, size));
+        }
+        IntPtr h = bmp.GetHicon();
+        try
+        {
+            using var tmp = Icon.FromHandle(h);
+            return (Icon)tmp.Clone();
+        }
+        finally { Native.DestroyIcon(h); }
+    }
+
     private static bool _appIconTried;
     private static Icon? _appIcon;
     private bool _appIconApplied;
+    private Icon? _iconSmall, _iconBig;
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) _captionIcon?.Dispose();
+        if (disposing)
+        {
+            _captionIcon?.Dispose();
+            _iconSmall?.Dispose();
+            _iconBig?.Dispose();
+        }
         base.Dispose(disposing);
     }
 }

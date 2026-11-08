@@ -13,11 +13,13 @@
 | 项 | 状态 |
 |---|---|
 | 编译 | ✅ 0 error 0 warning |
-| 阶段 4 全部文件 | ✅ 已完成并发布（安装版 + framework + portable 三产物，当前 v0.26） |
+| 阶段 4 全部文件 | ✅ 已完成并发布（安装版 + framework + portable 三产物，当前 **v0.29**） |
 | UI 整改 | ✅ **P1（C1~C8，v0.24）+ P2（C9~C17，v0.25）+ P3（C18~C22，v0.26）全部完成**，见 docs/03 Part C |
 | 标题栏窗口钮 | ✅ 无响应 bug 已修复（客户区坐标二次换算），`--dashboard-chrome-probe` 18/18 PASS（v0.26 扩容） |
 | 标题栏右键 | ✅ C20：右键标题栏弹系统菜单（探针拦截路径正/反例 PASS；真实弹菜单观感留晨检） |
-| 应用图标 | ✅ 方案 B（仪表）已落 `app.ico`（深色固定，浅色版存 design/icons/app/） |
+| 应用图标 | ✅ 方案 B（仪表）已落 `app.ico`；**v0.28 满幅重建**（79.7%→99% 画布占用，任务栏实测与邻居同大），见 docs/15 |
+| 表头状态 | ✅ v0.28：排序列常驻 Accent 淡底（B2 互斥单选）+ hover 规则对齐，真光标截图验证 |
+| 托盘健壮性 | ✅ v0.28：TaskbarCreated 兜底 + Shell_TrayWnd 就绪探测重试（NIM_ADD 静默失败竞态），见 docs/05 §22 |
 | 下一步 | **无排期项**；遗留交互实测项见 §5 与日志 2026-11-05 (3)(5)(6) 未验清单 |
 | 已知问题 | 见 §5 |
 
@@ -84,6 +86,40 @@
 
 ## 6. 施工日志（新条目加在最上面）
 
+- **2026-11-08 (1)** **面板数值冻结事故修复，发布 v0.29（用户报告「ComfyUI 跑一晚后属性监控全部不变」）**：
+  - **现象**：11-08 凌晨 ~02:20 起面板/贴片全部数值冻结，窗口仍可响应；故障进程 CPU 累计
+    36,461 s ≈ 单核 100% 持续空转（线程 CPU 差分 3s 窗口锁定主线程 99%）；debug.log 贴片绘制
+    日志同步停更。
+  - **定位三件套**（脚本入档 `wmonitor-eidt/diag/`：threads.ps1 / winupd.ps1 / verify.ps1）：
+    ① 线程级 CPU 差分找热点线程；② `comsvcs.dll,MiniDump` 全量 dump + `dotnet-dump analyze`
+    （`dotnet tool install -g dotnet-dump`，SDK 在 `D:\Hermes\tools\dotnet-sdk`）两次 `clrstack`
+    —— 主线程在 `GetMessage`/`DispatchMessage` 间打转，泵活着但被消息灌满；③ `GetUpdateRect`
+    查出贴片窗口整窗脏区永久清不掉 → **无限 `WM_PAINT` 风暴**。
+  - **根因**：`LayeredWindow.WndProc` 吞 `WM_PAINT` 不 `ValidateRect`。`WM_PAINT`/`WM_TIMER`
+    都是队列空闲时才生成的低优先级消息：风暴一起，WinForms 采样定时器饿死 → 数值冻结；
+    能结束风暴的 `Blit()`（UpdateLayeredWindow 顺带校验整窗）只能由被饿死的定时器触发 →
+    死锁无自愈。触发事件 = ComfyUI 把 GPU 打满引起的驱动 TDR / DWM 重绘（弄脏一次即永久）。
+    **修复**：`WM_PAINT` 分支 `ValidateRect(Handle, null)` 后 return。复盘入 docs/05 §23。
+  - **顺带修复**：`Native.SendMessagePtr` 缺 `EntryPoint="SendMessageW"` —— user32 无此导出，
+    v0.28 的 WM_SETICON 24px 小图标从未发出（catch 吞掉只留 `taskbar icon fail` 日志）。
+    见 docs/05 §24。
+  - **验证**：构建 0 error 0 warning；对运行中 v0.29 强制 `InvalidateRect` 贴片（= 复现触发
+    条件），脏区 300 ms 清空、CPU 0%（v0.28 同条件即永久风暴）；稳态 CPU 0.78% 单核（含启动
+    预热）。三产物重发（安装版已在运行）。
+- **2026-11-07 (8)** **表头选中块贴内容对称（用户反馈「减少左边的宽度和右边一样」）**：整列选中块文字右对齐后左空当 ~39px vs 右 ~7px —— 块改为**紧贴内容盒（文字+三角）左右对称**（pad 7s、R6、块高 32）,所有列一致;列宽/文字/数据/表格宽度不动,点击命中区仍整列。选中（内存）+ hover（显存）双截图验证。B2 规格行改写。三产物重发。
+- **2026-11-07 (7)** **标题栏图标 16→24（用户反馈）**：两个面板（资源面板/设置）标题栏图标按任务栏同比例放大（WindowChrome `iconD = S(24)`,标题文字 x 联动）,B1 规格行改写。双面板 PrintWindow 截图验证。三产物重发。
+- **2026-11-07 (6)** **r128 上线 + 图标缓存重建补课**：用户复检仍见旧图 —— ① r128 那轮 `render-gdi.ps1`（中文注释无 BOM）产出「只有指针」的坏帧且未目检就发布（重写纯 ASCII 后正常,渲染产物必须目检后再组装）;② 上轮缓存重建**没删干净** —— iconcache_*.db 还被 StartMenuExperienceHost/SearchHost/ShellExperienceHost 锁着,只杀 explorer 无效;本轮把 shell 四进程全停后删除（残留 0 验证）+ 重启 explorer + 重启 app,任务栏实拍 r128 满幅方块 + 有呼吸感表盘,与邻居一致。三产物重发。
+- **2026-11-07 (5)** **表盘回调 r128（用户反馈「里面图形太大了」）**：方块渲染修好后 94% 表盘太满——用户点名「以前改的是表盘但我看不到」属实：方块 16px 期间调表盘全是无效功。三档对比图（r104/128/168 @24px 深底）供选，回调 **r128**（外缘 ~70%）：环 128、笔画 37/44/59、圆点 30/33、指针 25/32，SVG×6 + render-gdi.ps1 同步。任务栏实拍：满幅方块 + 有呼吸感的表盘。三产物重发。
+- **2026-11-07 (4)** **单实例弹窗移除（用户反馈「经常出这种弹窗」）**：第二实例启动改为**唤醒已有实例打开资源面板**（主面板未启用则开详情面板）后静默退出，不再弹「已经在运行」。机制：`Local\WMonitor.ShowDashboard.v1` AutoReset 事件（Main 在抢到互斥体后立即创建，缩小 OpenExisting 竞态窗口）+ 首实例 500ms UI 线程轮询；唤醒失败（首实例初始化中/正在退出）同样静默退出。实测：第二实例启动后进程数保持 1、弹窗 0、首实例主面板自动打开。三产物重发。
+- **2026-11-07 (2)** **v0.28 复检二轮（用户拍板）**：① 表头互斥单选**不要整格填色** —— 改 A8 Segmented 同款内缩圆角块（缩 3、R6、块高 32）：排序列常驻 `SelectedBg` 块 + Text，未选 hover 叠 `Hover` 块，B2 规范行改写。② icon「还是小」—— 任务栏亮度图逐像素测量定位真因：**深色容器方块在深色任务栏上完全隐形，「可见图标」只是蓝色表盘**（环外缘仅 51%，墨迹 ~17px vs 邻居 20~24px）。表盘两轮放大至 r168（外缘 94%），24px 帧蓝色墨迹实测 20px 对齐邻居；任务栏实拍 + 亮度图复验。**教训：评估任务栏图标必须比「可见墨迹宽度」（亮度图），ICO 画布占用 100% 不代表观感同大。**
+- **2026-11-07 (3)** **v0.28 复检三轮·任务栏按钮方块偏小的真因（两层）**：用户指出「不是比图形,是比外面的方块整体大小」—— 8x 截图证实 WMonitor 方块 ~16px vs 邻居 24px。**第一层：任务栏按钮用窗口图标（WM_SETICON）而非 exe ico；Win11 按 ICON_SMALL 原生尺寸绘制、不放大小图标**,WinForms 发的 ICON_SMALL 只有 16px → 方块 2/3。活体实验：对运行中的窗口补发 WM_SETICON(24/32) **无效** —— 任务栏只在按钮创建时取一次图标。修复:`ChromeForm.OnHandleCreated` 在 `Icon = _appIcon` 之后补发 ICON_SMALL = 24×(dpi/96) + ICON_BIG = 32×(dpi/96)（32px 源高质量缩放,ScaledIcon 辅助;句柄随窗体字段生命周期）。**第二层：Windows 外壳图标缓存按 exe 路径缓存旧版图标,文件更新后不一定失效** —— 代码修复部署后用户仍见旧小图标;诊断法:同一 exe 复制到新路径启动,新缓存条目的按钮立刻满幅,与旧路径同屏对比即证。处置:删 iconcache_*.db + 重启 explorer（用户确认后执行,顺带实测 TaskbarCreated 自愈与托盘重挂生效）。任务栏实拍:方块与邻居同大。**教训:升级 exe 后任务栏/桌面图标未更新 = 图标缓存,不是代码问题;A/B 诊断用「新路径副本启动」。**
+- **2026-11-07 (2)** **v0.28 复检二轮（用户拍板）**：① 表头互斥单选**不要整格填色** —— 改 A8 Segmented 同款内缩圆角块（缩 3、R6、块高 32）：排序列常驻 `SelectedBg` 块 + Text，未选 hover 叠 `Hover` 块，B2 规范行改写。② icon「还是小」—— 任务栏亮度图逐像素测量定位真因：**深色容器方块在深色任务栏上完全隐形，「可见图标」只是蓝色表盘**（环外缘仅 51%，墨迹 ~17px vs 邻居 20~24px）。表盘两轮放大至 r168（外缘 94%），24px 帧蓝色墨迹实测 20px 对齐邻居；任务栏实拍 + 亮度图复验。**教训：评估任务栏图标必须比「可见墨迹宽度」（亮度图），ICO 画布占用 100% 不代表观感同大。**
+- **2026-11-07** **v0.28：应用图标满幅重建 + v0.27 复检三问题修复（用户反馈「icon 太小 / 托盘偶发消失 / 表头状态不对」）**：
+  - **icon 太小的真正根因**：生产 SVG 画布 512、主体只占 52..460（79.7%）+ faithful 投影滤镜 —— 与表格行图标、托盘渲染都无关（v0.27 改错了方向）。放大任务栏截图 + ICO 逐帧 LockBits 测墨迹坐实。重建：viewBox 收紧 `50 50 412 412`（99%）、去投影；**渲染管线换 GDI+ 直绘**（`design/icons/tools/render-gdi.ps1`）——magick SVG 光栅化在 48px 截断成 48×36、Edge 无头小窗口截图内容损坏（白顶带黑底带），都不可信；组装 `build-ico.ps1`（256 PNG + 其余 BMP、真实 AND mask、biSizeImage=XOR 长度——magick 组装的 48 帧 mask 行距按 WORD 对齐会花屏）。shell 解码器逐帧验收 16~128 全部 100%。旧图标备份 `backups/app-v0.27-old.ico`。
+  - **v0.27 回归**：`DrawRow` 移除 3px 内缩时把 `DrawImage` 一起删了（行图标区域什么都不画），恢复绘制、保留占满 28px 的决定。
+  - **表头 B2 互斥单选**：v0.27 只在 hover 时叠 Accent 淡底 → 排序列常态无标识；改为排序列**常驻** `Accent@24%/10%` 淡底、未选 hover 叠 `Hover` + `Label→Text`、排序列 hover 复用淡底不叠加。**真光标验证**：SetCursorPos + mouse_event 本会话可用（探针进程时代被拒，现可用了）——hover 内存/GPU 列出灰底提亮、CPU 列常驻蓝底三张截图 PASS（`head-*.png`）。⚠ 排障注意：**ZCode 终端窗口会盖住面板右半边**，光标测试前必须 SetForegroundWindow 并确认 WindowFromPoint 命中目标（本轮「悬停无效」排查半天结果是光标在终端上）。
+  - **托盘 NIM_ADD 竞态**：.NET 8 NotifyIcon 源码核实 —— TaskbarCreated 原生自愈 ✓，但 `Shell_NotifyIconW` 返回值被忽略、`_added` 无条件置 true → 开机自启动早于任务栏就绪时图标永久消失。补 `Shell_TrayWnd` 就绪探测 + `Visible` 翻转重加；v0.27 的 TaskbarCreated filter 保留但去掉多余重画（旧 Icon 句柄仍有效，重画泄漏）。docs/05 §22 重写。
+  - **验证**：构建 0/0；主面板截图（CPU 列常驻淡底 + 行图标全恢复 + 标题栏新图标）；任务栏实拍 WMonitor 按钮满幅与邻居同大；三产物重发（framework 661KB / portable 59.5MB），安装目录已更新并以安装版常驻。
 - **2026-11-05 (7)** **真鼠标验收（CUA 桌面控制）+ 修复窗口越界恢复**：
   - 真实输入验证：标题栏拖拽移动 PASS（两次拖拽窗口跟随精确）；真点击可命中自绘 chrome 控件行（设置窗被真点击打开，渲染 v0.26 正常）。之后 GetCursorPos 被输入桌面拒绝（与探针进程同症状），最大化/最小化/关闭钮真点击、右键系统菜单、Snap Layouts 飞出仍留用户手测。
   - **修复**：记忆矩形 `812,319,1280,800` 在 1648×762 工作区上只做 IntersectsWith 就照搬恢复 → 面板右侧 ~444px / 底部 ~309px 出屏。`RestoreWindowBounds` 恢复前 `FitToWorkArea` 夹回工作区（`UI/MainDashboardForm.cs`）。重启后全窗可见，修复验证 PASS。

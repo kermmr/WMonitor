@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 50 412 412" width="512" height="512">
+  <!-- WMonitor app icon proposal B - gauge, light theme -->
+  <defs>
+    <linearGradient id="bL-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EFF2F6"/>
+    </linearGradient>
+    <linearGradient id="bL-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3FA1FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+    <linearGradient id="bL-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="bL-clip"><rect x="52" y="52" width="408" height="408" rx="92"/></clipPath>
+    <filter id="bL-shadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="18"/><feOffset dy="10" result="o"/><feFlood flood-color="#0E1014" flood-opacity=".14"/><feComposite in2="o" operator="in" result="s"/><feMerge><feMergeNode in="s"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect x="53.25" y="53.25" width="405.5" height="405.5" rx="90.75" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="2.5"/>
+  <g clip-path="url(#bL-clip)">
+    <rect x="52" y="52" width="408" height="220" fill="url(#bL-gloss)"/>
+  </g>
+  <!-- 270 deg track -->
+  <path d="M165.5 356.5 A128 128 0 1 1 346.5 356.5" fill="none" stroke="rgba(0,0,0,.10)" stroke-width="37" stroke-linecap="round"/>
+  <!-- 68 percent progress -->
+  <path d="M165.5 356.5 A128 128 0 1 1 352 181.3" fill="none" stroke="url(#bL-glyph)" stroke-width="37" stroke-linecap="round"/>
+  <!-- needle -->
+  <line x1="256" y1="266" x2="305.9" y2="222.1" stroke="#0A84FF" stroke-width="25" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="30" fill="url(#bL-glyph)"/>
+</svg>

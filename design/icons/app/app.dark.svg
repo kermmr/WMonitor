@@ -26,10 +26,10 @@
     <rect x="52" y="52" width="408" height="220" fill="url(#bD-gloss)"/>
   </g>
   <!-- 270 deg track -->
-  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="30" stroke-linecap="round"/>
+  <path d="M165.5 356.5 A128 128 0 1 1 346.5 356.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="37" stroke-linecap="round"/>
   <!-- 68 percent progress -->
-  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#bD-glyph)" stroke-width="30" stroke-linecap="round"/>
+  <path d="M165.5 356.5 A128 128 0 1 1 352 181.3" fill="none" stroke="url(#bD-glyph)" stroke-width="37" stroke-linecap="round"/>
   <!-- needle -->
-  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#4CC2FF" stroke-width="20" stroke-linecap="round"/>
-  <circle cx="256" cy="266" r="24" fill="url(#bD-glyph)"/>
+  <line x1="256" y1="266" x2="305.9" y2="222.1" stroke="#4CC2FF" stroke-width="25" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="30" fill="url(#bD-glyph)"/>
 </svg>

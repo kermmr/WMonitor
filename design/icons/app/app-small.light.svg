@@ -11,8 +11,8 @@
     </linearGradient>
   </defs>
   <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#sD-container)"/>
-  <path d="M182.5 339.5 A104 104 0 1 1 329.5 339.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="36" stroke-linecap="round"/>
-  <path d="M182.5 339.5 A104 104 0 1 1 334 197.2" fill="none" stroke="url(#sD-glyph)" stroke-width="36" stroke-linecap="round"/>
-  <line x1="256" y1="266" x2="296.5" y2="230.3" stroke="#3FA1FF" stroke-width="26" stroke-linecap="round"/>
-  <circle cx="256" cy="266" r="27" fill="url(#sD-glyph)"/>
+  <path d="M165.5 356.5 A128 128 0 1 1 346.5 356.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="44" stroke-linecap="round"/>
+  <path d="M165.5 356.5 A128 128 0 1 1 352 181.3" fill="none" stroke="url(#sD-glyph)" stroke-width="44" stroke-linecap="round"/>
+  <line x1="256" y1="266" x2="305.9" y2="222.1" stroke="#3FA1FF" stroke-width="32" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="33" fill="url(#sD-glyph)"/>
 </svg>

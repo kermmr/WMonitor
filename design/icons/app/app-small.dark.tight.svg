@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="50 50 412 412" width="512" height="512">
+  <!-- WMonitor app icon B (gauge), dark, small-size variant: no gloss/no inner stroke, thicker glyph -->
+  <defs>
+    <linearGradient id="sD-container" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#242931"/>
+      <stop offset="1" stop-color="#13161B"/>
+    </linearGradient>
+    <linearGradient id="sD-glyph" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4CC2FF"/>
+      <stop offset="1" stop-color="#0A84FF"/>
+    </linearGradient>
+  </defs>
+  <rect x="52" y="52" width="408" height="408" rx="92" fill="url(#sD-container)"/>
+  <path d="M165.5 356.5 A128 128 0 1 1 346.5 356.5" fill="none" stroke="rgba(255,255,255,.13)" stroke-width="44" stroke-linecap="round"/>
+  <path d="M165.5 356.5 A128 128 0 1 1 352 181.3" fill="none" stroke="url(#sD-glyph)" stroke-width="44" stroke-linecap="round"/>
+  <line x1="256" y1="266" x2="305.9" y2="222.1" stroke="#4CC2FF" stroke-width="32" stroke-linecap="round"/>
+  <circle cx="256" cy="266" r="33" fill="url(#sD-glyph)"/>
+</svg>

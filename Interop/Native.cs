@@ -341,6 +341,20 @@ internal static class Native
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     public static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, string lParam);
 
+    // ---------------- 窗口图标（v0.28：Win11 任务栏小图标尺寸） ----------------
+
+    public const uint WM_SETICON = 0x0080;
+    public const IntPtr ICON_SMALL = default;   // wParam=0
+    public const IntPtr ICON_BIG = (IntPtr)1;
+
+    // user32 没有 SendMessagePtr 导出（v0.28 踩过：直接按方法名 P/Invoke 抛
+    // Entry point not found，WM_SETICON 从未发出，任务栏小图标修复静默失效）
+    [DllImport("user32.dll", EntryPoint = "SendMessageW")]
+    public static extern IntPtr SendMessagePtr(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    public static extern bool ValidateRect(IntPtr hWnd, IntPtr lpRect);   // null = 整个更新区域
+
     // ---------------- 管控动作（主面板 v0.21 阶段 4） ----------------
 
     public const uint SYNCHRONIZE = 0x00100000;

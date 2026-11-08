@@ -198,13 +198,32 @@ public sealed class DashboardTable : Control
             var r = cols[i];
             _headRects[i] = r;
             bool active = SortCol == colsEnum[i];
-            bool headHot = i == _headHover && !active;
+            bool headHot = i == _headHover;
 
-            if (headHot)
+            if (active || headHot)
             {
-                // 列头 hover（A7 Ghost 语言）：单元格叠 Hover，文字 Label→Text
-                using var hov = new SolidBrush(Th.Hover);
-                g.FillRectangle(hov, r.X, 1, r.Width, HeadH - 1);
+                // A8 Segmented 语言（用户拍板）：互斥单选 = 圆角块 + Text 常驻；未选 hover 块 Hover、文字 Label→Text。
+                // 块「紧贴列头内容」左右对称（v0.28 复检：整列块左空当远大于右，用户拍板「减少左边宽度和右边一样」，
+                // 列宽/文字/数据位置全部不动）。内容盒：排序列 = 文字 + 三角（右缘 = 列右 -10s，文字右缘 = 列右 -16s），
+                // 非排序列 = 文字（右缘 = 列右 -16s），名称列 = 文字（左缘 = 列左）。左右 pad 7s 与排序列右侧现状一致。
+                // 块高 38-6=32。
+                float textW = Gfx.Measure(g, titles[i], f).Width;
+                float contentLeft, contentRight;
+                if (colsEnum[i] == Column.Name)
+                {
+                    contentLeft = r.X;
+                    contentRight = r.X + textW;
+                }
+                else
+                {
+                    contentRight = r.Right - (active ? 10f : 16f) * s;
+                    contentLeft = contentRight - textW - (active ? 6f * s : 0f);
+                }
+                float padL = 16 * s, padR = 12 * s;   // v0.28 用户定稿:在 7/4(光学对齐)基础上 左+9 右+8
+                var block = new RectangleF(contentLeft - padL, 3 * s, (contentRight - contentLeft) + padL + padR, HeadH - 6 * s);
+                using var bp = Gfx.RoundRect(block, 6 * s);
+                using var bb = new SolidBrush(active ? Th.SelectedBg : Th.Hover);
+                g.FillPath(bb, bp);
             }
 
             // 数值列右对齐，列头留出箭头空间
@@ -266,14 +285,14 @@ public sealed class DashboardTable : Control
         Image? appIcon = Icons?.Get(r.Path);
         if (appIcon != null)
         {
-            float pad = 3 * s;
-            var dst = new RectangleF(iconRect.X + pad, iconRect.Y + pad, iconRect.Width - pad * 2, iconRect.Height - pad * 2);
+            // 占满 28px 逻辑盒（v0.27 决定，与回退首字母块一致）；高质量缩放。
+            // v0.27 曾把 DrawImage 误删成只画压暗层 —— 行图标整个消失，本次修复。
             var prevInterp = g.InterpolationMode;
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-            g.DrawImage(appIcon, dst);
+            g.DrawImage(appIcon, iconRect);
             g.InterpolationMode = prevInterp;
             if (dim) using (var veil = new SolidBrush(Color.FromArgb(150, Th.CardBg)))
-                g.FillRectangle(veil, dst);
+                g.FillRectangle(veil, iconRect);
         }
         else
         {

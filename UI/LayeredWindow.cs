@@ -114,7 +114,17 @@ public class LayeredWindow : Form
     {
         const int WM_PAINT = 0x000F;
         const int WM_ERASEBKGND = 0x0014;
-        if (m.Msg == WM_PAINT || m.Msg == WM_ERASEBKGND) return;
+        if (m.Msg == WM_PAINT)
+        {
+            // 吞掉 WM_PAINT 的同时必须把更新区域校验掉：不 ValidateRect 的话，
+            // 一旦窗口被外部事件弄脏（GPU 驱动 TDR / DWM cloak / 主题切换都会），
+            // USER32 会在消息队列空闲时无限重发 WM_PAINT —— 泵被占满一核，
+            // WinForms 采样定时器饿死，全部数值冻结且无法自愈（v0.28 事故：
+            // ComfyUI 跑一晚后整面板卡死，CPU 累计 10 小时）。
+            Native.ValidateRect(Handle, IntPtr.Zero);
+            return;
+        }
+        if (m.Msg == WM_ERASEBKGND) { m.Result = (IntPtr)1; return; }
         base.WndProc(ref m);
     }
 }

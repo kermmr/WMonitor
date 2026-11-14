@@ -20,7 +20,7 @@ internal static class Updater
 
     private static readonly HttpClient Http = CreateHttp();
 
-    public sealed record UpdateInfo(string Version, string Tag, string DownloadUrl, long SizeBytes);
+    public sealed record UpdateInfo(string Version, string Tag, string DownloadUrl, long SizeBytes, string Notes);
 
     /// <summary>当前可用更新（null = 已是最新 / 未检查 / 检查失败）。UI 读它决定是否显示更新项。</summary>
     public static UpdateInfo? Available;
@@ -104,6 +104,7 @@ internal static class Updater
             using var doc = JsonDocument.Parse(resp.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false).GetAwaiter().GetResult());
             var root = doc.RootElement;
             string tag = root.GetProperty("tag_name").GetString() ?? "";
+            string notes = root.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "";
             if (!IsNewer(tag))
             {
                 LastError = null;                       // 已是最新不算错误
@@ -132,7 +133,7 @@ internal static class Updater
                 return null;
             }
 
-            var info = new UpdateInfo(tag.Trim().TrimStart('v', 'V'), tag, url, size);
+            var info = new UpdateInfo(tag.Trim().TrimStart('v', 'V'), tag, url, size, CleanNotes(notes));
             Available = info;
             return info;
         }
@@ -141,6 +142,34 @@ internal static class Updater
             LastError = ex.Message;
             return null;
         }
+    }
+
+    /// <summary>
+    /// Release notes 的轻量 markdown 清理（纯函数，单测覆盖）：去掉标题井号、加粗星号、行内反引号，
+    /// 保留换行与列表短线 —— 对话框按纯文本绘制，不需要渲染 markdown。
+    /// </summary>
+    internal static string CleanNotes(string md)
+    {
+        var lines = new List<string>();
+        foreach (var raw in (md ?? "").Replace("\r\n", "\n").Split('\n'))
+        {
+            string line = raw.TrimEnd();
+            if (line.StartsWith('#'))
+            {
+                line = line.TrimStart('#').Trim();
+            }
+            line = line.Replace("**", "").Replace("`", "");
+            lines.Add(line.Trim());
+        }
+        // 压掉连续空行（Release notes 常有大段分隔）
+        var outLines = new List<string>(lines.Count);
+        foreach (var l in lines)
+        {
+            if (l.Length == 0 && outLines.Count > 0 && outLines[^1].Length == 0) continue;
+            outLines.Add(l);
+        }
+        while (outLines.Count > 0 && outLines[^1].Length == 0) outLines.RemoveAt(outLines.Count - 1);
+        return string.Join("\n", outLines);
     }
 
     // ---------------- 应用 ----------------

@@ -593,7 +593,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         list.Add(new MenuRow { Text = "设置…", Click = OpenSettings });
         list.Add(new MenuRow { Text = "打开日志目录", Click = OpenLogDir });
         if (Updater.Available != null && Updater.CanApply)
-            list.Add(new MenuRow { Text = $"更新到 v{Updater.Available.Version}…", Click = ApplyUpdate });
+            list.Add(new MenuRow { Text = $"更新到 v{Updater.Available.Version}…", Click = ShowUpdateDialog });
         list.Add(new MenuRow { Text = "检查更新…", Click = () => RunUpdateCheck(manual: true) });
         list.Add(Toggle("暂停刷新", () => _paused, v => _paused = v));
 
@@ -733,6 +733,7 @@ internal sealed class MonitorAppContext : ApplicationContext
     private void OpenSettings()
     {
         using var f = new SettingsForm(_cfg, _theme, _bars, _sampler.GpuNamesByLuid);
+        f.UpdateCheckRequested += () => RunUpdateCheck(manual: true);
         f.Changed += () =>
         {
             _theme = Theme.Resolve(_cfg.Theme);
@@ -780,14 +781,29 @@ internal sealed class MonitorAppContext : ApplicationContext
             PostUi(() =>
             {
                 if (info != null)
-                    _tray.ShowBalloonTip(8000, "WMonitor 更新",
-                        $"发现新版本 v{info.Version}：托盘右键菜单可一键更新。", ToolTipIcon.Info);
+                {
+                    if (manual) ShowUpdateDialog();     // 手动检查：有更新直接弹窗（说明 + 确定更新）
+                    else
+                        _tray.ShowBalloonTip(8000, "WMonitor 更新",
+                            $"发现新版本 v{info.Version}：托盘右键菜单可一键更新。", ToolTipIcon.Info);
+                }
                 else if (manual)
                     _tray.ShowBalloonTip(6000, "WMonitor 更新",
                         Updater.LastError != null ? $"检查失败：{Updater.LastError}" : "已是最新版本。",
                         ToolTipIcon.Info);
             });
         });
+    }
+
+    /// <summary>手动更新对话框：展示版本跳变与更新说明，按「立即更新」才进入下载替换（v0.34）。</summary>
+    private void ShowUpdateDialog()
+    {
+        var info = Updater.Available;
+        if (info == null) return;
+        var cur = typeof(Updater).Assembly.GetName().Version;
+        using var dlg = new UpdateDialog(_theme, cur?.ToString(3) ?? "?", info.Version, info.SizeBytes, info.Notes, 1f);
+        if (dlg.ShowDialog() == DialogResult.OK && dlg.Confirmed)
+            ApplyUpdate();
     }
 
     /// <summary>下载（后台）→ 写替换脚本并启动 → 退出（脚本等几秒后 ren/copy 新 exe、清旧清单、拉起新版）。</summary>

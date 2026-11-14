@@ -69,6 +69,12 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--update-dialog-probe"))
+        {
+            UpdateDialogProbe();
+            return;
+        }
+
         if (args.Contains("--history-dump"))
         {
             HistoryDump();
@@ -794,6 +800,36 @@ internal static class Program
     /// PrintWindow。守 v0.17 的回归（切换链路曾丢掉重排，行显隐冻结在打开时刻）。
     /// 探针里的 Apply→Save 会写用户 config.json：先备份，跑完原样还原。
     /// </summary>
+    /// <summary>诊断用（v0.34）：更新说明对话框视觉回归 —— 假数据弹窗 + 长说明截断各截一帧。</summary>
+    private static void UpdateDialogProbe()
+    {
+        Directory.CreateDirectory(ProbeOut);
+        var notes = "**自动更新**：每 24h 静默检查 GitHub Releases\n- 托盘菜单「更新到 vX.Y」一键升级\n" +
+                    "- 安装器升级会自动结束旧进程（含 WMonitor* 通配）\n\n" +
+                    "## 已知问题\n\n- 长说明行用来验证换行与截断逻辑：这一行故意写得很长很长很长很长" +
+                    "很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长\n" +
+                    "- 行二\n- 行三";
+        var t = new Thread(() =>
+        {
+            Application.EnableVisualStyles();
+            var th = Theme.Resolve(ThemeMode.Dark);
+            var dlg = new UpdateDialog(th, "0.33.0", "0.34.0", 63 * 1024 * 1024, notes, 1f);
+            dlg.Show();
+            var timer = new System.Windows.Forms.Timer { Interval = 600 };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                CaptureWindow(dlg.Handle, Path.Combine(ProbeOut, "update-dialog.png"));
+                dlg.Close();
+            };
+            timer.Start();
+            Application.Run(dlg);
+        });
+        t.SetApartmentState(ApartmentState.STA);
+        t.Start();
+        t.Join();
+    }
+
     private static void TrayRowsProbe()
     {
         Directory.CreateDirectory(ProbeOut);

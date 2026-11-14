@@ -8,7 +8,7 @@
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-3DDC97?style=flat-square)](LICENSE)
 [![CI](https://github.com/kermmr/WMonitor/actions/workflows/ci.yml/badge.svg)](https://github.com/kermmr/WMonitor/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-v0.33-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
+[![Version](https://img.shields.io/badge/version-v0.34-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
 
 <img src="docs/screenshots/taskbar-dark.png" alt="WMonitor 任务栏贴片" width="712">
 
@@ -40,7 +40,7 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 - **显示项可关** — CPU、内存、GPU、显存、网速、GPU 温度、磁盘 IO
 - **监视的显卡** — 多卡机器可在设置里选贴片统计哪一块（显存/利用率/温度都按所选卡算），默认自动选占用最大的一块；选中的卡被拔掉时自动回落
 - **卡死自诊断** — UI 线程卡死看门狗：采样心跳停滞时自动把线程 CPU 快照与窗口脏区写进 `stall-report.log`，故障现场自动落盘
-- **自动更新** — 每 24h 静默检查 GitHub Releases，发现新版本托盘菜单一键更新（可关）；托盘菜单可直达日志目录
+- **自动 / 手动更新** — 每 24h 静默检查 GitHub Releases（可关）；「检查更新」弹窗展示更新内容，按「立即更新」一键升级；安装器会自动结束旧进程，不用先手动退出；托盘菜单可直达日志目录
 - 单实例、开机自启（挪了安装目录会自动修正注册表路径）、崩溃日志、`--probe` / `--monitors` / `--history-dump` / `--alert-test` 诊断模式
 
 ## 截图
@@ -95,9 +95,9 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
-| `WMonitorSetup-v0.33.0.exe` | 59 MB | **安装器**：向导式安装到 `%LOCALAPPDATA%\WMonitor`，免管理员，含开始菜单快捷方式 |
-| `WMonitor-v0.33-framework.exe` | 741 KB | 单文件绿色版，需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
-| `WMonitor-v0.33-portable.exe` | 63 MB | 单文件绿色版，自包含免运行时，双击即用，适合拷给别人 |
+| `WMonitorSetup-v0.34.0.exe` | 59 MB | **安装器**：向导式安装到 `%LOCALAPPDATA%\WMonitor`，免管理员，含开始菜单快捷方式 |
+| `WMonitor-v0.34-framework.exe` | 741 KB | 单文件绿色版，需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
+| `WMonitor-v0.34-portable.exe` | 63 MB | 单文件绿色版，自包含免运行时，双击即用，适合拷给别人 |
 
 绿色版双击运行，贴片自动出现在任务栏托盘左侧，托盘区出现图标；删掉 exe 就卸载干净。
 配置与历史在 `%APPDATA%\WMonitor\`，卸载（或换版本）时有意保留。

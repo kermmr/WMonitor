@@ -44,4 +44,16 @@ Filename: "{app}\{#AppExe}"; Description: "Launch WMonitor"; Flags: nowait posti
 Filename: "{cmd}"; Parameters: "/C taskkill /IM {#AppExe} /F"; Flags: runhidden; RunOnceId: "KillWMonitor"
 
 [Code]
+// 手动更新场景（v0.34）：旧版本可能还在运行并占着 exe，安装器复制会被文件锁挡住
+// （用户从 0.31 手动升 0.32 时被要求先手动退出）。 PrepareToInstall 阶段静默结束
+// 全部 WMonitor* 进程（含绿色版的各种单文件名），CloseApplications 只是兜底。
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  Exec('taskkill.exe', '/IM "WMonitor*.exe" /F /T', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  Sleep(600);   // 等句柄释放
+  Result := '';
+end;
+
 // note: config/history in %APPDATA%\WMonitor intentionally survives uninstall (user data).

@@ -91,4 +91,37 @@ public class UpdaterTests
         Assert.Contains("\"C:\\Program Files\\WMonitor\\WMonitor.exe\"", s);
         Assert.Contains("\"C:\\my tmp\\WMonitor.new.exe\"", s);
     }
+
+    // ---------------- CleanNotes（Release notes 的 markdown 轻清理） ----------------
+
+    [Fact]
+    public void CleanNotes_StripsHeadingsBoldAndBackticks()
+    {
+        string md = "## v0.34\n\n**自动更新**：每 24h 检查 `GitHub` Releases\n- 托盘菜单一键升级";
+        string s = Updater.CleanNotes(md);
+        Assert.DoesNotContain("##", s);
+        Assert.DoesNotContain("**", s);
+        Assert.DoesNotContain("`", s);
+        Assert.Contains("v0.34", s);
+        Assert.Contains("自动更新：每 24h 检查 GitHub Releases", s);
+        Assert.Contains("- 托盘菜单一键升级", s);      // 列表短线保留
+    }
+
+    [Fact]
+    public void CleanNotes_CollapsesBlankRuns()
+    {
+        string s = Updater.CleanNotes("a\n\n\n\n\nb");
+        Assert.Equal("a\n\nb", s);                     // 连续空行压成一行
+    }
+
+    [Fact]
+    public void CleanNotes_TrimsTrailingBlankLines() =>
+        Assert.Equal("a\nb", Updater.CleanNotes("a\nb\n\n\n"));
+
+    [Fact]
+    public void CleanNotes_NullAndEmpty_Safe()
+    {
+        Assert.Equal("", Updater.CleanNotes(""));
+        Assert.Equal("", Updater.CleanNotes("\r\n\r\n"));
+    }
 }

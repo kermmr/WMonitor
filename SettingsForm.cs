@@ -79,6 +79,11 @@ public sealed class SettingsForm : ChromeForm
     private Chip _showStrip = null!, _lockPos = null!, _clickThrough = null!, _onTop = null!, _startup = null!;
     /// <summary>v0.32：自动检查更新（GitHub Releases，24h 一次）。</summary>
     private Chip _checkUpdates = null!;
+    /// <summary>v0.34：手动「检查更新」按钮（弹更新说明对话框，按确定更新）。</summary>
+    private BentoButton _updateBtn = null!;
+
+    /// <summary>点击「检查更新」按钮（对话框流程由宿主接线）。</summary>
+    public event Action? UpdateCheckRequested;
 
     // ---------------- 告警 ----------------
     private Chip _alertOn = null!;
@@ -754,8 +759,14 @@ public sealed class SettingsForm : ChromeForm
 
         _checkUpdates = Toggle("自动检查更新", _cfg.CheckUpdates, w, v => _cfg.CheckUpdates = v);
 
+        // 手动更新入口（v0.34）：弹更新说明对话框，按「立即更新」才下载替换
+        _updateBtn = new BentoButton { Text = "检查更新", Width = w };
+        _updateBtn.Th = _th;
+        _updateBtn.Click += (_, _) => UpdateCheckRequested?.Invoke();
+
         foreach (var c in new[] { _showStrip, _lockPos, _clickThrough, _onTop, _startup, _checkUpdates })
             AddRow(card, ChipH + ChipGap, null, new Cell(c, 0, 0, w, ChipH));
+        AddRow(card, 44, null, new Cell(_updateBtn, 0, 0, w, 38));
     }
 
     // ---- 告警 ----

@@ -80,10 +80,14 @@ D:\WMonitor\
 │  │  ├─ FlyoutMenu.cs         托盘右键菜单（自绘分层窗口，替掉 ContextMenuStrip）
 │  │  ├─ Controls.cs           Segmented / Chip / Slider / Stepper
 │  │  └─ Theme.cs              深/浅两套配色 + 系统主题判定 + 告警色
+│  ├─ WMonitor.sln             解决方案（主项目 + tests/，v0.31 起）
+│  ├─ tests\WMonitor.Tests\    xunit 单测（GPU 锁键三件套 + 告警状态机）
+│  ├─ scripts\run-probes.ps1   CI 无头探针 runner（断言 PASS 标记，WMONITOR_PROBE_OUT 覆盖输出目录）
+│  ├─ installer\setup.iss      Inno Setup 安装器（按用户装 %LOCALAPPDATA%，payload=自包含单文件）
 │  └─ docs\                    详细文档
 ├─ WMonitor\                   ← 安装版（framework 依赖，多文件）
-├─ WMonitor-v0.30-framework.exe
-└─ WMonitor-v0.30-portable.exe
+├─ WMonitor-v0.31-framework.exe
+└─ WMonitor-v0.31-portable.exe
 ```
 
 **改代码只改 `wmonitor-eidt\`**，然后重新发布到另外两个位置。
@@ -107,13 +111,13 @@ dotnet publish -c Release -r win-x64 --self-contained false \
 # ② 单文件 · 框架依赖
 dotnet publish -c Release -r win-x64 --self-contained false \
   -p:PublishSingleFile=true -o build/framework
-cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.30-framework.exe"
+cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.31-framework.exe"
 
 # ③ 单文件 · 自包含
 dotnet publish -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true -o build/portable
-cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.30-portable.exe"
+cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.31-portable.exe"
 ```
 
 **发布前必须先杀掉运行中的进程**，否则 exe 被锁、编译报 `MSB3027 / MSB3021`：

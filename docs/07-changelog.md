@@ -1,5 +1,31 @@
 # 07 · 版本记录
 
+## v0.31 — 2026-11-14
+
+**CI + 单元测试 + 安装程序（roadmap P0 工程化主线收官）**
+
+- **CI（GitHub Actions）**：`.github/workflows/ci.yml` —— windows-latest 上构建 Release、
+  跑 xunit、跑无头探针子集（monitors / alert-test / watchdog-test / startup-repair-test /
+  gpu-locator / dashboard-probe / dashboard-gpu-probe / dashboard-action-probe，共 8 项，
+  断言 PASS 标记，结果上传 artifact）、发布 portable 并用 Inno Setup 编安装包（同样上传）。
+  探针结果目录不再写死 `D:/Hermes/...`：新增 `WMONITOR_PROBE_OUT` 环境变量覆盖
+  （`Program.ProbeOut`，默认值不变，本机习惯零影响）。UI 依赖类探针
+  （chrome / action-ui / menu / dashboard）不进 CI，留在本机晨检。
+- **单元测试（xunit）**：`tests/WMonitor.Tests/`，首期 20 例全过 ——
+  GPU 锁键三件套（`ParseLuid` / `NormalizeInstance` / `LuidBase`，docs/05 §25 坑 1 的回归锁）
+  + 告警状态机全场景（武装→触发→迟滞带保持→跌穿解除→冷却抑制→冷却后再触发→Muted 只停派发→
+  配置按 Metric 归位）。根目录新增 `WMonitor.sln`（主项目默认通配会把 tests/ 收进编译，
+  csproj 里显式 `<Compile Remove="tests/**/*.cs" />` 排除）。
+  测试侧记录到两个引擎事实：`_armedAt==0` 是未武装哨兵（t=0 拍武装被吞，app 侧无害）；
+  引擎首次 above 只武装不触发（点火测试须先武装一拍）。
+- **安装程序（Inno Setup）**：`installer/setup.iss` —— 单文件自包含版做 payload
+  （零 .NET 运行时前提），按用户安装到 `%LOCALAPPDATA%\WMonitor`（免管理员，与
+  零权限立场一致），版本号经 `GetVersionNumbersString` 从 exe 读（csproj 单一事实来源）。
+  卸载先 taskkill，`%APPDATA%\WMonitor` 配置有意保留。产物 `WMonitorSetup-v0.31.0.exe`（~59MB），
+  CI 每次构建都会产出最新安装包 artifact。
+- **验证**：构建 0/0；单测 20/20；本地 CI 模拟（`WMONITOR_PROBE_OUT` 覆盖 + run-probes.ps1）
+  全 PASS；安装器 ISCC 编译通过。
+
 ## v0.30 — 2026-11-14
 
 **看门狗自诊断 + 监视的显卡 + 自启路径自愈 + 仓库工程治理**

@@ -6,13 +6,13 @@
 
 ## P0 · 工程化基础（v0.31–v0.32 主线）
 
-- [ ] **CI** —— GitHub Actions `windows-latest`：build 0/0 + 跑无头探针
+- [x] **CI**（v0.31）—— GitHub Actions `windows-latest`：build 0/0 + 跑无头探针
       （`--dashboard-action-probe` / `--watchdog-test` / `--startup-repair-test` /
       `--alert-test` 等不依赖 GUI 会话的子集）。探针已经是现成的回归资产，接上管线即可。
-- [ ] **单元测试**（xunit）—— 0 测试。可测的纯逻辑：`GpuLocator.ParseLuid` /
+- [x] **单元测试**（xunit，v0.31 首期 20 例）—— 覆盖 GPU 锁键三件套与告警状态机；后续候选：`GpuLocator.ParseLuid` /
       `MetricSampler.NormalizeInstance` / `NetFmt` / `ValueBox` 宽度 / `TryAnchor` 坐标
       （Win32 调用抽接口）/ `AlertEngine` 迟滞与冷却。与探针互补：探针端到端，单测管边界值。
-- [ ] **安装程序**（Inno Setup 或 MSIX）—— 目前"安装版"是手动 publish 到目录。
+- [x] **安装程序**（Inno Setup，v0.31）—— 按用户装 %LOCALAPPDATA%，单文件自包含 payload，CI 每次构建产出安装包。
 - [ ] **自动更新** —— 检查 GitHub Release / 自建 URL，下载新 exe 后替换（需要处理运行中替换）。
 - [ ] **崩溃/日志自助入口** —— 托盘菜单加「打开日志目录」（error.log / debug.log /
       stall-report.log / actions.log 藏在 %APPDATA% 深处，用户报障说不清）。

@@ -11,6 +11,10 @@ internal static class Program
 {
     private const string MutexName = @"Global\WMonitor.SingleInstance.v1";
 
+    /// <summary>探针结果目录。CI / 其他机器用 WMONITOR_PROBE_OUT 覆盖，默认本机约定路径。</summary>
+    internal static string ProbeOut =>
+        Environment.GetEnvironmentVariable("WMONITOR_PROBE_OUT") is { Length: > 0 } p ? p : @"D:/Hermes/output/results";
+
     /// <summary>第二实例唤醒事件:已运行的实例收到信号后打开资源面板（无弹窗）。</summary>
     public const string ActivateEventName = @"Local\WMonitor.ShowDashboard.v1";
 
@@ -223,8 +227,8 @@ internal static class Program
             sb.AppendLine();
             Thread.Sleep(1000);
         }
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-dashboard-probe.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-dashboard-probe.txt", sb.ToString());
     }
 
     /// <summary>
@@ -268,8 +272,8 @@ internal static class Program
             sb.AppendLine();
             Thread.Sleep(2000);
         }
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-gpu-probe.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-gpu-probe.txt", sb.ToString());
     }
 
     /// <summary>
@@ -324,8 +328,8 @@ internal static class Program
             var files = new DirectoryInfo(dir).GetFiles();
             sb.AppendLine($"cache dir: {files.Length} files ({files.Count(f => f.Extension == ".png")} png / {files.Count(f => f.Extension == ".miss")} miss)");
         }
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-icon-probe.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-icon-probe.txt", sb.ToString());
     }
 
     /// <summary>起一个无窗口、无子进程的牺牲 ping，供动作验证用。</summary>
@@ -400,8 +404,8 @@ internal static class Program
             try { if (!child.HasExited) child.Kill(entireProcessTree: true); } catch { }
             child.Dispose();
         }
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-action-probe.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-action-probe.txt", sb.ToString());
 
         static string Ptr(uint? v) => v == null ? "—" : "0x" + v.Value.ToString("X");
     }
@@ -498,8 +502,8 @@ internal static class Program
         {
             try { if (child is { HasExited: false }) child.Kill(entireProcessTree: true); } catch { }
             child?.Dispose();
-            Directory.CreateDirectory(@"D:/Hermes/output/results");
-            File.WriteAllText(@"D:/Hermes/output/results/wmonitor-action-ui-probe.txt", sb.ToString());
+            Directory.CreateDirectory(ProbeOut);
+            File.WriteAllText(ProbeOut + "/wmonitor-action-ui-probe.txt", sb.ToString());
         }
     }
 
@@ -687,8 +691,8 @@ internal static class Program
         }
         finally
         {
-            Directory.CreateDirectory(@"D:/Hermes/output/results");
-            File.WriteAllText(@"D:/Hermes/output/results/wmonitor-chrome-probe.txt", sb.ToString());
+            Directory.CreateDirectory(ProbeOut);
+            File.WriteAllText(ProbeOut + "/wmonitor-chrome-probe.txt", sb.ToString());
         }
     }
 
@@ -744,8 +748,8 @@ internal static class Program
     private static void Monitors()
     {
         var all = TaskbarLocator.Enumerate();
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-monitors.txt",
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-monitors.txt",
             $"共 {all.Count} 块屏\r\n{TaskbarLocator.Describe(all)}\r\n");
     }
 
@@ -779,8 +783,8 @@ internal static class Program
             sb.AppendLine($"restored={((k.GetValue("WMonitor") as string) ?? "") == original}");
         }
         catch (Exception ex) { sb.AppendLine("EXCEPTION " + ex); }
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-startup-repair.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-startup-repair.txt", sb.ToString());
     }
 
     /// <summary>
@@ -811,8 +815,8 @@ internal static class Program
         sb.AppendLine(final - after > 0 && after - before > 0 && tail.Contains("心跳恢复") ? "PASS" : "FAIL");
         Watchdog.Stop();
 
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-watchdog.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-watchdog.txt", sb.ToString());
     }
 
     private static void GpuLocatorProbe()
@@ -851,8 +855,8 @@ internal static class Program
             }
         }
 
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-gpu-locator.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-gpu-locator.txt", sb.ToString());
     }
 
     /// <summary>
@@ -922,8 +926,8 @@ internal static class Program
                 offFired = true;
         sb.AppendLine($"disabled: events={(offFired ? "有(FAIL)" : "无(PASS)")}");
 
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-alert-test.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-alert-test.txt", sb.ToString());
     }
 
     /// <summary>诊断用：打印历史存储状态与最近 1 分钟的抽稀结果。</summary>
@@ -947,8 +951,8 @@ internal static class Program
             sb.AppendLine($"{m,-5} 24h: " + string.Join(", ", d24.Values.Select(v => v.ToString("0.0"))));
         }
 
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-history.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-history.txt", sb.ToString());
     }
 
     /// <summary>诊断用：采样 8 次写文件，验证各计数器读数是否合理。</summary>
@@ -969,8 +973,8 @@ internal static class Program
                 $"disk={s.DiskReadBps / 1024:F0}/{s.DiskWriteBps / 1024:F0} KB/s | {s.GpuName}");
             Thread.Sleep(1000);
         }
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        File.WriteAllText(@"D:/Hermes/output/results/sysmon-probe.txt", sb.ToString());
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/sysmon-probe.txt", sb.ToString());
     }
     /// <summary>
     /// 诊断用：把 4 种托盘图标渲染成对比图（真实 16px + 8 倍放大），
@@ -1036,7 +1040,7 @@ internal static class Program
             }
         }
 
-        Directory.CreateDirectory(@"D:/Hermes/output/results");
-        sheet.Save(@"D:/Hermes/output/results/wmonitor-icons.png");
+        Directory.CreateDirectory(ProbeOut);
+        sheet.Save(ProbeOut + "/wmonitor-icons.png");
     }
 }

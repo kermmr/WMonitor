@@ -89,6 +89,21 @@
 
 ## 6. 施工日志（新条目加在最上面）
 
+- **2026-11-14 (1)** **v0.31：CI + 单测 + 安装程序（roadmap P0 工程化收官）；v0.30 推送 GitHub Release**：
+  - **推送**：内层仓库 master → github.com/kermmr/WMonitor（凭据已存，git push 直通）；
+    tag `v0.30` + REST API 建 Release（git credential fill 取 PAT → 临时 header 文件 →
+    curl 上传双 exe 资产 201）—— gh CLI 本机没有，API 路径完全够用；令牌用完即删。
+  - **CI**：`.github/workflows/ci.yml`（windows-latest：构建 → xunit → 无头探针 ×8 断言 →
+    发布 portable → ISCC 编安装包 → 上传 artifact）。探针输出目录新增 `WMONITOR_PROBE_OUT`
+    覆盖（`Program.ProbeOut`，33 处写死路径统一替换；**sed 把属性默认值也替换了导致无限递归
+    —— 全局 sed 后必须先查属性定义本身**）。UI 探针不进 CI 留晨检。
+  - **单测**：`tests/WMonitor.Tests/`（xunit，20 例全过：GPU 锁键三件套 + 告警状态机全场景）。
+    主项目默认通配会把 tests/ 收进编译 → csproj 显式 `<Compile Remove>`；根目录补 `WMonitor.sln`。
+    引擎事实两条入档（t=0 武装哨兵、首次 above 只武装）。
+  - **安装程序**：`installer/setup.iss`（Inno 6，本机 winget 装了用户级 ISCC；CI runner 自带）。
+    单文件自包含 payload、按用户装 %LOCALAPPDATA%、版本号从 exe 读（GetVersionNumbersString，
+    RPos 截掉修订段）。产物 `WMonitorSetup-v0.31.0.exe` ~59MB。
+  - **验证**：sln 构建 0/0；单测 20/20；`run-probes.ps1` 本地模拟 ALL PASS；ISCC 编译通过。
 - **2026-11-14 (0)** **v0.30：看门狗 + 监视的显卡 + 自启自愈 + 仓库治理（工程化阶段起步）**：
   - **看门狗（`Watchdog.cs` 新文件）**：后台线程盯 UI 线程心跳（`MonitorAppContext.Tick`
     每拍 `Beat`，顺带收集贴片/面板/主面板句柄），停滞 >15s（`WMONITOR_WATCHDOG_STALL`

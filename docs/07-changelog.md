@@ -1,5 +1,28 @@
 # 07 · 版本记录
 
+## v0.32 — 2026-11-14
+
+**自动更新 + 托盘「打开日志目录」（roadmap P0 清零）**
+
+- **自动更新（`Updater.cs` 新文件）**：公开仓库匿名 REST（无凭据，UA 标识，24h 节流 +
+  6h 巡检定时器 + 托盘菜单「检查更新…」手动触发）。发现新版本时托盘菜单出现
+  「更新到 vX.Y…」→ 后台下载到 `%TEMP%\WMonitor.new.exe`（8 分钟超时 + 体积下限校验）
+  → 写替换脚本 → 本进程退出 → 脚本接管：**ren 运行中的 exe（Windows 只许改名不许删，
+  跨卷 move 对运行中 exe 是 copy+delete 会被拒 —— 设计审查抓出，机制用 dummy exe E2E 验证）
+  → copy 新 exe 进来 → framework 多文件安装顺带清旧 dll/deps/runtimeconfig
+  （单文件 exe 撞旧清单）→ start 新 exe → 脚本自删**；遗留的 `WMonitor.old.exe`
+  由下次更新的脚本与 app 启动时双重清理。
+  资产按安装形态挑：exe 旁有 deps.json（framework 安装）拿 framework 单文件版，
+  其余拿 portable。**dotnet host 下（探针/开发）CanApply=false 拒绝替换**，绝不碰宿主。
+  行为卡新增「自动检查更新」chip（默认开）。纯逻辑（版本口径 / 资产挑选 / 脚本内容）40 例
+  单测覆盖；`--update-check` 探针走真实 GitHub API（CI 上仅存在性断言——最新版相对关系随发布变化）。
+- **托盘菜单「打开日志目录」**：资源管理器直接打开 `%APPDATA%\WMonitor`
+  （error.log / debug.log / stall-report.log / dashboard-actions.log / alert.log 的家），
+  报障不再说不清文件在哪。
+- **README**：加 CI 状态徽章；安装表改三选一（安装器 / 绿色 framework / 绿色 portable）。
+- **验证**：构建 0/0；单测 40/40（新增 20 例更新逻辑）；探针 9 项全过（含 --update-check
+  真实网络检查）；替换机制 E2E（dummy exe 长跑 + 脚本实测 ren/copy/start/自删）。
+
 ## v0.31 — 2026-11-14
 
 **CI + 单元测试 + 安装程序（roadmap P0 工程化主线收官）**

@@ -77,6 +77,8 @@ public sealed class SettingsForm : ChromeForm
 
     // ---------------- 行为 ----------------
     private Chip _showStrip = null!, _lockPos = null!, _clickThrough = null!, _onTop = null!, _startup = null!;
+    /// <summary>v0.32：自动检查更新（GitHub Releases，24h 一次）。</summary>
+    private Chip _checkUpdates = null!;
 
     // ---------------- 告警 ----------------
     private Chip _alertOn = null!;
@@ -731,7 +733,9 @@ public sealed class SettingsForm : ChromeForm
             _cfg.StartWithWindows = v;
         });
 
-        foreach (var c in new[] { _showStrip, _lockPos, _clickThrough, _onTop, _startup })
+        _checkUpdates = Toggle("自动检查更新", _cfg.CheckUpdates, w, v => _cfg.CheckUpdates = v);
+
+        foreach (var c in new[] { _showStrip, _lockPos, _clickThrough, _onTop, _startup, _checkUpdates })
             AddRow(card, ChipH + ChipGap, null, new Cell(c, 0, 0, w, ChipH));
     }
 
@@ -1068,6 +1072,7 @@ public sealed class SettingsForm : ChromeForm
         _cfg.StripOpacity = d.StripOpacity;
         _cfg.OffsetX = d.OffsetX;
         _cfg.LockPosition = d.LockPosition;
+        _cfg.CheckUpdates = d.CheckUpdates;
         _cfg.ClickThrough = d.ClickThrough;
         _cfg.LockedGpuLuid = d.LockedGpuLuid;
 
@@ -1116,6 +1121,7 @@ public sealed class SettingsForm : ChromeForm
         foreach (var (chip, dflt) in _chips) chip.Checked = dflt(_cfg);
 
         _showStrip.Checked = _cfg.ShowStrip;
+        _checkUpdates.Checked = _cfg.CheckUpdates;
         _lockPos.Checked = _cfg.LockPosition;
         _clickThrough.Checked = _cfg.ClickThrough;
         _onTop.Checked = _cfg.AlwaysOnTop;

@@ -57,6 +57,12 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--update-check"))
+        {
+            UpdateCheckProbe();
+            return;
+        }
+
         if (args.Contains("--history-dump"))
         {
             HistoryDump();
@@ -761,6 +767,22 @@ internal static class Program
     /// 诊断用（v0.30）：开机自启路径自愈的自测 —— 存原值 → 写假路径 → RepairIfStale 应改回当前 exe
     /// → 恢复原值。全程毫秒级，注册表 HKCU Run。
     /// </summary>
+    /// <summary>
+    /// 诊断用（v0.32）：更新检查无副作用版 —— 只查不下载，结果落盘。
+    /// 校验 REST 通路 / 版本比较 / 资产挑选；CI 上断言仅存在性（最新版相对关系随发布变化）。
+    /// </summary>
+    private static void UpdateCheckProbe()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine($"current={typeof(Updater).Assembly.GetName().Version?.ToString(3)}  canApply={Updater.CanApply}");
+        var info = Updater.Check();
+        sb.AppendLine(info != null
+            ? $"update available: v{info.Version} tag={info.Tag} size={info.SizeBytes}\n  url={info.DownloadUrl}"
+            : $"no update. lastError={Updater.LastError ?? "(已是最新)"}");
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-update-check.txt", sb.ToString());
+    }
+
     private static void StartupRepairTest()
     {
         var sb = new StringBuilder();

@@ -67,6 +67,13 @@ internal sealed class MonitorAppContext : ApplicationContext
     private EventWaitHandle? _activateEvent;
     private System.Windows.Forms.Timer? _activateTimer;
 
+    /// <summary>UI 线程同步上下文（构造时捕获）—— 更新的后台回调经它回 UI 线程弹气泡。</summary>
+    private readonly SynchronizationContext _uiCtx = SynchronizationContext.Current
+        ?? throw new InvalidOperationException("必须在 UI 线程构造");
+
+    /// <summary>更新自动检查定时器（线程池 6h 一跳，24h 节流在回调里判）。</summary>
+    private System.Threading.Timer? _updateTimer;
+
     public MonitorAppContext()
     {
         _cfg = AppConfig.Load();
@@ -74,6 +81,14 @@ internal sealed class MonitorAppContext : ApplicationContext
 
         _sampler = new MetricSampler();
         _sampler.LockGpu(_cfg.LockedGpuLuid);
+
+        // v0.32：清掉上次自动更新留下的旧 exe（.old 在当时因进程还开着删不掉，现在可以了）
+        try
+        {
+            var dir = Path.GetDirectoryName(Environment.ProcessPath ?? "");
+            if (dir != null) File.Delete(Path.Combine(dir, "WMonitor.old.exe"));
+        }
+        catch { }
 
         // 面板先建：贴片的 Clicked 回调要引用它
         _panel = new DetailPanel();
@@ -115,6 +130,12 @@ internal sealed class MonitorAppContext : ApplicationContext
 
         // v0.30：UI 线程卡死看门狗（心跳 = 本定时器，正是 v0.29 事故里被饿死的那个）
         Watchdog.Start(Environment.CurrentManagedThreadId);
+
+        // v0.32：更新自动检查（6h 一跳，24h 节流；异常全吞）
+        if (_cfg.CheckUpdates)
+            _updateTimer = new System.Threading.Timer(_ => UpdateCheckTick(), null,
+                TimeSpan.FromMinutes(1), TimeSpan.FromHours(6));
+
         Tick();
     }
 
@@ -557,6 +578,10 @@ internal sealed class MonitorAppContext : ApplicationContext
             list.Add(new MenuRow { Text = "资源面板…", Click = () => OpenDashboard() });
         list.Add(new MenuRow { Text = "详情面板…", Click = () => OpenPanel(null) });
         list.Add(new MenuRow { Text = "设置…", Click = OpenSettings });
+        list.Add(new MenuRow { Text = "打开日志目录", Click = OpenLogDir });
+        if (Updater.Available != null && Updater.CanApply)
+            list.Add(new MenuRow { Text = $"更新到 v{Updater.Available.Version}…", Click = ApplyUpdate });
+        list.Add(new MenuRow { Text = "检查更新…", Click = () => RunUpdateCheck(manual: true) });
         list.Add(Toggle("暂停刷新", () => _paused, v => _paused = v));
 
         list.Add(MenuRow.Sep());
@@ -718,9 +743,81 @@ internal sealed class MonitorAppContext : ApplicationContext
         RefreshAll();
     }
 
+    // ---------------- 更新 / 日志（v0.32） ----------------
+
+    /// <summary>自动检查节流：24h 一次（手动「检查更新…」不受限）。</summary>
+    private void UpdateCheckTick()
+    {
+        try
+        {
+            if (!_cfg.CheckUpdates) return;
+            if (DateTime.UtcNow.Ticks - _cfg.LastUpdateCheck < TimeSpan.FromHours(24).Ticks) return;
+            RunUpdateCheck(manual: false);
+        }
+        catch { }
+    }
+
+    private void RunUpdateCheck(bool manual)
+    {
+        _cfg.LastUpdateCheck = DateTime.UtcNow.Ticks;
+        _cfg.Save();
+        Task.Run(() =>
+        {
+            var info = Updater.Check();
+            _uiCtx.Post(_ =>
+            {
+                if (info != null)
+                    _tray.ShowBalloonTip(8000, "WMonitor 更新",
+                        $"发现新版本 v{info.Version}：托盘右键菜单可一键更新。", ToolTipIcon.Info);
+                else if (manual)
+                    _tray.ShowBalloonTip(6000, "WMonitor 更新",
+                        Updater.LastError != null ? $"检查失败：{Updater.LastError}" : "已是最新版本。",
+                        ToolTipIcon.Info);
+            }, null);
+        });
+    }
+
+    /// <summary>下载（后台）→ 写替换脚本并启动 → 退出（脚本等几秒后 move 新 exe、清旧清单、拉起新版）。</summary>
+    private void ApplyUpdate()
+    {
+        var info = Updater.Available;
+        if (info == null || !Updater.CanApply) return;
+        _tray.ShowBalloonTip(10000, "WMonitor 更新",
+            $"正在下载 v{info.Version}（{info.SizeBytes / 1024 / 1024:0} MB）…完成后自动重启。", ToolTipIcon.Info);
+        Task.Run(() =>
+        {
+            try
+            {
+                Updater.Apply(info);
+                _uiCtx.Post(_ =>
+                {
+                    _tray.ShowBalloonTip(4000, "WMonitor 更新", "下载完成，正在重启…", ToolTipIcon.Info);
+                    Quit();     // 退出后由替换脚本接管
+                }, null);
+            }
+            catch (Exception ex)
+            {
+                _uiCtx.Post(_ => _tray.ShowBalloonTip(8000, "WMonitor 更新",
+                    $"更新失败：{ex.Message}", ToolTipIcon.Warning), null);
+            }
+        });
+    }
+
+    private void OpenLogDir()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppConfig.Dir);
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{AppConfig.Dir}\"") { UseShellExecute = true });
+        }
+        catch { }
+    }
+
     private void Quit()
     {
         Watchdog.Stop();
+        _updateTimer?.Dispose();
+        _updateTimer = null;
         _activateTimer?.Stop();
         _activateTimer?.Dispose();
         _timer.Stop();

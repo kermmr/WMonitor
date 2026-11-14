@@ -9,9 +9,9 @@
     <AssemblyName>WMonitor</AssemblyName>
     <RootNamespace>WMonitor</RootNamespace>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>0.31.0</Version>
-    <AssemblyVersion>0.31.0.0</AssemblyVersion>
-    <FileVersion>0.31.0.0</FileVersion>
+    <Version>0.32.0</Version>
+    <AssemblyVersion>0.32.0.0</AssemblyVersion>
+    <FileVersion>0.32.0.0</FileVersion>
     <Product>WMonitor</Product>
     <AssemblyTitle>WMonitor</AssemblyTitle>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
@@ -21,9 +21,11 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
-  <!-- 测试项目在 tests/ 下，不参与主程序编译（默认通配会把根下所有 .cs 收进来） -->
+  <!-- 测试项目在 tests/ 下，不参与主程序编译（默认通配会把根下所有 .cs 收进来）；
+       Updater 是 internal，经 InternalsVisibleTo 给测试项目做单测 -->
   <ItemGroup>
     <Compile Remove="tests/**/*.cs" />
+    <InternalsVisibleTo Include="WMonitor.Tests" />
   </ItemGroup>
 
 </Project>

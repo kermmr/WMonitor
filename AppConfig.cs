@@ -90,6 +90,13 @@ public sealed class AppConfig
     };
 
     public bool StartWithWindows { get; set; } = false;
+
+    /// <summary>自动检查更新（GitHub Releases 匿名 API，24h 一次）。手动「检查更新…」不受此开关限制。</summary>
+    public bool CheckUpdates { get; set; } = true;
+
+    /// <summary>上次自动检查时间（UtcNow.Ticks）。0 = 从未检查过。</summary>
+    public long LastUpdateCheck { get; set; } = 0;
+
     public int OffsetX { get; set; } = 0;
 
     public StripAnchor Anchor { get; set; } = StripAnchor.BeforeTray;

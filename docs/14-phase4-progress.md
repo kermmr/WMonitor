@@ -5,8 +5,8 @@
 
 - 方案总纲：`docs/10-main-dashboard-plan.md`（管控范围 §7 阶段 4、安全规则同节、详情区 §2.4）
 - 阶段 1/2/3 交接：`docs/11` / `docs/12`（LUID 坑 §5.4）/ `docs/13`（NtQuery / owner SID / 图标缓存十三决策）
-- 目标版本：v0.23（阶段 4）→ v0.24（UI 整改 P1 + icon B）→ v0.25（2026-11-05：标题栏窗口钮修复 + UI 整改 P2 批次 C9~C17，见日志 2026-11-05 (5)）→ ✅ v0.26（2026-11-05：UI 整改 P3 批次 C18~C22，见日志 (6)）→ ✅ v0.27–v0.29（图标/托盘健壮性/WM_PAINT 风暴，见日志）→ **✅ v0.30（2026-11-14：看门狗 + 监视的显卡 + 自启自愈 + 仓库治理，见日志 (0)）**
-- 状态：**✅ 阶段 4 完成并已发布 v0.23 → v0.24（P1 + icon B）→ ✅ v0.25（窗口钮修复 + P2）→ ✅ v0.26（P3）—— 主面板四阶段 + UI 整改 P1~P3 全部收官；v0.30 起进入「工程化 + 小步增强」阶段（docs/06 已刷新）**
+- 目标版本：v0.23（阶段 4）→ ✅ v0.24–v0.26（UI 整改 P1~P3）→ ✅ v0.27–v0.29（图标/托盘/WM_PAINT 风暴）→ ✅ v0.30（看门狗 + 监视的显卡 + 自启自愈 + 仓库治理，日志 (0)）→ **✅ v0.31（CI + 单测 + 安装程序，日志 (1)）→ v0.32（自动更新 + 日志目录入口，日志 (2)）**
+- 状态：**✅ 主面板四阶段 + UI 整改 P1~P3 收官；v0.30–v0.32 工程化阶段收官（看门狗/显卡锁/自启自愈/仓库治理/CI/单测/安装器/自动更新/日志入口），roadmap P0 全清，下一主线 P1 体验增强**
 
 ## 0. 当前状态速览（接手先看这里）
 
@@ -89,6 +89,29 @@
 
 ## 6. 施工日志（新条目加在最上面）
 
+- **2026-11-14 (2)** **v0.32：自动更新 + 托盘「打开日志目录」（roadmap P0 全清）**：
+  - **Updater.cs（新文件）**：公开仓库匿名 REST（无凭据；UA 标识；Check 15s 超时，
+    Download 8 分钟超时 + ≥1MB 体积下限）。版本口径 ParseVersion/IsNewer 纯函数 + 40 例单测
+    （含替换脚本内容断言）。资产按安装形态挑（exe 旁有 deps.json → framework 单文件版，
+    否则 portable）。**dotnet host 下 CanApply=false 拒绝替换**（探针/开发场景绝不碰宿主，
+    Environment.ProcessPath 在 `dotnet WMonitor.dll` 下是 dotnet.exe）。
+  - **替换机制（设计审查抓出跨卷坑 + E2E 验证）**：初版 `move /y` 在 %TEMP%(C:) → 安装盘(D:)
+    是跨卷 copy+delete，**对运行中的 exe 会被 Windows 拒绝** → 改「ren 运行中 exe（只许改名）
+    → copy 新 exe → 旧文件留 .old（下次更新脚本 del + app 启动双重清理）」。
+    E2E：dummy exe（cmd.exe 副本改名长跑）+ 脚本实测 ren/copy/start/自删全过
+    （自删批处理会打一行「找不到批处理文件」——cmd 增量读脚本的已知尾巴，真实场景窗口隐藏）。
+    framework 多文件安装顺带 del 旧 dll/deps/runtimeconfig，防新单文件 exe 撞旧清单。
+  - **接线**：托盘菜单「检查更新…」/「更新到 vX.Y…」（Available 且 CanApply 才显示）/
+    「打开日志目录」（explorer 打开 %APPDATA%\WMonitor）；24h 节流 + 6h 线程池巡检定时器；
+    气泡反馈全链路；后台回调经构造时捕获的 SynchronizationContext 回 UI。
+    行为卡「自动检查更新」chip（默认开；ResetDefaults/RefreshControlsFromConfig 同步）。
+    AppConfig 增 `CheckUpdates` / `LastUpdateCheck`。
+  - **探针**：`--update-check`（只查不下载，真实 GitHub API；CI 仅存在性断言——最新版相对
+    关系随发布变化，run-probes.ps1 已收录，现 9 项）。
+  - **版本跳变注意**：v0.31.0 resident（framework 多文件）经菜单更新到 v0.32 时会切到
+    framework 单文件形态 —— deps.json 被清是预期行为；**真实更新流程留用户触发**
+    （v0.33 发布后托盘菜单点一次即 dogfood 全链路）。
+  - **验证**：sln 构建 0/0；单测 40/40；探针 9 项全 PASS（本地 CI 模拟）；E2E 机制测试。
 - **2026-11-14 (1)** **v0.31：CI + 单测 + 安装程序（roadmap P0 工程化收官）；v0.30 推送 GitHub Release**：
   - **推送**：内层仓库 master → github.com/kermmr/WMonitor（凭据已存，git push 直通）；
     tag `v0.30` + REST API 建 Release（git credential fill 取 PAT → 临时 header 文件 →

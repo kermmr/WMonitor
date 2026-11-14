@@ -21,6 +21,7 @@ if (-not (Test-Path $dll)) { Write-Host "FAIL probe dll not found: $dll"; exit 1
 & dotnet $dll --dashboard-probe      
 & dotnet $dll --dashboard-gpu-probe  
 & dotnet $dll --dashboard-action-probe
+& dotnet $dll --update-check
 
 $failures = New-Object System.Collections.Generic.List[string]
 function Assert-Contains([string]$file, [string]$needle, [string]$label) {
@@ -37,6 +38,10 @@ Assert-Contains (Join-Path $out 'wmonitor-dashboard-probe.txt')    'procs=' 'das
 # monitors output text is localized; existence + non-empty is enough on CI
 $monFile = Join-Path $out 'wmonitor-monitors.txt'
 if (-not (Test-Path $monFile) -or (Get-Item $monFile).Length -eq 0) { $failures.Add('monitors : missing or empty') }
+
+# update-check: existence only -- the newest-release relation changes with each publish
+$updFile = Join-Path $out 'wmonitor-update-check.txt'
+if (-not (Test-Path $updFile) -or (Get-Item $updFile).Length -eq 0) { $failures.Add('update-check : missing or empty') }
 
 $actionFile = Join-Path $out 'wmonitor-action-probe.txt'
 if (Test-Path $actionFile) {

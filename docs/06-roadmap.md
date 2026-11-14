@@ -4,7 +4,7 @@
 2026-11-14（v0.30）全面刷新：把已完成的勾掉，主线从「补功能」转为「工程化」——
 功能面已经铺得很宽，当前最大的短板是变更后的质量保障全靠手工探针 + 用户晨检。
 
-## P0 · 工程化基础（v0.31–v0.32 主线）
+## P0 · 工程化基础（v0.31–v0.32 全部收官，见下）
 
 - [x] **CI**（v0.31）—— GitHub Actions `windows-latest`：build 0/0 + 跑无头探针
       （`--dashboard-action-probe` / `--watchdog-test` / `--startup-repair-test` /
@@ -13,9 +13,9 @@
       `MetricSampler.NormalizeInstance` / `NetFmt` / `ValueBox` 宽度 / `TryAnchor` 坐标
       （Win32 调用抽接口）/ `AlertEngine` 迟滞与冷却。与探针互补：探针端到端，单测管边界值。
 - [x] **安装程序**（Inno Setup，v0.31）—— 按用户装 %LOCALAPPDATA%，单文件自包含 payload，CI 每次构建产出安装包。
-- [ ] **自动更新** —— 检查 GitHub Release / 自建 URL，下载新 exe 后替换（需要处理运行中替换）。
-- [ ] **崩溃/日志自助入口** —— 托盘菜单加「打开日志目录」（error.log / debug.log /
-      stall-report.log / actions.log 藏在 %APPDATA% 深处，用户报障说不清）。
+- [x] **自动更新**（v0.32）—— GitHub Releases 匿名 API + 24h 节流；ren 运行中 exe → copy 新 exe → 清 framework 旧清单 → 重启，机制 E2E 验证。
+- [x] **崩溃/日志自助入口**（v0.32）—— 托盘菜单「打开日志目录」（error.log / debug.log /
+      stall-report.log / actions.log 藏在 %APPDATA% 深处的问题已解决)。
 
 ## P1 · 体验增强
 

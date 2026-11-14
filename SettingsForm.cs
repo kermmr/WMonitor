@@ -46,6 +46,11 @@ public sealed class SettingsForm : ChromeForm
 
     // ---------------- 贴片 ----------------
     private Segmented _pos = null!, _strip = null!, _screen = null!;
+    /// <summary>「监视的显卡」段控（v0.30）。只有 GpuLocator 枚举出多卡才创建；单卡机器保持 null。</summary>
+    private Segmented? _gpu;
+    private List<GpuAdapter> _gpus = new();
+    /// <summary>NVML 的 LUID→名（DXGI 拿不到名字时的兜底；主进程采样器传入，自己不开 NVML 会话）。</summary>
+    private readonly IReadOnlyDictionary<ulong, string>? _gpuNames;
     private Stepper _offset = null!;
 
     // ---------------- 外观 ----------------
@@ -116,11 +121,13 @@ public sealed class SettingsForm : ChromeForm
     private static readonly string[] MetricNames = { "CPU", "内存", "GPU", "显存", "网速", "温度", "磁盘" };
     private static readonly string[] AlertNames = { "CPU", "内存", "GPU", "显存", "温度" };
 
-    public SettingsForm(AppConfig cfg, Theme th, List<TaskbarInfo> bars)
+    public SettingsForm(AppConfig cfg, Theme th, List<TaskbarInfo> bars,
+        IReadOnlyDictionary<ulong, string>? gpuNames = null)
     {
         _cfg = cfg;
         _th = th;
         _bars = bars;
+        _gpuNames = gpuNames;
 
         NormalizeRules();
 
@@ -380,7 +387,52 @@ public sealed class SettingsForm : ChromeForm
 
         AddRow(card, 22, null,
             new Cell(Small("拖动贴片可直接移动 · 锁定后固定", ColW * 2 + Gap - 36), 0, 2, ColW * 2 + Gap - 36, 18));
+
+        // 监视的显卡（v0.30）：把 cfg.LockedGpuLuid 暴露出来（后端 v0.05 起就支持，一直没界面）。
+        // 键来自 GpuLocator 的 PDH 实例枚举 —— 保证下拉里的每项都是 MetricSampler 认的锁键。
+        // 单卡机器整个行不建（GPU 利用率/显存本就只有一张卡，无从选起）。
+        _gpus = GpuLocator.Enumerate(_gpuNames);
+        if (_gpus.Count > 1)
+        {
+            var capGpu = Cap("监视的显卡", half);
+            _gpu = new Segmented { Th = _th, Height = CtrlH, Width = half };
+            _gpu.Items = new[] { "全部显卡" }.Concat(_gpus.Select((g, i) => ShortGpuName(g.Name))).ToArray();
+            int sel = _cfg.LockedGpuLuid is { Length: > 0 }
+                ? _gpus.FindIndex(g => string.Equals(g.Key, _cfg.LockedGpuLuid, StringComparison.OrdinalIgnoreCase))
+                : -1;
+            if (sel < 0) sel = 0;                       // 记忆的卡不在了 → 回全部（采样端同样会回落）
+            _gpu.SelectedIndex = sel;
+
+            var gpuHint = Small("", half);
+            gpuHint.Text = GpuHintText(sel);
+            _gpu.SelectionChanged += (_, _) =>
+            {
+                int i = _gpu!.SelectedIndex;
+                _cfg.LockedGpuLuid = i <= 0 ? null : _gpus[i - 1].Key;
+                gpuHint.Text = GpuHintText(i);
+                Apply();
+            };
+
+            AddRow(card, 66, null,
+                new Cell(capGpu, 0, 0, half, 18), new Cell(_gpu, 0, 22, half, CtrlH),
+                new Cell(gpuHint, right, 26, half, 20));
+        }
     }
+
+    /// <summary>段控短名：剥掉厂商前缀（NVIDIA GeForce / AMD Radeon / Intel(R)…），超长截断带省略号。</summary>
+    private static string ShortGpuName(string name)
+    {
+        string n = name.Replace("(R)", "").Replace("(TM)", "");
+        foreach (var p in new[] { "NVIDIA GeForce ", "NVIDIA ", "AMD Radeon ", "AMD ", "Intel Arc ", "Intel UHD ", "Intel Iris ", "Intel " })
+            if (n.StartsWith(p, StringComparison.OrdinalIgnoreCase)) { n = n[p.Length..]; break; }
+        if (n.Length > 15) n = n[..14].TrimEnd() + "…";
+        return n;
+    }
+
+    /// <summary>提示行：显示选中适配器的全名与显存（段控里是短名，这里补全名）。</summary>
+    private string GpuHintText(int segIndex) => segIndex <= 0
+        ? "全部显卡：自动显示占用最大的一块"
+        : $"{_gpus[segIndex - 1].Name} · {_gpus[segIndex - 1].VramBytes / 1073741824.0:0.#} GB";
 
     // ---- 外观 ----
     private void BuildLookCard()
@@ -1017,6 +1069,7 @@ public sealed class SettingsForm : ChromeForm
         _cfg.OffsetX = d.OffsetX;
         _cfg.LockPosition = d.LockPosition;
         _cfg.ClickThrough = d.ClickThrough;
+        _cfg.LockedGpuLuid = d.LockedGpuLuid;
 
         _cfg.HistoryEnabled = d.HistoryEnabled;
         _cfg.HistoryPersist = d.HistoryPersist;
@@ -1050,6 +1103,15 @@ public sealed class SettingsForm : ChromeForm
         _opacity.Value = _cfg.StripOpacity;
         _opacityText.Text = _cfg.StripOpacity + "%";
         _offset.Value = _cfg.OffsetX;
+
+        // 「监视的显卡」段控：按配置回位（卡可能换了，找不到就回「全部显卡」）
+        if (_gpu != null && _gpus.Count > 0)
+        {
+            int gi = _cfg.LockedGpuLuid is { Length: > 0 }
+                ? _gpus.FindIndex(g => string.Equals(g.Key, _cfg.LockedGpuLuid, StringComparison.OrdinalIgnoreCase))
+                : -1;
+            _gpu.SelectedIndex = gi < 0 ? 0 : gi + 1;
+        }
 
         foreach (var (chip, dflt) in _chips) chip.Checked = dflt(_cfg);
 

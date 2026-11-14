@@ -177,6 +177,7 @@ internal static class Native
     // ---------------- pdh ----------------
     public const uint PDH_FMT_DOUBLE = 0x00000200;
     public const uint PDH_MORE_DATA = 0x800007D2;
+    public const uint PERF_DETAIL_WIZARD = 400;   // 列出全部实例（含专家级），GPU Adapter Memory 枚举用
 
     [StructLayout(LayoutKind.Sequential)]
     public struct PDH_FMT_COUNTERVALUE
@@ -207,6 +208,15 @@ internal static class Native
 
     [DllImport("pdh.dll")]
     public static extern uint PdhCloseQuery(IntPtr hQuery);
+
+    // 枚举计数器对象的实例名（v0.30：设置界面「监视的显卡」列出 \GPU Adapter Memory 的真实锁键）。
+    // 不关心的列表传 null + ref 0，PDH 会在长度参数里回写需要的字符数。
+    [DllImport("pdh.dll", CharSet = CharSet.Unicode)]
+    public static extern uint PdhEnumObjectItemsW(
+        string? szDataSource, string? szMachineName, string szObjectName,
+        char[]? mszCounterList, ref uint pcchCounterListLength,
+        char[] mszInstanceList, ref uint pcchInstanceListLength,
+        uint dwDetailLevel, uint dwFlags);
 
     // ---------------- 进程 / 窗口（主面板 v0.18） ----------------
 

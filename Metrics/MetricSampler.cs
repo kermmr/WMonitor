@@ -52,6 +52,8 @@ public sealed class MetricSampler : IDisposable
     private ulong _lastDown, _lastUp;
     private long _lastNetTicks;
     private string? _lockedLuid;
+    private bool _lockMissLogged;
+    private ulong? _lockFull64;
     private ulong _vramTotalFallback;
 
     // 高频分配的结构只算一次
@@ -93,7 +95,67 @@ public sealed class MetricSampler : IDisposable
         _lastDown = d; _lastUp = u; _lastNetTicks = t;
     }
 
-    public void LockGpu(string? luid) => _lockedLuid = luid;
+    /// <summary>
+    /// 锁定贴片显示哪块显卡（PDH 实例键，如 "0x00000000_0x00010FB0_phys_0"；null = 自动选占用最大的）。
+    /// v0.30：顺带把 NVML 活动设备切到同一张卡 —— 否则多卡机器锁第二张卡时，
+    /// 显存是第二张的而利用率/温度还是设备 0 的，口径错位。
+    /// </summary>
+    /// <summary>NVML 的 LUID → 设备名（无 NVML / 旧驱动无 nvmlDeviceGetLuid 时为 null）。GpuLocator 命名兜底。</summary>
+    public IReadOnlyDictionary<ulong, string>? GpuNamesByLuid => _nvml?.NameByLuid;
+
+    /// <summary>
+    /// 锁定贴片显示哪块显卡（PDH 实例键，如 "luid_0x00000000_0x00010FB0_phys_0"；null = 自动选占用最大的）。
+    /// v0.30：顺带把 NVML 活动设备切到同一张卡（要 nvmlDeviceGetLuid；实测 610.47 驱动没有 ——
+    /// 那种机器锁定时利用率/温度改走 PDH Engine 按 LUID 聚合，见 <see cref="NvmlCoversLock"/>）。
+    /// </summary>
+    public void LockGpu(string? luid)
+    {
+        _lockedLuid = string.IsNullOrWhiteSpace(luid) ? null : luid;
+        _lockMissLogged = false;
+        _lockFull64 = null;
+        ulong? full = null;
+        if (_lockedLuid != null)
+        {
+            var (hi, lo) = GpuLocator.ParseLuid(_lockedLuid);
+            if (hi != 0 || lo != 0) { _lockFull64 = ((uint)hi << 32) | lo; full = _lockFull64; }
+        }
+        _nvml?.SelectByLuid(full);
+        EnsureGpuEngineQuery();
+    }
+
+    /// <summary>
+    /// 锁定但 NVML 无法按 LUID 取数（无 NVML 或旧驱动）时才需要 GPU Engine 查询 ——
+    /// 数百实例 collect 一次 ~10ms（docs/05 §8），所以平时根本不建：锁定即用即建，解锁即关。
+    /// </summary>
+    private void EnsureGpuEngineQuery()
+    {
+        // 无 NVML 时 engine query 本来就常驻（构造器建的那份，自动选卡也要靠它聚合利用率）；
+        // 有 NVML 时只在「锁了卡且 NVML 认不出这张卡」的窗口期临时存在。
+        bool nvmlUsable = _nvml != null && _nvml.HasUtil;
+        bool need = !nvmlUsable || (_lockedLuid != null && !NvmlCoversLock());
+        if (need && _gpuQuery == IntPtr.Zero)
+        {
+            if (Native.PdhOpenQuery(null, IntPtr.Zero, out _gpuQuery) == 0)
+            {
+                uint rg = Native.PdhAddEnglishCounter(_gpuQuery,
+                    @"\GPU Engine(*)\Utilization Percentage", IntPtr.Zero, out _cGpuEngine);
+                if (rg != 0) { Native.PdhCloseQuery(_gpuQuery); _gpuQuery = IntPtr.Zero; _cGpuEngine = IntPtr.Zero; }
+            }
+        }
+        else if (!need && _gpuQuery != IntPtr.Zero)
+        {
+            Native.PdhCloseQuery(_gpuQuery);
+            _gpuQuery = IntPtr.Zero;
+            _cGpuEngine = IntPtr.Zero;
+        }
+    }
+
+    /// <summary>NVML 能否给出这张锁定卡的数（无锁 = true —— NVML 设备口径本来就是全局的）。</summary>
+    private bool NvmlCoversLock()
+    {
+        if (_nvml == null || !_nvml.HasUtil) return false;
+        return _lockedLuid == null || (_lockFull64 != null && _nvml.CoversLuid(_lockFull64.Value));
+    }
 
     private IntPtr Add(string path)
     {
@@ -124,46 +186,68 @@ public sealed class MetricSampler : IDisposable
         }
 
         // ---- GPU ----
-        var gpuMem = ReadArray(_cGpuMem); // key: 0x00000000_0x00010FB0_phys_0 -> bytes
+        // 实例键形如 luid_0x00000000_0x00010FB0_phys_0（实测格式，含 luid_ 前缀）；LockedGpuLuid 存的就是它
+        var gpuMem = ReadArray(_cGpuMem);
         string? target = _lockedLuid;
         ulong best = 0;
+        bool lockedFound = false;
+        if (target != null)
+        {
+            foreach (var (k, v) in gpuMem)
+                if (string.Equals(k, target, StringComparison.OrdinalIgnoreCase))
+                { best = (ulong)v; lockedFound = true; break; }
+
+            // 锁的卡不在了（拔卡 / 驱动重装 LUID 变化）：回落自动选，别把显存冻在 0。
+            // 只记一次日志，别每秒刷。
+            if (!lockedFound)
+            {
+                if (!_lockMissLogged)
+                {
+                    _lockMissLogged = true;
+                    Dbg.Log($"locked gpu key missing, fallback to auto: {_lockedLuid}");
+                }
+                target = null;
+            }
+        }
         if (target == null)
         {
             foreach (var (k, v) in gpuMem)
                 if (v > best) { best = (ulong)v; target = k; }
-        }
-        else
-        {
-            foreach (var (k, v) in gpuMem)
-                if (k == target) best = (ulong)v;
         }
 
         if (target != null)
         {
             s.HasGpu = true;
             s.VramUsedBytes = best;
-            ulong total = _nvml?.MemoryTotal ?? 0;
+            // 总量只在 NVML 确认是这张卡时才用（否则回落注册表 qwMemorySize —— 单值，第二张卡可能不准，
+            // 但比张冠李戴强）；docs/05 §1：AdapterRAM 是 32 位字段，别用。
+            ulong total = _nvml != null && NvmlCoversLock() ? _nvml.MemoryTotal : 0;
             if (total == 0) total = _vramTotalFallback;
             s.VramTotalBytes = total;
             s.HasVramTotal = total > 0;
 
-            // N 卡优先用 NVML（微秒级）；无 NVML 时才走 PDH 的数百条 GPU Engine 实例
-            if (_nvml != null && _nvml.HasUtil)
+            // N 卡优先用 NVML（微秒级）；锁定但 NVML 认不出这张卡时改走 PDH Engine 按 LUID 聚合
+            //（旧驱动没有 nvmlDeviceGetLuid，NVML 只有设备 0 的数 —— 张冠李戴不如没有）。
+            if (_nvml != null && _nvml.HasUtil && NvmlCoversLock())
             {
                 s.GpuPercent = Math.Clamp(double.IsNaN(_nvml.GpuUtilPercent) ? 0 : _nvml.GpuUtilPercent, 0, 100);
             }
-            else if (_gpuQuery != IntPtr.Zero)
+            else if (_gpuQuery != IntPtr.Zero && target != null)
             {
                 Native.PdhCollectQueryData(_gpuQuery);
                 double sum = 0;
+                // gpuMem 与 engine 的键在 ReadArray 里都已被 NormalizeInstance 归一成 "0xH_0xL_phys_N"；
+                // 按 LUID base 匹配（不吃 phys 段，锁 phys_0 也算上 phys_1 的引擎）。
                 foreach (var (k, v) in ReadArray(_cGpuEngine))
-                    if (k == target) sum += v;
+                    if (string.Equals(GpuProcessSampler.LuidBase(k), GpuProcessSampler.LuidBase(target),
+                            StringComparison.OrdinalIgnoreCase)) sum += v;
                 s.GpuPercent = Math.Clamp(sum, 0, 100);
             }
         }
 
         // ---- NVML: 利用率 / 名字 / 温度 / 功耗 ----
-        if (_nvml != null)
+        // 锁定但 NVML 认不出该卡时跳过：温度/功耗/名字都是设备 0 的，显示出来就是错的口径。
+        if (_nvml != null && NvmlCoversLock())
         {
             _nvml.Refresh();
             s.GpuName = _nvml.Name;
@@ -247,7 +331,8 @@ public sealed class MetricSampler : IDisposable
     /// pid_1208_luid_0x00000000_0x00010FB0_phys_0_eng_0_engtype_3D  →  0x00000000_0x00010FB0_phys_0
     /// luid_0x00000000_0x00010FB0_phys_0                           →  0x00000000_0x00010FB0_phys_0
     /// </summary>
-    private static string NormalizeInstance(string name)
+    /// <summary>P/Invoke 读到的原始实例名 → 归一化键 "0xH_0xL_phys_N"（GpuLocator 存配置用同一口径）。</summary>
+    public static string NormalizeInstance(string name)
     {
         int i = name.IndexOf("luid_", StringComparison.Ordinal);
         if (i < 0) return string.Empty;

@@ -67,12 +67,23 @@ internal sealed class MonitorAppContext : ApplicationContext
     private EventWaitHandle? _activateEvent;
     private System.Windows.Forms.Timer? _activateTimer;
 
-    /// <summary>UI 线程同步上下文（构造时捕获）—— 更新的后台回调经它回 UI 线程弹气泡。</summary>
-    private readonly SynchronizationContext _uiCtx = SynchronizationContext.Current
-        ?? throw new InvalidOperationException("必须在 UI 线程构造");
+    /// <summary>
+    /// UI 线程同步上下文 —— 更新的后台回调经它回 UI 线程弹气泡。
+    /// 注意不能在字段初始化时捕获：WinFormsSynchronizationContext 要等第一个 Control
+    /// （_panel）创建才安装，ApplicationContext 构造比那更早（v0.32 发布当天踩过，
+    /// error.log 一行「必须在 UI 线程构造」+ 进程秒退）。在构造末尾捕获。
+    /// </summary>
+    private SynchronizationContext? _uiCtx;
 
     /// <summary>更新自动检查定时器（线程池 6h 一跳，24h 节流在回调里判）。</summary>
     private System.Threading.Timer? _updateTimer;
+
+    private void PostUi(Action action)
+    {
+        var ctx = _uiCtx ?? SynchronizationContext.Current;
+        if (ctx != null) ctx.Post(_ => action(), null);
+        else action();   // 兜底：拿不到上下文就当在自己线程（理论不可达）
+    }
 
     public MonitorAppContext()
     {
@@ -136,6 +147,8 @@ internal sealed class MonitorAppContext : ApplicationContext
             _updateTimer = new System.Threading.Timer(_ => UpdateCheckTick(), null,
                 TimeSpan.FromMinutes(1), TimeSpan.FromHours(6));
 
+        // 面板已建，WinFormsSynchronizationContext 此刻已装 —— 捕获给更新的后台回调用
+        _uiCtx = SynchronizationContext.Current;
         Tick();
     }
 
@@ -764,7 +777,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         Task.Run(() =>
         {
             var info = Updater.Check();
-            _uiCtx.Post(_ =>
+            PostUi(() =>
             {
                 if (info != null)
                     _tray.ShowBalloonTip(8000, "WMonitor 更新",
@@ -773,11 +786,11 @@ internal sealed class MonitorAppContext : ApplicationContext
                     _tray.ShowBalloonTip(6000, "WMonitor 更新",
                         Updater.LastError != null ? $"检查失败：{Updater.LastError}" : "已是最新版本。",
                         ToolTipIcon.Info);
-            }, null);
+            });
         });
     }
 
-    /// <summary>下载（后台）→ 写替换脚本并启动 → 退出（脚本等几秒后 move 新 exe、清旧清单、拉起新版）。</summary>
+    /// <summary>下载（后台）→ 写替换脚本并启动 → 退出（脚本等几秒后 ren/copy 新 exe、清旧清单、拉起新版）。</summary>
     private void ApplyUpdate()
     {
         var info = Updater.Available;
@@ -789,16 +802,16 @@ internal sealed class MonitorAppContext : ApplicationContext
             try
             {
                 Updater.Apply(info);
-                _uiCtx.Post(_ =>
+                PostUi(() =>
                 {
                     _tray.ShowBalloonTip(4000, "WMonitor 更新", "下载完成，正在重启…", ToolTipIcon.Info);
                     Quit();     // 退出后由替换脚本接管
-                }, null);
+                });
             }
             catch (Exception ex)
             {
-                _uiCtx.Post(_ => _tray.ShowBalloonTip(8000, "WMonitor 更新",
-                    $"更新失败：{ex.Message}", ToolTipIcon.Warning), null);
+                PostUi(() => _tray.ShowBalloonTip(8000, "WMonitor 更新",
+                    $"更新失败：{ex.Message}", ToolTipIcon.Warning));
             }
         });
     }

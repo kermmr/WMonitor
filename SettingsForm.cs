@@ -539,13 +539,7 @@ public sealed class SettingsForm : ChromeForm
             SelectedIndex = (int)_cfg.Tray,
             Th = _th, Height = CtrlH
         };
-        _tray.SelectionChanged += (_, _) =>
-        {
-            _cfg.Tray = (TrayStyle)_tray.SelectedIndex;
-            RefreshTraySlots();     // 换成这套样式自己存的指标，不是上一套的
-            RefreshPreview();
-            Apply();
-        };
+        _tray.SelectionChanged += (_, _) => SwitchTray((TrayStyle)_tray.SelectedIndex);
         AddRow(card, 62, null, new Cell(capStyle, 0, 0, w, 18), new Cell(_tray, 0, 22, w, CtrlH));
 
         // 每行都读写「当前样式」的槽位：切样式时 RefreshTraySlots 把值换过去
@@ -567,6 +561,31 @@ public sealed class SettingsForm : ChromeForm
             new Cell(capPrev, 0, 21, 76, 30),
             new Cell(_preview, 80, 0, 72, 72),
             new Cell(_previewText, 162, 26, 380, 20));
+    }
+
+    /// <summary>
+    /// 切换托盘样式：换值（RefreshTraySlots）+ 换预览 + 落盘 + **重排**。
+    /// v0.17 重排交互时序时这里的 LayoutCards 被整条删掉（同步重排会抢走后续 MouseUp/Click），
+    /// 但只给历史/告警卡补了延迟版 ScheduleLayoutCards，托盘切换漏补 —— 行显隐从此冻结在
+    /// 打开设置那一刻的样式上，表现为「所有样式都只显示两行指标」（v0.33 修复，--tray-rows-probe
+    /// 守回归）。必须用延迟版，不能直接 LayoutCards —— 原因见 ScheduleLayoutCards 的注释。
+    /// </summary>
+    private void SwitchTray(TrayStyle style)
+    {
+        _cfg.Tray = style;
+        RefreshTraySlots();     // 换成这套样式自己存的指标，不是上一套的
+        RefreshPreview();
+        Apply();
+        ScheduleLayoutCards();  // 行显隐（次/三/四指标的现与隐）在这里生效
+    }
+
+    /// <summary>探针钩子（--tray-rows-probe）：程序化走与真实点击完全相同的切换链路。
+    /// 真实点击时段控自己先置 SelectedIndex 再发事件，探针手动补上，视觉才一致。</summary>
+    public void ProbeSwitchTray(TrayStyle style)
+    {
+        _tray.SelectedIndex = (int)style;
+        SwitchTray(style);
+        _tray.Invalidate();
     }
 
     private static readonly string[] MetricCn = { "CPU", "内存", "GPU", "显存", "网速", "温度", "磁盘" };

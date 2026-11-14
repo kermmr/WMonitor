@@ -63,6 +63,12 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--tray-rows-probe"))
+        {
+            TrayRowsProbe();
+            return;
+        }
+
         if (args.Contains("--history-dump"))
         {
             HistoryDump();
@@ -781,6 +787,75 @@ internal static class Program
             : $"no update. lastError={Updater.LastError ?? "(已是最新)"}");
         Directory.CreateDirectory(ProbeOut);
         File.WriteAllText(ProbeOut + "/wmonitor-update-check.txt", sb.ToString());
+    }
+
+    /// <summary>
+    /// 诊断用（v0.33）：托盘卡槽位行随样式切换的视觉回归 —— 双数字/四段条/单指标各截一帧
+    /// PrintWindow。守 v0.17 的回归（切换链路曾丢掉重排，行显隐冻结在打开时刻）。
+    /// 探针里的 Apply→Save 会写用户 config.json：先备份，跑完原样还原。
+    /// </summary>
+    private static void TrayRowsProbe()
+    {
+        Directory.CreateDirectory(ProbeOut);
+        string cfgPath = AppConfig.FilePath;
+        string? backup = File.Exists(cfgPath) ? File.ReadAllText(cfgPath) : null;
+
+        var t = new Thread(() =>
+        {
+            Application.EnableVisualStyles();
+            var cfg = new AppConfig();                      // 默认配置（双数字起步），不读用户配置
+            var form = new SettingsForm(cfg, Theme.Resolve(cfg.Theme), new List<TaskbarInfo>());
+            form.Show();
+
+            int step = 0;
+            var timer = new System.Windows.Forms.Timer { Interval = 700 };
+            timer.Tick += (_, _) =>
+            {
+                switch (step)
+                {
+                    case 0:
+                        CaptureWindow(form.Handle, Path.Combine(ProbeOut, "tray-rows-dual.png"));
+                        break;
+                    case 1:
+                        form.ProbeSwitchTray(TrayStyle.FourBar);
+                        break;
+                    case 2:
+                        CaptureWindow(form.Handle, Path.Combine(ProbeOut, "tray-rows-four.png"));
+                        form.ProbeSwitchTray(TrayStyle.Single);
+                        break;
+                    case 3:
+                        CaptureWindow(form.Handle, Path.Combine(ProbeOut, "tray-rows-single.png"));
+                        timer.Stop();
+                        form.Close();
+                        break;
+                }
+                step++;
+            };
+            timer.Start();
+            Application.Run(form);
+        });
+        t.SetApartmentState(ApartmentState.STA);
+        t.Start();
+        t.Join();
+
+        if (backup != null) File.WriteAllText(cfgPath, backup);    // 还原用户配置
+        else if (File.Exists(cfgPath)) File.Delete(cfgPath);
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool PrintWindow(IntPtr hWnd, IntPtr hdc, uint flags);
+
+    private static void CaptureWindow(IntPtr hwnd, string file)
+    {
+        Native.GetWindowRect(hwnd, out var r);
+        int w = r.Right - r.Left, hgt = r.Bottom - r.Top;
+        if (w <= 0 || hgt <= 0) return;
+        using var bmp = new System.Drawing.Bitmap(w, hgt);
+        using var g = System.Drawing.Graphics.FromImage(bmp);
+        var hdc = g.GetHdc();
+        PrintWindow(hwnd, hdc, 2);
+        g.ReleaseHdc(hdc);
+        bmp.Save(file, System.Drawing.Imaging.ImageFormat.Png);
     }
 
     private static void StartupRepairTest()

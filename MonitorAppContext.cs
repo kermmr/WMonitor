@@ -112,7 +112,19 @@ internal sealed class MonitorAppContext : ApplicationContext
         _timer = new System.Windows.Forms.Timer { Interval = Math.Clamp(_cfg.RefreshMs, 250, 10000) };
         _timer.Tick += (_, _) => Tick();
         _timer.Start();
+
+        // v0.30：UI 线程卡死看门狗（心跳 = 本定时器，正是 v0.29 事故里被饿死的那个）
+        Watchdog.Start(Environment.CurrentManagedThreadId);
         Tick();
+    }
+
+    /// <summary>看门狗要查脏区的窗口：详情面板 + 活着的贴片 + 主面板（未建句柄的跳过，别提前创建）。</summary>
+    private IEnumerable<IntPtr> WatchdogWindows()
+    {
+        if (_panel.IsHandleCreated) yield return _panel.Handle;
+        foreach (var st in _strips)
+            if (st.IsHandleCreated) yield return st.Handle;
+        if (_dash is { IsHandleCreated: true }) yield return _dash.Handle;
     }
 
     /// <summary>第二实例唤醒：收到信号就打开资源面板（未启用主面板则开详情面板）。见 Program.Main 单实例分支。</summary>
@@ -322,6 +334,7 @@ internal sealed class MonitorAppContext : ApplicationContext
 
     private void Tick()
     {
+        Watchdog.Beat(WatchdogWindows());
         if (_trayWaitTaskbar) RetryTrayAdd();
         if (_paused) return;
         MetricsSnapshot s;
@@ -681,12 +694,13 @@ internal sealed class MonitorAppContext : ApplicationContext
 
     private void OpenSettings()
     {
-        using var f = new SettingsForm(_cfg, _theme, _bars);
+        using var f = new SettingsForm(_cfg, _theme, _bars, _sampler.GpuNamesByLuid);
         f.Changed += () =>
         {
             _theme = Theme.Resolve(_cfg.Theme);
             _trayKey = "";
             _timer.Interval = Math.Clamp(_cfg.RefreshMs, 250, 10000);
+            _sampler.LockGpu(_cfg.LockedGpuLuid);   // v0.30：监视的显卡变了立刻生效（含 NVML 选卡）
             RefreshHistoryIfChanged();      // 开关历史要立刻生效，不等关窗
             _alerts.Configure(_cfg);
             _bars = TaskbarLocator.Enumerate();   // 屏幕选项可能变了，立刻重建贴片
@@ -706,6 +720,7 @@ internal sealed class MonitorAppContext : ApplicationContext
 
     private void Quit()
     {
+        Watchdog.Stop();
         _activateTimer?.Stop();
         _activateTimer?.Dispose();
         _timer.Stop();

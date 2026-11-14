@@ -35,6 +35,24 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--gpu-locator"))
+        {
+            GpuLocatorProbe();
+            return;
+        }
+
+        if (args.Contains("--watchdog-test"))
+        {
+            WatchdogTest();
+            return;
+        }
+
+        if (args.Contains("--startup-repair-test"))
+        {
+            StartupRepairTest();
+            return;
+        }
+
         if (args.Contains("--history-dump"))
         {
             HistoryDump();
@@ -117,6 +135,10 @@ internal static class Program
 
         Application.ThreadException += (_, e) => LogCrash(e.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, e) => LogCrash(e.ExceptionObject as Exception);
+
+        // v0.30：自启路径自愈 —— 注册表指向已不存在的旧 exe（挪了安装目录）时改回当前路径
+        if (Startup.RepairIfStale())
+            Dbg.LogAlways("autostart path repaired -> " + Environment.ProcessPath);
 
         using var activateEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ActivateEventName);
         var ctx = new MonitorAppContext();
@@ -725,6 +747,112 @@ internal static class Program
         Directory.CreateDirectory(@"D:/Hermes/output/results");
         File.WriteAllText(@"D:/Hermes/output/results/wmonitor-monitors.txt",
             $"共 {all.Count} 块屏\r\n{TaskbarLocator.Describe(all)}\r\n");
+    }
+
+    /// <summary>
+    /// 诊断用（v0.30）：GpuLocator 枚举结果落盘 —— 验证 PDH 实例键与 DXGI 适配器对得上号，
+    /// 以及锁键格式与 MetricSampler 的一致（改 GPU 锁相关代码必看）。
+    /// </summary>
+    /// <summary>
+    /// 诊断用（v0.30）：开机自启路径自愈的自测 —— 存原值 → 写假路径 → RepairIfStale 应改回当前 exe
+    /// → 恢复原值。全程毫秒级，注册表 HKCU Run。
+    /// </summary>
+    private static void StartupRepairTest()
+    {
+        var sb = new StringBuilder();
+        const string runKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        string original = "";
+        try
+        {
+            using var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(runKey, writable: true)!;
+            original = (k.GetValue("WMonitor") as string) ?? "";
+            k.SetValue("WMonitor", "\"D:\\确实\\不\\存在\\WMonitor-old.exe\"");   // 模拟挪目录残留
+
+            bool repaired = Startup.RepairIfStale();
+            string now = (k.GetValue("WMonitor") as string) ?? "";
+            sb.AppendLine($"repair invoked={repaired}  now={now}");
+            sb.AppendLine(repaired && now == $"\"{Environment.ProcessPath}\"" ? "PASS" : "FAIL");
+
+            // 原值本来就没开自启 → 删掉测试值，还原现场
+            if (original.Length == 0) k.DeleteValue("WMonitor", throwOnMissingValue: false);
+            else k.SetValue("WMonitor", original);
+            sb.AppendLine($"restored={((k.GetValue("WMonitor") as string) ?? "") == original}");
+        }
+        catch (Exception ex) { sb.AppendLine("EXCEPTION " + ex); }
+        Directory.CreateDirectory(@"D:/Hermes/output/results");
+        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-startup-repair.txt", sb.ToString());
+    }
+
+    /// <summary>
+    /// 诊断用（v0.30）：看门狗自测 —— 心跳停 6 秒（阈值经 WMONITOR_WATCHDOG_STALL 压到 2s），
+    /// 应落一份 stall 快照；恢复心跳后应补 recovered 行。结果写 wmonitor-watchdog.txt。
+    /// </summary>
+    private static void WatchdogTest()
+    {
+        Environment.SetEnvironmentVariable("WMONITOR_WATCHDOG_STALL", "2");
+        string report = Path.Combine(AppConfig.Dir, "stall-report.log");
+        long before = File.Exists(report) ? new FileInfo(report).Length : 0;
+
+        var sb = new StringBuilder();
+        Watchdog.Start(Environment.CurrentManagedThreadId);
+        var windows = new List<IntPtr>();
+        for (int i = 0; i < 10; i++) { Watchdog.Beat(windows); Thread.Sleep(100); }   // 正常心跳 1s
+
+        sb.AppendLine("心跳停止 6s …");
+        Thread.Sleep(6000);                                                            // 停跳 → 触发快照
+        long after = File.Exists(report) ? new FileInfo(report).Length : 0;
+        sb.AppendLine($"stall-report 增长 = {after - before} 字节（>0 = 快照已落盘）");
+
+        Watchdog.Beat(windows);                                                        // 恢复 → recovered 行
+        Thread.Sleep(500);
+        long final = File.Exists(report) ? new FileInfo(report).Length : 0;
+        string tail = File.Exists(report) ? File.ReadAllText(report) : "";
+        sb.AppendLine($"recovered 行出现 = {tail.Contains("心跳恢复")}");
+        sb.AppendLine(final - after > 0 && after - before > 0 && tail.Contains("心跳恢复") ? "PASS" : "FAIL");
+        Watchdog.Stop();
+
+        Directory.CreateDirectory(@"D:/Hermes/output/results");
+        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-watchdog.txt", sb.ToString());
+    }
+
+    private static void GpuLocatorProbe()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(GpuLocator.Diagnose());
+
+        // NVML 名字链路（DXGI 在受限会话里可能 E_NOINTERFACE，这时靠采样器的 NVML 兜名）
+        using (var s = new MetricSampler())
+        {
+            var names = s.GpuNamesByLuid;
+            sb.AppendLine($"NVML NameByLuid → {(names == null ? "null" : string.Join(", ", names.Select(kv => $"0x{kv.Key:X}={kv.Value}")))}");
+
+            var gpus = GpuLocator.Enumerate(names);
+            sb.AppendLine($"GpuLocator.Enumerate(nvmlNames) → {gpus.Count} 块卡");
+            foreach (var g in gpus)
+                sb.AppendLine($"  key={g.Key}\r\n    name={g.Name}  vram={g.VramBytes / 1073741824.0:0.#}GB  luidBase={g.LuidBase}");
+
+            // 锁定链路端到端：锁第一块卡 → PDH 显存 + engine 利用率（NVML 无 getLuid 时的真实路径）
+            if (gpus.Count > 0)
+            {
+                s.LockGpu(gpus[0].Key);
+                for (int i = 0; i < 3; i++) { Thread.Sleep(300); var snap = s.Sample(); }
+                var l = s.Sample();
+                sb.AppendLine($"lock[{gpus[0].Key}] → gpu={l.GpuPercent:0}% vram={l.VramGb:0.00}GB total={(l.HasVramTotal ? l.VramTotalGb + "GB" : "—")}");
+                s.LockGpu(null);
+                Thread.Sleep(300);
+                var u = s.Sample();
+                sb.AppendLine($"unlock → gpu={u.GpuPercent:0}% vram={u.VramGb:0.00}GB");
+
+                // 锁失效回落：键不存在时应自动选占用最大的卡（显存别冻在 0）
+                s.LockGpu("luid_0xDEADBEEF_0x00BADF00_phys_0");
+                Thread.Sleep(300);
+                var m = s.Sample();
+                sb.AppendLine($"lock-miss → gpu={m.GpuPercent:0}% vram={m.VramGb:0.00}GB（应≈unlock 的值 = 自动回落生效）");
+            }
+        }
+
+        Directory.CreateDirectory(@"D:/Hermes/output/results");
+        File.WriteAllText(@"D:/Hermes/output/results/wmonitor-gpu-locator.txt", sb.ToString());
     }
 
     /// <summary>

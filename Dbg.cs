@@ -28,6 +28,14 @@ internal static class Dbg
     public static void Log(string msg)
     {
         if (Interlocked.Increment(ref _n) % 3 != 0) return;
+        Write(msg);
+    }
+
+    /// <summary>不抽样的日志：一次性事件用（自启路径修复、看门狗触发……），保证落盘。</summary>
+    public static void LogAlways(string msg) => Write(msg);
+
+    private static void Write(string msg)
+    {
         try
         {
             lock (Gate)

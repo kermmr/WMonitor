@@ -8,19 +8,19 @@ $out = $env:WMONITOR_PROBE_OUT
 if (-not $out) { $out = Join-Path $env:GITHUB_WORKSPACE 'probe-out' }
 $dll = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\bin\Release\net8.0-windows\WMonitor.dll'))
 $env:WMONITOR_PROBE_OUT = $out
-New-Item -ItemType Directory -Force -Path $out | Out-Null
+New-Item -ItemType Directory -Force -Path $out
 
 if (-not (Test-Path $dll)) { Write-Host "FAIL probe dll not found: $dll"; exit 1 }
 
 # headless-only probes: no window creation, no desktop dependency
-& dotnet $dll --monitors              | Out-Null
-& dotnet $dll --alert-test            | Out-Null
-& dotnet $dll --watchdog-test         | Out-Null
-& dotnet $dll --startup-repair-test   | Out-Null
-& dotnet $dll --gpu-locator           | Out-Null
-& dotnet $dll --dashboard-probe       | Out-Null
-& dotnet $dll --dashboard-gpu-probe   | Out-Null
-& dotnet $dll --dashboard-action-probe| Out-Null
+& dotnet $dll --monitors
+& dotnet $dll --alert-test           
+& dotnet $dll --watchdog-test        
+& dotnet $dll --startup-repair-test  
+& dotnet $dll --gpu-locator          
+& dotnet $dll --dashboard-probe      
+& dotnet $dll --dashboard-gpu-probe  
+& dotnet $dll --dashboard-action-probe
 
 $failures = New-Object System.Collections.Generic.List[string]
 function Assert-Contains([string]$file, [string]$needle, [string]$label) {

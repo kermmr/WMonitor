@@ -768,7 +768,7 @@ internal static class Program
         string original = "";
         try
         {
-            using var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(runKey, writable: true)!;
+            using var k = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(runKey, writable: true)!;   // CI runner 的配置单元可能没有 Run 键，Create 兜底
             original = (k.GetValue("WMonitor") as string) ?? "";
             k.SetValue("WMonitor", "\"D:\\确实\\不\\存在\\WMonitor-old.exe\"");   // 模拟挪目录残留
 

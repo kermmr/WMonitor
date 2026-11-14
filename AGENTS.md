@@ -36,15 +36,18 @@ D:\WMonitor\
 │  ├─ WMonitor.csproj
 │  ├─ Program.cs               入口、单实例、--probe 诊断
 │  ├─ MonitorAppContext.cs     托盘 + 定时器 + 菜单 + 生命周期
+│  ├─ Watchdog.cs              UI 线程卡死看门狗（v0.30：心跳停滞 → stall-report.log 自动快照）
 │  ├─ AppConfig.cs             JSON 配置（%APPDATA%\WMonitor\config.json）
-│  ├─ Startup.cs               HKCU Run 开机自启
+│  ├─ Startup.cs               HKCU Run 开机自启（v0.30：指向已不存在的旧 exe 时启动自愈）
 │  ├─ Dbg.cs                   诊断日志（默认关闭，SYSMON_DEBUG=1 开启）
 │  ├─ app.ico                  应用图标（design/icons/tools/render-gdi.ps1 + build-ico.ps1 生成，满幅仪表）
 │  ├─ run.sh                   开发迭代脚本：杀进程→编译→启动→截任务栏
 │  ├─ SettingsForm.cs          设置窗口（4 列 Bento 卡片网格 + 顶栏/底栏）
 │  ├─ Interop\Native.cs        Win32 / PDH / GDI / 多屏 / DPI P/Invoke 声明
 │  ├─ Metrics\
-│  │  ├─ MetricSampler.cs      所有指标采样（CPU/内存/GPU/显存/网速/磁盘）
+│  │  ├─ MetricSampler.cs      所有指标采样（CPU/内存/GPU/显存/网速/磁盘；v0.30 锁卡口径：
+│  │  │                        NormalizeInstance 归一键 / 锁失效回落 / NVML 不覆盖时 PDH Engine 聚合）
+│  │  ├─ GpuLocator.cs         显卡枚举（v0.30：PDH 实例 + DXGI/NVML 三级命名，设置界面「监视的显卡」用）
 │  │  ├─ ProcessSampler.cs     进程级采样（v0.18：PID/路径/CPU差分/内存/窗口可见性；
 │  │  │                        v0.20：NtQuery 镜像名+父PID+会话、token owner SID、主窗口扫描）
 │  │  ├─ GpuProcessSampler.cs  GPU 进程级采样（v0.19：PDH GPU Engine/GPU Process Memory，
@@ -79,8 +82,8 @@ D:\WMonitor\
 │  │  └─ Theme.cs              深/浅两套配色 + 系统主题判定 + 告警色
 │  └─ docs\                    详细文档
 ├─ WMonitor\                   ← 安装版（framework 依赖，多文件）
-├─ WMonitor-v0.26-framework.exe
-└─ WMonitor-v0.26-portable.exe
+├─ WMonitor-v0.30-framework.exe
+└─ WMonitor-v0.30-portable.exe
 ```
 
 **改代码只改 `wmonitor-eidt\`**，然后重新发布到另外两个位置。
@@ -104,13 +107,13 @@ dotnet publish -c Release -r win-x64 --self-contained false \
 # ② 单文件 · 框架依赖
 dotnet publish -c Release -r win-x64 --self-contained false \
   -p:PublishSingleFile=true -o build/framework
-cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.26-framework.exe"
+cp build/framework/WMonitor.exe "D:/WMonitor/WMonitor-v0.30-framework.exe"
 
 # ③ 单文件 · 自包含
 dotnet publish -c Release -r win-x64 --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
   -p:EnableCompressionInSingleFile=true -o build/portable
-cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.26-portable.exe"
+cp build/portable/WMonitor.exe "D:/WMonitor/WMonitor-v0.30-portable.exe"
 ```
 
 **发布前必须先杀掉运行中的进程**，否则 exe 被锁、编译报 `MSB3027 / MSB3021`：
@@ -201,6 +204,9 @@ v0.10 新增诊断（都不开 UI，跑完就退，结果写 `D:/Hermes/output/r
 | 参数 | 用途 |
 |---|---|
 | `--monitors` | 枚举全部任务栏与各自 DPI（副屏贴片的前提） |
+| `--gpu-locator` | 显卡枚举自测（v0.30）：PDH 实例键 + DXGI/NVML 命名 + 锁定/解锁/锁失效三段采样，写 `D:/Hermes/output/results/wmonitor-gpu-locator.txt`。改 GPU 锁相关代码必看 |
+| `--watchdog-test` | 看门狗自测（v0.30）：心跳停 6s 应落 stall 快照、恢复写收尾行，写 `D:/Hermes/output/results/wmonitor-watchdog.txt` |
+| `--startup-repair-test` | 自启路径自愈自测（v0.30）：写假路径→修复→还原注册表，写 `D:/Hermes/output/results/wmonitor-startup-repair.txt` |
 | `--history-dump` | 内存环条数、今日文件大小、1m/24h 抽稀结果 |
 | `--alert-test` | 离线跑告警状态机，输出 PASS/FAIL（触发点、静音、总开关） |
 | `--menu` | 在屏幕右下角弹出托盘右键菜单；配 `WMONITOR_MENU_SUB=<行号>` 展开该行子菜单（截图验收，不模拟鼠标） |

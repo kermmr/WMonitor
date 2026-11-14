@@ -221,6 +221,28 @@ AMD / Intel 走 PDH 的 `GPU Engine` 聚合，采样开销从 0.3 ms 升到约 2
 **解法**：声明补 `EntryPoint = "SendMessageW"`（v0.29）。**教训**：新 P/Invoke 上线时
 开一次 `WMONITOR_DEBUG=1` 看 Dbg 日志，别让 catch 掩盖 Entry point 错误。
 
+### 25. GPU 锁定的四个坑（v0.30「监视的显卡」一路踩过来）
+
+做设置界面「监视的显卡」（暴露 `LockedGpuLuid`）时连踩四个，全部有探针守着：
+
+1. **PDH 键有两套形态**。PDH 原始实例是 `luid_0x00000000_0x00010FB0_phys_0`（Adapter Memory）
+   和 `pid_1208_luid_…_phys_0_eng_0_engtype_3D`（Engine），但 `MetricSampler.ReadArray`
+   会经 `NormalizeInstance` 把两者都归一成 `0x00000000_0x00010FB0_phys_N` 再进快照。
+   **锁键必须存归一化形态**（`GpuLocator` 存前过同一个 NormalizeInstance），否则和 gpuMem
+   永远对不上 → 锁定静默回落 = 白锁。教训：同一个值在系统接口和自家快照里可能不同形，
+   存配置前先对齐**消费端**的口径。
+2. **`PdhEnumObjectItemsW` 两个列表缓冲都必须给**。只给实例列表缓冲、计数器列表传 null+0，
+   即使实例装得下也返回 `PDH_MORE_DATA`（0x800007D2，实测）。给足 4K 两个都成功。
+3. **DXGI 在受限会话里 `E_NOINTERFACE`**。`CreateDXGIFactory1`（连 `CreateDXGIFactory`
+   也是）在本机沙箱作业对象里固定 0x80004002 —— 与 §〇「托盘注册被卡」同源的沙箱限制，
+   干净 PowerShell 同样复现，不是代码问题。用户会话里正常。名字链因此做成三级回落：
+   DXGI → NVML → "GPU 0x…"，任何一级缺席下拉照出。
+4. **`nvmlDeviceGetLuid` 不是每个 Windows 驱动都有**（实测 610.47 的 System32\nvml.dll
+   就没有；GetProcAddress 实证，文档说 NVML 10.04+ 不可信）。后果：NVML 无法把 LUID
+   映射到设备，锁定第二张卡时利用率/温度/功耗/名字若照读设备 0 就是张冠李戴。
+   解法：`NvmlGpu.CoversLuid` 判定，不覆盖时利用率走惰性 PDH Engine query 按 LUID base
+   聚合、温度/功耗/名字直接不显示（宁缺勿错）；显存总量同理回落注册表。
+
 ---
 
 ## 三、当前已知小问题（不阻塞使用）

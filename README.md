@@ -7,7 +7,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4?style=flat-square)](https://github.com/kermmr/WMonitor)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?style=flat-square)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/license-MIT-3DDC97?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v0.26-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
+[![Version](https://img.shields.io/badge/version-v0.30-4CC2FF?style=flat-square)](https://github.com/kermmr/WMonitor/releases)
 
 <img src="docs/screenshots/taskbar-dark.png" alt="WMonitor 任务栏贴片" width="712">
 
@@ -37,7 +37,9 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 - **深色 / 浅色 / 跟随系统**，贴片不透明度 0–100% 可调（底色和描边一起淡出，文字保持清晰）
 - **详情面板** — 按「显示项」逐行列出（CPU / 内存 / GPU / 显存 / 网速 / 磁盘，含 ↓/↑ 速率与曲线），关掉的项不画、面板高度跟着变；底部温度 / 功耗 / 频率
 - **显示项可关** — CPU、内存、GPU、显存、网速、GPU 温度、磁盘 IO
-- 单实例、开机自启、崩溃日志、`--probe` / `--monitors` / `--history-dump` / `--alert-test` 诊断模式
+- **监视的显卡** — 多卡机器可在设置里选贴片统计哪一块（显存/利用率/温度都按所选卡算），默认自动选占用最大的一块；选中的卡被拔掉时自动回落
+- **卡死自诊断** — UI 线程卡死看门狗：采样心跳停滞时自动把线程 CPU 快照与窗口脏区写进 `stall-report.log`，故障现场自动落盘
+- 单实例、开机自启（挪了安装目录会自动修正注册表路径）、崩溃日志、`--probe` / `--monitors` / `--history-dump` / `--alert-test` 诊断模式
 
 ## 截图
 
@@ -91,8 +93,8 @@ WMonitor 是吸附在**任务栏托盘图标左侧**的一行贴片，点一下�
 
 | 文件 | 大小 | 说明 |
 |---|---|---|
-| `WMonitor-v0.26-framework.exe` | 669 KB | 需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
-| `WMonitor-v0.26-portable.exe` | 63 MB | 自包含，双击即用，适合拷给别人 |
+| `WMonitor-v0.30-framework.exe` | 741 KB | 需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)（Win11 多半已装） |
+| `WMonitor-v0.30-portable.exe` | 63 MB | 自包含，双击即用，适合拷给别人 |
 
 双击运行，贴片自动出现在任务栏托盘左侧，托盘区出现图标。没有安装程序，删掉 exe 就卸载干净（配置与历史在 `%APPDATA%\WMonitor\`）。
 

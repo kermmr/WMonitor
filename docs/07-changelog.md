@@ -1,5 +1,41 @@
 # 07 · 版本记录
 
+## v0.30 — 2026-11-14
+
+**看门狗自诊断 + 监视的显卡 + 自启路径自愈 + 仓库工程治理**
+
+- **UI 线程卡死看门狗（新）**：v0.29 的 WM_PAINT 风暴靠三件套人工定位 —— 把同一套诊断自动化。
+  后台线程盯 UI 线程心跳（采样定时器，事故里被饿死的那个），停滞超 15s（可用
+  `WMONITOR_WATCHDOG_STALL` 覆盖）把线程 CPU 快照（含增量，热点线程排序）+ 窗口脏区
+  （`GetUpdateRect`，脏区清不掉 = §23 风暴特征）+ GC/线程池概览追加到
+  `%APPDATA%\WMonitor\stall-report.log`，持续卡死每 60s 补一份，恢复写收尾行。
+  睡眠唤醒（`PowerModeChanged.Resume`）重置基线不误报。纯诊断不干预进程；
+  自身所有异常吞掉（保险丝不能比电器先烧）。自测探针 `--watchdog-test` PASS。
+- **监视的显卡（新，roadmap P0 清尾）**：`cfg.LockedGpuLuid` 后端 v0.05 起就有、一直没界面。
+  设置窗口「贴片」卡新增段控（仅多卡机器显示），键由新 `Metrics/GpuLocator.cs` 枚举 ——
+  PDH `PdhEnumObjectItemsW` 列出 `\GPU Adapter Memory(*)` 真实实例（**必须给两个列表缓冲**，
+  只给实例缓冲、计数器列表传 null 会 `PDH_MORE_DATA` 整体失败，实测本机 0x800007D2），
+  名字按 LUID 匹配：DXGI（`CreateDXGIFactory1` 手写 vtable）→ NVML → "GPU 0x…" 兜底。
+  **键一律过 `MetricSampler.NormalizeInstance`**（ReadArray 对 gpuMem/engine 的键都归一成
+  `0xH_0xL_phys_N`；曾直接存原始实例名，与 gpuMem 对不上，锁定静默回落 = 白锁）。
+  配套修复两个存量口径问题：
+  ① 锁定但 NVML 认不出该卡（实测 610.47 驱动的 nvml.dll **没有** `nvmlDeviceGetLuid`）时，
+  利用率/温度/功耗/名字改走或隐藏，不再拿设备 0 的数张冠李戴；利用率走惰性创建的
+  PDH Engine query 按 LUID base 聚合（数百实例 collect ~10ms，docs/05 §8 —— 所以平时不建、
+  锁定即用即建、解锁即关）。② 锁的卡不在了（拔卡/LUID 变化）自动回落占用最大的一块并
+  记一次日志，显存不再冻在 0。自测探针 `--gpu-locator`（含锁定/解锁/锁失效三段实测，
+  ffmpeg d3d11va 负载下锁定态 100% = 3D+VideoDecode 聚合正确）。
+- **开机自启路径自愈（roadmap P0 清尾）**：注册表 Run 指向已不存在的旧 exe（挪安装目录）时
+  启动自动改回当前路径；旧路径还活着说明用户有多副本意图，不越权改写。
+  自测探针 `--startup-repair-test` PASS。`Dbg` 增 `LogAlways`（不抽样的日志给一次性事件）。
+- **仓库工程治理**：外层仓库（D:\WMonitor）50 个 exe（~1.7GB）出库，`.gitignore` 收编，
+  `git filter-branch` 剔历史后 `.git` 1.7GB → 91KB；源码仓库（wmonitor-eidt）不受影响。
+- **csproj**：`DebugType` none → embedded（生产 dump 的 clrstack 从此有托管帧名）；
+  版本 0.30.0。
+- **验证**：构建 0 error 0 warning；`--probe` 主采样不受影响（NVML 路径与 v0.29 一致）；
+  三个新探针全 PASS；DXGI 在受限会话里 `E_NOINTERFACE`（docs/05 §〇 同源沙箱限制）——
+  名字退化 "GPU 0x…"，下拉与锁定不受影响，用户会话里 DXGI 正常命名。
+
 ## v0.29 — 2026-11-08
 
 **面板数值冻结事故修复（用户实测反馈：ComfyUI 跑一晚后面板全部数值卡住）**

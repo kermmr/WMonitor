@@ -5,22 +5,25 @@
 
 - 方案总纲：`docs/10-main-dashboard-plan.md`（管控范围 §7 阶段 4、安全规则同节、详情区 §2.4）
 - 阶段 1/2/3 交接：`docs/11` / `docs/12`（LUID 坑 §5.4）/ `docs/13`（NtQuery / owner SID / 图标缓存十三决策）
-- 目标版本：v0.23（阶段 4）→ v0.24（UI 整改 P1 + icon B）→ v0.25（2026-11-05：标题栏窗口钮修复 + UI 整改 P2 批次 C9~C17，见日志 2026-11-05 (5)）→ **v0.26（2026-11-05：UI 整改 P3 批次 C18~C22，见日志 (6)）**
-- 状态：**✅ 阶段 4 完成并已发布 v0.23 → v0.24（P1 + icon B）→ ✅ v0.25（窗口钮修复 + P2）→ ✅ v0.26（P3）—— 主面板四阶段 + UI 整改 P1~P3 全部收官**
+- 目标版本：v0.23（阶段 4）→ v0.24（UI 整改 P1 + icon B）→ v0.25（2026-11-05：标题栏窗口钮修复 + UI 整改 P2 批次 C9~C17，见日志 2026-11-05 (5)）→ ✅ v0.26（2026-11-05：UI 整改 P3 批次 C18~C22，见日志 (6)）→ ✅ v0.27–v0.29（图标/托盘健壮性/WM_PAINT 风暴，见日志）→ **✅ v0.30（2026-11-14：看门狗 + 监视的显卡 + 自启自愈 + 仓库治理，见日志 (0)）**
+- 状态：**✅ 阶段 4 完成并已发布 v0.23 → v0.24（P1 + icon B）→ ✅ v0.25（窗口钮修复 + P2）→ ✅ v0.26（P3）—— 主面板四阶段 + UI 整改 P1~P3 全部收官；v0.30 起进入「工程化 + 小步增强」阶段（docs/06 已刷新）**
 
 ## 0. 当前状态速览（接手先看这里）
 
 | 项 | 状态 |
 |---|---|
 | 编译 | ✅ 0 error 0 warning |
-| 阶段 4 全部文件 | ✅ 已完成并发布（安装版 + framework + portable 三产物，当前 **v0.29**） |
+| 阶段 4 全部文件 | ✅ 已完成并发布（安装版 + framework + portable 三产物，当前 **v0.30**） |
 | UI 整改 | ✅ **P1（C1~C8，v0.24）+ P2（C9~C17，v0.25）+ P3（C18~C22，v0.26）全部完成**，见 docs/03 Part C |
 | 标题栏窗口钮 | ✅ 无响应 bug 已修复（客户区坐标二次换算），`--dashboard-chrome-probe` 18/18 PASS（v0.26 扩容） |
 | 标题栏右键 | ✅ C20：右键标题栏弹系统菜单（探针拦截路径正/反例 PASS；真实弹菜单观感留晨检） |
 | 应用图标 | ✅ 方案 B（仪表）已落 `app.ico`；**v0.28 满幅重建**（79.7%→99% 画布占用，任务栏实测与邻居同大），见 docs/15 |
 | 表头状态 | ✅ v0.28：排序列常驻 Accent 淡底（B2 互斥单选）+ hover 规则对齐，真光标截图验证 |
 | 托盘健壮性 | ✅ v0.28：TaskbarCreated 兜底 + Shell_TrayWnd 就绪探测重试（NIM_ADD 静默失败竞态），见 docs/05 §22 |
-| 下一步 | **无排期项**；遗留交互实测项见 §5 与日志 2026-11-05 (3)(5)(6) 未验清单 |
+| 看门狗 | ✅ v0.30：UI 线程卡死自诊断（stall-report.log 自动快照），`--watchdog-test` PASS |
+| 监视的显卡 | ✅ v0.30：设置窗口段控（多卡机器），GpuLocator 枚举 + NVML/DXGI 三级命名 + 锁失效回落，`--gpu-locator` PASS；段控真名观感留晨检 |
+| 自启自愈 | ✅ v0.30：注册表指向已不存在的旧 exe 时启动自动改回，`--startup-repair-test` PASS |
+| 下一步 | **无排期项**；v0.31 主线 = CI + 单测 + 安装程序（docs/06 P0） |
 | 已知问题 | 见 §5 |
 
 ## 1. 阶段 4 范围（来自 plan §7 阶段 4 + 安全规则）
@@ -86,6 +89,31 @@
 
 ## 6. 施工日志（新条目加在最上面）
 
+- **2026-11-14 (0)** **v0.30：看门狗 + 监视的显卡 + 自启自愈 + 仓库治理（工程化阶段起步）**：
+  - **看门狗（`Watchdog.cs` 新文件）**：后台线程盯 UI 线程心跳（`MonitorAppContext.Tick`
+    每拍 `Beat`，顺带收集贴片/面板/主面板句柄），停滞 >15s（`WMONITOR_WATCHDOG_STALL`
+    可覆盖）落 `stall-report.log`：线程 CPU 快照含增量（热点排序）、窗口 `GetUpdateRect`
+    脏区（脏区清不掉 = docs/05 §23 风暴特征）、GC/线程池；持续卡死 60s 补拍，恢复写收尾行；
+    `PowerModeChanged.Resume` 重置基线防误报；纯诊断不干预，自身异常全吞。
+    `--watchdog-test` PASS（6s 停跳 → 快照落盘 + recovered 行）。
+  - **监视的显卡（`Metrics/GpuLocator.cs` 新文件）**：设置窗口贴片卡段控（多卡才建），
+    键 = PDH `PdhEnumObjectItemsW` 真实实例（两列表缓冲都要给，否则 PDH_MORE_DATA），
+    名字 = DXGI（手写 vtable）→ NVML → "GPU 0x…" 三级回落。**键必须过
+    `MetricSampler.NormalizeInstance` 归一**（原始实例 `luid_…` 与 gpuMem 归一化键对不上）。
+    NVML 侧：`NvmlGpu` 建 LUID→设备表 + `SelectByLuid`；610.47 驱动无 `nvmlDeviceGetLuid`
+    → 锁定时利用率走惰性 PDH Engine query 按 LUID base 聚合、温度/功耗/名字门控隐藏、
+    显存总量回落注册表；锁的卡不在了自动回落占用最大并记日志。`--gpu-locator` PASS
+    （ffmpeg d3d11va 负载下锁定态 100% = 3D+VideoDecode 正确聚合；锁失效回落显存 ≈ 自动值）。
+    四个坑入档 docs/05 §25。**段控真实观感留用户晨检**（沙箱 DXGI 被限无法截图验证）。
+  - **自启自愈（`Startup.RepairIfStale`）**：注册表 Run 指向已不存在的旧 exe 时启动改回
+    当前路径；旧路径还在（多副本意图）不动。`Program.Main` 首实例分支调用 +
+    `Dbg.LogAlways` 留痕（新增方法：不抽样的日志）。`--startup-repair-test` PASS。
+  - **仓库治理**：外层 D:\WMonitor 仓库 50 个 exe（~1.7GB）git rm --cached + filter-branch
+    剔历史 + gc，`.git` 1.7GB→91KB；`.gitignore` 收编 exe/安装目录/备份/截图/内层仓库。
+    源码仓库不受影响，今后发布产物放 GitHub Releases（内层仓库有 remote）。
+  - **csproj**：DebugType none→embedded（生产 dump 有托管帧名）；版本 0.30.0。
+  - **验证**：构建 0/0；`--probe` 主采样与 v0.29 一致（NVML 无锁路径不变）；三个新探针
+    全 PASS；AGENTS.md 探针表已收录。
 - **2026-11-08 (1)** **面板数值冻结事故修复，发布 v0.29（用户报告「ComfyUI 跑一晚后属性监控全部不变」）**：
   - **现象**：11-08 凌晨 ~02:20 起面板/贴片全部数值冻结，窗口仍可响应；故障进程 CPU 累计
     36,461 s ≈ 单核 100% 持续空转（线程 CPU 差分 3s 窗口锁定主线程 99%）；debug.log 贴片绘制

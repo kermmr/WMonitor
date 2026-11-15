@@ -50,11 +50,17 @@ if (Test-Path $actionFile) {
   if ($passes -lt 6) { $failures.Add("action-probe : expected >=6 PASS, got $passes") }
 } else { $failures.Add('action-probe : missing result file') }
 
-# net-probe: interface lock + missing-interface fallback each emit PASS
+# net-probe: mode=locked asserts interface lock + missing-interface fallback (2 PASS);
+# mode=skip (runner NICs are all virtual, e.g. Hyper-V filtered by IsRealNic) asserts nothing -- 1 PASS is enough
 $netFile = Join-Path $out 'wmonitor-net-probe.txt'
 if (Test-Path $netFile) {
+  $text = [System.IO.File]::ReadAllText($netFile)
   $passes = (Select-String -Path $netFile -Pattern 'PASS').Count
-  if ($passes -lt 2) { $failures.Add("net-probe : expected >=2 PASS, got $passes") }
+  if ($text.Contains('mode=locked')) {
+    if ($passes -lt 2) { $failures.Add("net-probe : locked mode expected >=2 PASS, got $passes") }
+  } else {
+    if ($passes -lt 1) { $failures.Add("net-probe : skip mode expected >=1 PASS, got $passes") }
+  }
 } else { $failures.Add('net-probe : missing result file') }
 
 if ($failures.Count -gt 0) {

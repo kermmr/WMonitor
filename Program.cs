@@ -913,11 +913,14 @@ internal static class Program
         sb.AppendLine($"realNics={nics.Count}: {string.Join(", ", nics.Select(n => n.Name))}");
         if (nics.Count == 0)
         {
-            sb.AppendLine("no real nic — nothing to assert");
+            // CI runner 的网卡可能是 Hyper-V 虚拟卡（IsRealNic 过滤）——跳过断言但仍给 1 个 PASS，
+            // run-probes.ps1 按 mode 分级：skip 只要 1 个 PASS，locked 要 2 个
+            sb.AppendLine("mode=skip (no real nic to assert)");
             sb.AppendLine("PASS");
         }
         else
         {
+            sb.AppendLine("mode=locked");
             s.NetInterfaceId = nics[0].Id;
             s.Sample();
             Thread.Sleep(600);

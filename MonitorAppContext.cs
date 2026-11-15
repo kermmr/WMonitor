@@ -60,6 +60,14 @@ internal sealed class MonitorAppContext : ApplicationContext
     /// <summary>资源管控主面板（v0.18 阶段 1）。打开时创建 Hub、关闭即 Dispose，不常驻（plan §4.3）。</summary>
     private MainDashboardForm? _dash;
 
+    /// <summary>
+    /// 详情面板「TOP 进程」的按应用聚合快照（v0.35）。首次打开详情面板时惰性建
+    /// <see cref="_panelHub"/> 并保留到退出 —— 面板开关频繁，反复建/弃 10MB 级进程缓存反而更贵；
+    /// Combine 只在面板可见时调（roadmap P1：不把进程采样带回常驻链路）。
+    /// </summary>
+    private AppMetricsHub? _panelHub;
+    private AppMetricsSnapshot? _panelApps;
+
     /// <summary>左键点击去抖：双击托盘图标只算一次，别开一下又关掉。</summary>
     private DateTime _lastTrayClick = DateTime.MinValue;
 
@@ -92,6 +100,7 @@ internal sealed class MonitorAppContext : ApplicationContext
 
         _sampler = new MetricSampler();
         _sampler.LockGpu(_cfg.LockedGpuLuid);
+        _sampler.NetInterfaceId = _cfg.NetInterfaceId;   // v0.35 网速分接口
 
         // v0.32：清掉上次自动更新留下的旧 exe（.old 在当时因进程还开着删不掉，现在可以了）
         try
@@ -105,6 +114,7 @@ internal sealed class MonitorAppContext : ApplicationContext
         _panel = new DetailPanel();
         _panel.SettingsClicked += OpenSettings;
         _panel.DashboardClicked += () => OpenDashboard();
+        _panel.TopClicked += key => { OpenDashboard(); _dash?.FocusKey(key); };
 
         _hist = NewHistory();
         _panel.History = _hist;
@@ -402,7 +412,16 @@ internal sealed class MonitorAppContext : ApplicationContext
         if (alert.Events.Count > 0) DispatchAlert(alert);
 
         _panel.PushHistory(s);
-        if (_panel.Visible) _panel.Update(s, _cfg, _theme);
+        if (_panel.Visible)
+        {
+            // TOP 进程（v0.35）：仅面板可见时跑按应用聚合（ProcessSampler ~4ms + GPU 子采样 0.5Hz）
+            if (_panelHub != null)
+            {
+                try { _panelApps = _panelHub.Combine(s); }
+                catch { }
+            }
+            _panel.Update(s, _cfg, _theme, _panelApps);
+        }
 
         // 30 秒复查一次显示器拓扑，Explorer 重启后能自动重挂
         if (_tick % 30 == 0 && MonitorsChanged())
@@ -566,9 +585,28 @@ internal sealed class MonitorAppContext : ApplicationContext
                 Toggle("显存", () => _cfg.ShowVram, v => _cfg.ShowVram = v),
                 Toggle("网速", () => _cfg.ShowNet, v => _cfg.ShowNet = v),
                 Toggle("GPU 温度", () => _cfg.ShowTemp, v => _cfg.ShowTemp = v),
-                Toggle("磁盘 IO", () => _cfg.ShowDisk, v => _cfg.ShowDisk = v)
+                Toggle("磁盘 IO", () => _cfg.ShowDisk, v => _cfg.ShowDisk = v),
+                MenuRow.Sep(),
+                Toggle("TOP 进程", () => _cfg.PanelTopProcesses, v => _cfg.PanelTopProcesses = v)
             }
         });
+
+        // ---- 网速接口（v0.35）：统计哪块物理网卡（空 = 全部加总）。入口同「贴片所在屏幕」走菜单，
+        // 不给设置窗加动态下拉控件；网卡枚举 8~16ms，只在菜单打开时跑一次。 ----
+        var nics = MetricSampler.EnumRealNics();
+        if (nics.Count > 0)
+        {
+            var items = new (string Text, string Value)[nics.Count + 1];
+            items[0] = ("全部接口", "");
+            for (int i = 0; i < nics.Count; i++) items[i + 1] = (nics[i].Name, nics[i].Id);
+            list.Add(new MenuRow
+            {
+                Kind = MenuRowKind.Submenu,
+                Text = "网速接口",
+                Children = Radios(items, () => _cfg.NetInterfaceId,
+                    v => { _cfg.NetInterfaceId = v; _sampler.NetInterfaceId = v; })
+            });
+        }
 
         // ---- 告警 ----
         list.Add(new MenuRow
@@ -666,6 +704,7 @@ internal sealed class MonitorAppContext : ApplicationContext
     private void RefreshAll()
     {
         _timer.Interval = Math.Clamp(_cfg.RefreshMs, 250, 10000);
+        _sampler.NetInterfaceId = _cfg.NetInterfaceId;   // v0.35:菜单/设置改完立刻生效
         _bars = TaskbarLocator.Enumerate();
         RebuildStrips();
         foreach (var st in _strips) st.Reanchor(_cfg);
@@ -693,7 +732,21 @@ internal sealed class MonitorAppContext : ApplicationContext
         }
 
         // 从托盘图标打开时给 900ms 失焦保护：点托盘本身会把焦点还给任务栏 / 溢出面板
-        _panel.OpenNear(b, _last, _cfg, _theme, atCursor ? 900 : 350);
+        EnsurePanelHub();
+        if (_panelHub != null)
+        {
+            try { _panelApps = _panelHub.Combine(_last); }   // 首帧同步采,别让 TOP 区空一秒才出数据
+            catch { }
+        }
+        _panel.OpenNear(b, _last, _cfg, _theme, atCursor ? 900 : 350, _panelApps);
+    }
+
+    /// <summary>TOP 进程数据源惰性创建（首次打开详情面板时）。GPU 子采样间隔与主面板同一配置。</summary>
+    private void EnsurePanelHub()
+    {
+        if (_panelHub != null) return;
+        try { _panelHub = new AppMetricsHub(_cfg.DashboardGpuRefreshMs); }
+        catch (Exception ex) { Dbg.Log("panel hub create failed: " + ex.Message); _panelHub = null; }
     }
 
     public void OpenSettingsPublic() => OpenSettings();
@@ -862,6 +915,8 @@ internal sealed class MonitorAppContext : ApplicationContext
         foreach (var st in _strips) st.Dispose();
         _strips.Clear();
         _panel.Dispose();
+        _panelHub?.Dispose();    // TOP 进程数据源（v0.35）
+        _panelHub = null;
         _hist?.Dispose();
         _sampler.Dispose();
         _cfg.Save();

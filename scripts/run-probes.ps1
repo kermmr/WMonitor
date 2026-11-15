@@ -21,6 +21,7 @@ if (-not (Test-Path $dll)) { Write-Host "FAIL probe dll not found: $dll"; exit 1
 & dotnet $dll --dashboard-probe      
 & dotnet $dll --dashboard-gpu-probe  
 & dotnet $dll --dashboard-action-probe
+& dotnet $dll --net-probe
 & dotnet $dll --update-check
 
 $failures = New-Object System.Collections.Generic.List[string]
@@ -48,6 +49,13 @@ if (Test-Path $actionFile) {
   $passes = (Select-String -Path $actionFile -Pattern 'PASS').Count
   if ($passes -lt 6) { $failures.Add("action-probe : expected >=6 PASS, got $passes") }
 } else { $failures.Add('action-probe : missing result file') }
+
+# net-probe: interface lock + missing-interface fallback each emit PASS
+$netFile = Join-Path $out 'wmonitor-net-probe.txt'
+if (Test-Path $netFile) {
+  $passes = (Select-String -Path $netFile -Pattern 'PASS').Count
+  if ($passes -lt 2) { $failures.Add("net-probe : expected >=2 PASS, got $passes") }
+} else { $failures.Add('net-probe : missing result file') }
 
 if ($failures.Count -gt 0) {
   foreach ($f in $failures) { Write-Host "PROBE-FAIL $f" }

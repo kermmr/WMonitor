@@ -524,11 +524,13 @@ public sealed class MainDashboardForm : ChromeForm
     private bool Pass(DashboardTable.Row r, bool gpuView = false)
     {
         if (!_cfg.DashboardShowSystemProcesses && r.System) return false;
-        if (!gpuView && !_cfg.DashboardShowBackground && !(r.HasWindow || r.Foreground)) return false;
+        // 选中行豁免后台/阈值过滤（v0.35）：详情面板 TOP 行点进来的无窗进程（如 CLI 训练任务）
+        // 也要能看到选中态，只豁免该行、不放开整个列表
+        if (!gpuView && !_cfg.DashboardShowBackground && !(r.HasWindow || r.Foreground) && r.Key != _selKey) return false;
 
         // 最小占用阈值（阶段 3）：CPU 与 GPU 都低于阈值才隐藏（零负载后台项会被过滤，任一活跃即显示）
         double min = _cfg.DashboardMinimumPercent;
-        if (min > 0 && r.Cpu < min && r.Gpu < min) return false;
+        if (min > 0 && r.Cpu < min && r.Gpu < min && r.Key != _selKey) return false;
 
         if (_searchText.Length > 0)
         {
@@ -569,6 +571,26 @@ public sealed class MainDashboardForm : ChromeForm
             _cfg.DashboardSortDesc = target != DashboardSort.Name && target != DashboardSort.Pid;
         }
         _cfg.Save();
+        RebuildRows();
+    }
+
+    /// <summary>
+    /// 详情面板 TOP 行跳转（v0.35）：key 与表格行 Key 同构（"a:path" / "p:pid"）。
+    /// 切到对应视图并选中；目标应用可能被「显示后台 / 阈值」过滤，Pass 对选中行豁免这两条。
+    /// </summary>
+    public void FocusKey(string key)
+    {
+        if (key.Length == 0) return;
+        var view = key.StartsWith("a:", StringComparison.Ordinal) ? DashboardView.App : DashboardView.Process;
+        if (_view != view)
+        {
+            _view = view;
+            _cfg.DashboardDefaultView = view;
+            _cfg.Save();
+            _viewSwitch.SelectedIndex = (int)view;
+            ApplyViewVisibility();
+        }
+        _selKey = key;
         RebuildRows();
     }
 

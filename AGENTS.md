@@ -215,6 +215,8 @@ v0.10 新增诊断（都不开 UI，跑完就退，结果写 `D:/Hermes/output/r
 | `--update-check` | 更新检查无副作用版（v0.32）：真实 GitHub API 查最新 Release + 版本比较 + 资产挑选，写 `D:/Hermes/output/results/wmonitor-update-check.txt`（只查不下载） |
 | `--tray-rows-probe` | 托盘卡槽位行视觉回归（v0.33）：双数字/四段条/单指标各截一帧 PrintWindow（备份并还原用户 config），写 `D:/Hermes/output/results/tray-rows-*.png`。改设置窗口行显隐必看 |
 | `--update-dialog-probe` | 更新说明对话框视觉回归（v0.34）：假数据弹窗（markdown 清理/换行/截断/双钮）截图，写 `D:/Hermes/output/results/update-dialog.png` |
+| `--panel-top-probe` | 详情面板 TOP 进程区块视觉回归（v0.35）：真 DetailPanel + AppMetricsHub 两帧采样，三种排序榜单 + PrintWindow 截图，写 `wmonitor-panel-top.txt/.png`（UI 探针不进 CI，留晨检；默认配置不碰用户 config） |
+| `--net-probe` | 网速分接口端到端（v0.35，无头进 CI）：锁第一块物理网卡断言 NetSource、锁不存在接口断言回落全部，写 `wmonitor-net-probe.txt` |
 | `--history-dump` | 内存环条数、今日文件大小、1m/24h 抽稀结果 |
 | `--alert-test` | 离线跑告警状态机，输出 PASS/FAIL（触发点、静音、总开关） |
 | `--menu` | 在屏幕右下角弹出托盘右键菜单；配 `WMONITOR_MENU_SUB=<行号>` 展开该行子菜单（截图验收，不模拟鼠标） |

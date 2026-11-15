@@ -211,16 +211,23 @@ public sealed class GpuProcessSampler : IDisposable
         }
 
         // ---- GPU Process Memory：按 pid 汇总专用 / 共享显存；主适配器另存 (pid|luid) 键 ----
+        // 组内取 max：个别驱动按引擎类型重复同值实例时不能累加（unique 实例的驱动上 max ≡ 原值，
+        // 行为不变）。注意 610.47 实测还有另一类问题——进程级数值本身超过卡总量（驱动垃圾值），
+        // 那个在 AppMetricsHub 按适配器级 Dedicated Usage 钳制，这里没有适配器信息管不着。
         var dedByPid = new Dictionary<int, long>(32);
         var sharedByPid = new Dictionary<int, long>(32);
         var dedByPidLuid = new Dictionary<string, long>(32);
         var luidByPid = new Dictionary<int, string?>(32);
+        var dedGroups = new Dictionary<string, long>(32);
+        var sharedGroups = new Dictionary<string, long>(32);
         if (ReadArray(_cDedicated))
             foreach (var (name, value) in EnumerateItems())
-                AccumulateMemory(name, value, dedByPid, dedByPidLuid, luidByPid);
+                AccumulateMemory(name, value, dedGroups);
+        FinalizeMemory(dedGroups, dedByPid, dedByPidLuid, luidByPid);
         if (!SharedUnavailable && ReadArray(_cShared))
             foreach (var (name, value) in EnumerateItems())
-                AccumulateMemory(name, value, sharedByPid, null, null);
+                AccumulateMemory(name, value, sharedGroups);
+        FinalizeMemory(sharedGroups, sharedByPid, null, null);
 
         // ---- 合行：按 PID 一行（多卡进程 sum util，主适配器取单卡 util 最高者）----
         var byPid = new Dictionary<int, GpuProcessMetric>(engine.Count + 8);
@@ -384,22 +391,18 @@ public sealed class GpuProcessSampler : IDisposable
         return true;
     }
 
-    /// <summary>GPU Process Memory 实例 → 按 pid 累加字节；（可选）按 pid|luid 另存一份取主适配器。</summary>
-    private static void AccumulateMemory(
-        string name, double bytes,
-        Dictionary<int, long> byPid,
-        Dictionary<string, long>? byPidLuid,
-        Dictionary<int, string?>? luidByPid)
+    /// <summary>
+    /// GPU Process Memory 实例 → 归入 "pid|luid" 组，组内取 max。
+    /// 同组实例按引擎类型重复（610.47+ 驱动，每份都是进程-适配器总量）时取 max 才是对的；
+    /// 老驱动每 (pid,luid,phys) 一份实例时 max ≡ 原值，行为不变。
+    /// </summary>
+    internal static void AccumulateMemory(string name, double bytes, Dictionary<string, long> groups)
     {
         if (!name.StartsWith("pid_", StringComparison.Ordinal)) return;
         int end = 4;
         while (end < name.Length && name[end] >= '0' && name[end] <= '9') end++;
         if (end == 4 || !int.TryParse(name.AsSpan(4, end - 4), out int pid) || pid <= 0) return;
 
-        long v = double.IsNaN(bytes) ? 0 : (long)Math.Max(0, bytes);
-        byPid[pid] = byPid.TryGetValue(pid, out long cur) ? cur + v : v;
-
-        if (byPidLuid == null) return;
         int li = name.IndexOf("luid_", end, StringComparison.Ordinal);
         string luid = "";
         if (li >= 0)
@@ -409,10 +412,33 @@ public sealed class GpuProcessSampler : IDisposable
             if (le < 0) le = name.Length;
             luid = name[ls..le].TrimEnd('_');
         }
+
+        long v = double.IsNaN(bytes) ? 0 : (long)Math.Max(0, bytes);
         string key = string.Concat(pid.ToString(), "|", luid);
-        byPidLuid[key] = byPidLuid.TryGetValue(key, out long c2) ? c2 + v : v;
-        if (luidByPid != null && luid.Length > 0)
-            luidByPid[pid] = luid;
+        groups[key] = groups.TryGetValue(key, out long cur) ? Math.Max(cur, v) : v;
+    }
+
+    /// <summary>组内 max → 跨组求和得进程总量（多卡进程 = 各卡之和）；(pid|luid) 与主适配器键另存一份。</summary>
+    internal static void FinalizeMemory(
+        Dictionary<string, long> groups,
+        Dictionary<int, long> byPid,
+        Dictionary<string, long>? byPidLuid,
+        Dictionary<int, string?>? luidByPid)
+    {
+        foreach (var (key, v) in groups)
+        {
+            if (v <= 0) continue;
+            int sep = key.IndexOf('|');
+            if (sep <= 0) continue;
+            int pid = int.Parse(key.AsSpan(0, sep));
+            byPid[pid] = byPid.TryGetValue(pid, out long cur) ? cur + v : v;
+
+            if (byPidLuid == null) continue;
+            string luidRaw = key[(sep + 1)..];
+            byPidLuid[key] = byPidLuid.TryGetValue(key, out long c2) ? c2 + v : v;
+            if (luidByPid != null && luidRaw.Length > 0)
+                luidByPid[pid] = luidRaw;
+        }
     }
 
     /// <summary>4 个 GPU 帧没再出现的键清掉（≈8 秒，防瞬时进程把字典撑大）。</summary>

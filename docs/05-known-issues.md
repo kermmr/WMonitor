@@ -245,6 +245,24 @@ AMD / Intel 走 PDH 的 `GPU Engine` 聚合，采样开销从 0.3 ms 升到约 2
 
 ---
 
+### 26. GPU Process Memory 会报超过卡总量的垃圾值（610.47 驱动，v0.35 顺手修）
+
+TOP 显存榜验收时抓到：Ardot（pid_1716）进程级 Dedicated Usage 报 **109GB**，而同一帧
+适配器级只有 3.8GB（RTX 3060 12GB 卡）。`Get-Counter` 直读原始计数器同值 → **驱动侧垃圾**，
+不是聚合 bug。两点教训：
+
+- 别把进程级 GPU 显存当可信数据用：**必须拿适配器级占用钳上限**（`AppMetricsHub.ClampVram`，
+  `MetricsSnapshot.VramByLuid` 全局采样同帧填）。软适配器总量为 0（Remote Display 这类）不钳。
+- **LUID 比较一律 OrdinalIgnoreCase 的又一实证**：第一版钳制单侧 `ToLowerInvariant` 存键、
+  大小写敏感字典查 —— engine 实例小写 / memory 实例大写两族混用直接 miss，钳制静默不生效。
+  键一律原样存 + `StringComparer.OrdinalIgnoreCase` 查。
+
+另外把 memory 实例聚合改成 (pid|luid) 组内取 max（防个别驱动按引擎类型重复同值实例；
+unique 实例驱动上 max ≡ 原值）。`--dashboard-gpu-probe` 走的是裸采样器（不钳制），
+看到大数是**原始计数器**口径，别当成应用 bug。
+
+---
+
 ## 三、当前已知小问题（不阻塞使用）
 
 | 问题 | 影响 | 备注 |

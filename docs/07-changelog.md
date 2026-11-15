@@ -1,5 +1,36 @@
 # 07 · 版本记录
 
+## v0.35 — 2026-11-15
+
+**roadmap P1 体验增强收官：详情面板 TOP 进程 + 网速分接口（附带修复进程显存垃圾值）**
+
+- **详情面板「TOP 进程」区块**：点贴片/托盘弹出的详情面板，数据行下面新增「TOP 进程」——
+  按应用聚合的 3 行（名称 + 数值 + 2px 迷你条），排序段控 [CPU|GPU|显存]（无 GPU 进程数据时
+  只留 CPU），点行直接打开资源主面板并选中该应用（`MainDashboardForm.FocusKey`；目标行被
+  「显示后台/阈值」过滤时对该行豁免，只豁免选中行不放开整个列表）。
+  数据链路 = MonitorAppContext 首次打开面板时惰性建 `AppMetricsHub`（与主面板同一套
+  ProcessSampler/GpuProcessSampler/版本缓存），**仅面板可见时 1Hz Combine**；首次打开同步采
+  一帧，TOP 区不空屏。Hub 建后保留到退出（面板开关频繁，反复建/弃 10MB 级缓存更贵）。
+  托盘菜单「显示项」加「TOP 进程」开关（`PanelTopProcesses`，默认开）。
+- **网速分接口**：托盘菜单新增「网速接口」子菜单（单选：全部接口 + 各物理网卡，与「贴片所在
+  屏幕」同款菜单入口，不给设置窗加动态下拉）。`MetricSampler.NetInterfaceId` 按接口 Id 过滤
+  统计；接口不在了（拔出/禁用）自动回落全部并记一次日志。详情面板网速行副题显示锁定接口名
+  （如「以太网 · ↓ … · ↑ …」），让过滤生效看得见。配置字段 `NetInterfaceId`（空 = 全部加总，
+  v0.34 及以前行为）。
+- **修复：进程级专用显存垃圾值（附带）**：验收 TOP 显存榜时抓到 Ardot 报 108GB 专用显存
+  （12GB 的 RTX 3060）。排查：不是聚合 bug——`Get-Counter` 直读原始计数器同值，**610.47
+  驱动的 GPU Process Memory 会报超过卡总量的垃圾值**（适配器级同帧只有 3.8GB）。
+  修复 = `MetricsSnapshot.VramByLuid`（适配器级占用，OrdinalIgnoreCase 字典——这里踩了
+  「LUID 比较一律 OrdinalIgnoreCase」铁律：单侧 ToLowerInvariant + 大小写敏感字典对不上），
+  `AppMetricsHub.ClampVram` 把进程级/per-LUID 行钳到该卡适配器级占用（软适配器总量 0 不钳）。
+  主面板 GPU 视图/显存排序同受益。顺带把 memory 实例聚合改成 (pid|luid) 组内取 max
+  （防别的驱动按引擎类型重复同值实例；unique 实例的驱动上行为不变）。
+- **探针**：`--panel-top-probe`（真 DetailPanel + 两帧采样，三种排序榜单 + PrintWindow 截图，
+  UI 探针不进 CI 留晨检）；`--net-probe`（锁接口 NetSource 断言 + 缺失接口回落断言，无头进 CI）。
+  单测 63/63（+14：PanelTopList 取值/文本/榜单过滤、NicMatches、显存去重）。
+- **验证**：构建 0/0；无头探针全套 PASS（run-probes.ps1 本地全跑）；`--panel-top-probe` 截图
+  目检（TOP 区块、段控选中态、点行跳转链路代码走查）；显存钳制前后对照（109GB → 3.8GB）。
+
 ## v0.34 — 2026-11-14
 
 **手动更新对话框 + 安装器自动结束旧进程（用户反馈两项）**

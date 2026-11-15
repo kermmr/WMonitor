@@ -75,6 +75,18 @@ internal static class Program
             return;
         }
 
+        if (args.Contains("--panel-top-probe"))
+        {
+            PanelTopProbe();
+            return;
+        }
+
+        if (args.Contains("--net-probe"))
+        {
+            NetProbe();
+            return;
+        }
+
         if (args.Contains("--history-dump"))
         {
             HistoryDump();
@@ -828,6 +840,99 @@ internal static class Program
         t.SetApartmentState(ApartmentState.STA);
         t.Start();
         t.Join();
+    }
+
+    /// <summary>
+    /// 诊断用（v0.35）：详情面板「TOP 进程」区块 —— 真 DetailPanel + AppMetricsHub 采样两帧
+    /// （首帧 CPU 差分为 0），三种排序的榜单写文本、面板 PrintWindow 截图（wmonitor-panel-top.png）。
+    /// UI 探针不进 CI（LayeredWindow 需要真实桌面），留晨检；纯选择逻辑在 PanelTopTests 覆盖。
+    /// 用默认配置，不读不改用户 config.json。
+    /// </summary>
+    private static void PanelTopProbe()
+    {
+        Directory.CreateDirectory(ProbeOut);
+        var t = new Thread(() =>
+        {
+            Application.EnableVisualStyles();
+            var sb = new StringBuilder();
+            var cfg = new AppConfig();
+            var th = Theme.Resolve(ThemeMode.Dark);
+            using var global = new MetricSampler();
+            using var hub = new AppMetricsHub(cfg.DashboardGpuRefreshMs);
+            _ = global.Sample();
+            hub.Combine(global.Sample());               // 热身帧（CPU 差分基线）
+            Thread.Sleep(1100);
+            var s2 = global.Sample();
+            var snap = hub.Combine(s2);                 // 第二帧差分才有值
+
+            foreach (var sort in new[] { PanelTopSort.Cpu, PanelTopSort.Gpu, PanelTopSort.Vram })
+            {
+                var top = PanelTopList.Pick(snap.Apps, sort, DetailPanel.TopCount);
+                sb.AppendLine($"TOP {sort}: {top.Count} 项" +
+                              (sort != PanelTopSort.Cpu && !snap.Gpu.Available ? "  (GPU 进程数据不可用)" : ""));
+                foreach (var a in top)
+                    sb.AppendLine($"   {PanelTopList.ValueText(a, sort),10}  {a.Name}  (pid {a.Main.Pid})");
+            }
+            bool pass = snap.Apps.Count > 0 && PanelTopList.Pick(snap.Apps, PanelTopSort.Cpu, DetailPanel.TopCount).Count > 0;
+            sb.AppendLine(pass ? "PASS" : "FAIL apps=" + snap.Apps.Count);
+            sb.AppendLine($"[dbg] VramByLuid={snap.Global.VramByLuid.Count}: " +
+                          string.Join(", ", snap.Global.VramByLuid.Select(kv => $"{kv.Key}={kv.Value / 1048576.0:F0}MB")));
+            foreach (var r in snap.Gpu.Rows.Where(r => r.DedicatedBytes > 0).OrderByDescending(r => r.DedicatedBytes).Take(3))
+                sb.AppendLine($"[dbg] row pid={r.Pid} luid={r.Luid} ded={r.DedicatedBytes / 1048576.0:F0}MB");
+
+            var panel = new DetailPanel();
+            var wa = Screen.PrimaryScreen!.WorkingArea;
+            panel.OpenNear(new Rectangle(wa.Right - 240, wa.Bottom - 8, 10, 1), s2, cfg, th, 0, snap);
+            Application.DoEvents();
+
+            var timer = new System.Windows.Forms.Timer { Interval = 600 };
+            timer.Tick += (_, _) =>
+            {
+                timer.Stop();
+                CaptureWindow(panel.Handle, Path.Combine(ProbeOut, "wmonitor-panel-top.png"));
+                File.WriteAllText(Path.Combine(ProbeOut, "wmonitor-panel-top.txt"), sb.ToString());
+                panel.Close();
+            };
+            timer.Start();
+            Application.Run(panel);
+        });
+        t.SetApartmentState(ApartmentState.STA);
+        t.Start();
+        t.Join();
+    }
+
+    /// <summary>
+    /// 诊断用（v0.35）：网速分接口端到端 —— 锁第一块物理网卡采两帧（NetSource 应为该接口名），
+    /// 再锁不存在的接口（应回落全部、NetSource 空）。无 UI，进 CI。结果写 wmonitor-net-probe.txt。
+    /// </summary>
+    private static void NetProbe()
+    {
+        var sb = new StringBuilder();
+        using var s = new MetricSampler();
+        var nics = MetricSampler.EnumRealNics();
+        sb.AppendLine($"realNics={nics.Count}: {string.Join(", ", nics.Select(n => n.Name))}");
+        if (nics.Count == 0)
+        {
+            sb.AppendLine("no real nic — nothing to assert");
+            sb.AppendLine("PASS");
+        }
+        else
+        {
+            s.NetInterfaceId = nics[0].Id;
+            s.Sample();
+            Thread.Sleep(600);
+            var a = s.Sample();
+            sb.AppendLine($"locked[{nics[0].Name}] → down={a.NetDownBps / 1024:0.#}KB/s up={a.NetUpBps / 1024:0.#}KB/s source='{a.NetSource}'");
+            sb.AppendLine(a.NetSource == nics[0].Name ? "PASS" : "FAIL NetSource");
+
+            s.NetInterfaceId = "{00000000-0000-0000-0000-000000000000}";
+            Thread.Sleep(600);
+            var b = s.Sample();
+            sb.AppendLine($"missing → source='{b.NetSource}'（空 = 回落全部）");
+            sb.AppendLine(b.NetSource.Length == 0 ? "PASS" : "FAIL fallback");
+        }
+        Directory.CreateDirectory(ProbeOut);
+        File.WriteAllText(ProbeOut + "/wmonitor-net-probe.txt", sb.ToString());
     }
 
     private static void TrayRowsProbe()

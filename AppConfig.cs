@@ -7,6 +7,9 @@ namespace WMonitor;
 public enum StripStyle { Numbers = 0, Bars = 1, Rings = 2 }
 public enum TrayStyle { DualNumber = 0, DualRing = 1, FourBar = 2, Single = 3 }
 
+/// <summary>详情面板「TOP 进程」区块的排序键（v0.35）。</summary>
+public enum PanelTopSort { Cpu = 0, Gpu = 1, Vram = 2 }
+
 /// <summary>资源主面板的视图。</summary>
 public enum DashboardView { App = 0, Process = 1, Gpu = 2 }
 
@@ -175,6 +178,19 @@ public sealed class AppConfig
     /// <summary>多卡筛选：锁定的适配器 LUID 前缀（"0x…_0x…10fb0" 形式，比较一律 OrdinalIgnoreCase）。
     /// 空 = 全部显卡。仅机器存在多块 GPU（GpuProcessSnapshot.Luids 分组 &gt; 1）时面板才显示下拉。</summary>
     public string DashboardGpuLuid { get; set; } = "";
+
+    // ---------------- v0.35 P1 体验增强 ----------------
+
+    /// <summary>网速统计的网卡（NetworkInterface.Id，GUID 形式）。空 = 全部物理网卡加总（v0.34 及以前的行为）。
+    /// 设置入口：托盘菜单「网速接口」单选；接口不在了（拔出/禁用）采样器自动回落全部。</summary>
+    public string NetInterfaceId { get; set; } = "";
+
+    /// <summary>详情面板「TOP 进程」区块（按 CPU/GPU/显存排序的 3 行）。关闭后面板回到纯全局指标。</summary>
+    public bool PanelTopProcesses { get; set; } = true;
+
+    /// <summary>TOP 进程区块的排序键。GPU/显存只在 GPU 进程计数器可用时出现在段控里，
+    /// 配置里残留不可用的键时面板按 CPU 显示（不回写配置，插回独显即恢复）。</summary>
+    public PanelTopSort PanelTopSort { get; set; } = PanelTopSort.Cpu;
 
     /// <summary>记住主面板窗口大小与位置。</summary>
     public bool DashboardRememberLayout { get; set; } = true;

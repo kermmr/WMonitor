@@ -10,6 +10,9 @@ namespace WMonitor.UI;
 ///
 /// 行不是写死的四行：CPU / 内存 / GPU / 显存 / 网速 / 磁盘 各对应设置里的一个开关，
 /// 关掉哪项就不画哪行，面板高度跟着变（每行 <see cref="RowH"/>）。
+/// v0.35 起数据行下面可带「TOP 进程」区块（cfg.PanelTopProcesses）：按 CPU/GPU/显存排序的 3 行，
+/// 数据来自 MonitorAppContext 惰性建的 AppMetricsHub —— 仅面板可见时采样（roadmap P1，
+/// 不把进程采样开销带回常驻链路）；点行经 <see cref="TopClicked"/> 跳主面板选中该应用。
 /// </summary>
 public sealed class DetailPanel : LayeredWindow
 {
@@ -21,6 +24,20 @@ public sealed class DetailPanel : LayeredWindow
     /// <summary>标题行 + 底栏的固定高度（不含数据行）。</summary>
     public const int ChromeH = 106;
 
+    // ---- TOP 进程区块（v0.35） ----
+
+    /// <summary>区块标题行（分隔线 + 标题/段控）高度。</summary>
+    public const int TopHeadH = 26;
+
+    /// <summary>TOP 行高（名称 + 数值 + 2px 迷你条）。</summary>
+    public const int TopRowH = 26;
+
+    /// <summary>TOP 行数。</summary>
+    public const int TopCount = 3;
+
+    /// <summary>区块总高（固定，数据不足 3 行时留白，面板高度不跳变）。</summary>
+    public const int TopH = TopHeadH + TopCount * TopRowH;
+
     private Bitmap? _bmp;
 
     /// <summary>历史关闭时的 60 点实时缓冲，下标 = <see cref="HistoryMetric"/>。</summary>
@@ -29,17 +46,29 @@ public sealed class DetailPanel : LayeredWindow
     /// <summary>历史数据源。为 null 或 <c>!Enabled</c> 时退回 60 点实时缓冲。</summary>
     public HistoryStore? History { get; set; }
 
+    /// <summary>点击 TOP 行 → 跳主面板选中该应用（key 与主面板表格行 Key 同构，"a:path" 形式）。</summary>
+    public event Action<string>? TopClicked;
+
     private static readonly (string Label, int Minutes)[] Windows =
     {
         ("1m", 1), ("5m", 5), ("1h", 60), ("24h", 1440)
     };
     private const float ChipW = 30f, ChipH = 18f, ChipGap = 4f;   // C9：文字 12px 后 26×16 装不下「24h」
+    private const float TopChipW = 40f;                           // 「CPU」「显存」比时间窗宽，40 扣得下
     private readonly RectangleF[] _winRects = new RectangleF[Windows.Length];
+    private readonly RectangleF[] _topSortRects = new RectangleF[3];
+    private readonly List<PanelTopSort> _topSortItems = new(3);
+    private readonly List<(RectangleF Rect, string Key)> _topRows = new();
 
     private readonly float[]?[] _cache = new float[]?[7];
     private long _cacheAt;
     private int _cacheWin = -1;
     private AppConfig? _cfgRef;
+
+    /// <summary>Update 最近一次的实参（排序段控点击后原地重画用，不等下个采样 tick）。</summary>
+    private MetricsSnapshot _lastS = new();
+    private Theme? _lastTh;
+    private AppMetricsSnapshot? _lastApps;
 
     /// <summary>一行画什么。</summary>
     private enum RowKind { Cpu, Ram, Gpu, Vram, Net, Disk }
@@ -85,8 +114,9 @@ public sealed class DetailPanel : LayeredWindow
         _ => HistoryMetric.Cpu,
     };
 
-    /// <summary>面板应有高度（打开定位用）。</summary>
-    public static int HeightFor(AppConfig cfg) => ChromeH + RowsFor(cfg).Count * RowH;
+    /// <summary>面板应有高度（打开定位用）。TOP 区块只由 cfg 决定，GPU 可用与否不改高度。</summary>
+    public static int HeightFor(AppConfig cfg) =>
+        ChromeH + RowsFor(cfg).Count * RowH + (cfg.PanelTopProcesses ? TopH : 0);
 
     public void PushHistory(MetricsSnapshot s)
     {
@@ -110,7 +140,8 @@ public sealed class DetailPanel : LayeredWindow
     /// 弹出面板。<paramref name="deafMs"/> 是「失焦保护期」：从托盘图标打开时要长一点 ——
     /// 点托盘会让任务栏/溢出面板重新拿到焦点，紧接着的 Deactivate 会把刚弹出的面板关掉。
     /// </summary>
-    public void OpenNear(Rectangle stripBounds, MetricsSnapshot s, AppConfig cfg, Theme th, int deafMs = 350)
+    public void OpenNear(Rectangle stripBounds, MetricsSnapshot s, AppConfig cfg, Theme th, int deafMs = 350,
+        AppMetricsSnapshot? apps = null)
     {
         var screen = Screen.FromRectangle(stripBounds).WorkingArea;
         int ph = HeightFor(cfg);
@@ -120,7 +151,7 @@ public sealed class DetailPanel : LayeredWindow
         x = Math.Clamp(x, screen.Left + 8, screen.Right - PanelW - 8);
         y = Math.Clamp(y, screen.Top + 8, screen.Bottom - ph - 8);
 
-        Update(s, cfg, th);
+        Update(s, cfg, th, apps);
         _deafUntil = DateTime.UtcNow.AddMilliseconds(deafMs);
         Show();
         Activate();
@@ -136,12 +167,15 @@ public sealed class DetailPanel : LayeredWindow
     /// <summary>点击标题旁的四格图标：打开资源管控主面板。</summary>
     public event Action? DashboardClicked;
 
-    public void Update(MetricsSnapshot s, AppConfig cfg, Theme th)
+    public void Update(MetricsSnapshot s, AppConfig cfg, Theme th, AppMetricsSnapshot? apps = null)
     {
         _cfgRef = cfg;
+        _lastS = s;
+        _lastTh = th;
+        _lastApps = apps;
         var rows = RowsFor(cfg);
         int w = PanelW;
-        int h = ChromeH + rows.Count * RowH;
+        int h = ChromeH + rows.Count * RowH + (cfg.PanelTopProcesses ? TopH : 0);
         if (_bmp == null || _bmp.Width != w || _bmp.Height != h)
         {
             _bmp?.Dispose();
@@ -184,8 +218,19 @@ public sealed class DetailPanel : LayeredWindow
         for (int i = 0; i < rows.Count; i++)
             DrawRow(g, rows[i], s, th, pad, right, rowY + rowH * i, rowH, cfg);
 
-        // ---- 底部 ----
-        float footY = rowY + rowH * rows.Count + 4;
+        // ---- TOP 进程（v0.35）+ 底部 ----
+        float footY;
+        if (cfg.PanelTopProcesses)
+        {
+            float topY = rowY + rowH * rows.Count;
+            DrawTopSection(g, cfg, th, apps, pad, right, topY);
+            footY = topY + TopH + 4;
+        }
+        else
+        {
+            footY = rowY + rowH * rows.Count + 4;
+        }
+
         using (var sep = new Pen(th.Sep, 1f)) g.DrawLine(sep, pad, footY, right, footY);
 
         var f = Gfx.F("Segoe UI", 12f, FontStyle.Regular);   // A3 最小 12（原 9.5 废弃）
@@ -289,7 +334,9 @@ public sealed class DetailPanel : LayeredWindow
 
             case RowKind.Net:
                 name = "网速";
-                sub = $"↓ {TrayIconRenderer.RateText(s.NetDownBps)}/s · ↑ {TrayIconRenderer.RateText(s.NetUpBps)}/s";
+                // v0.35 网速分接口:锁定单块网卡时把接口名亮出来,让过滤生效这件事看得见
+                sub = (s.NetSource.Length > 0 ? s.NetSource + " · " : "") +
+                      $"↓ {TrayIconRenderer.RateText(s.NetDownBps)}/s · ↑ {TrayIconRenderer.RateText(s.NetUpBps)}/s";
                 pct = RateToPct(s.NetDownBps / 1024.0);
                 value = TrayIconRenderer.RateText(s.NetDownBps);
                 unit = "/s"; icon = "net"; color = th.Net;
@@ -358,6 +405,114 @@ public sealed class DetailPanel : LayeredWindow
         float sx = right - (vw + 3 + uw);
         Gfx.Text(g, value, fNum, th.Text, sx, cy - 11);
         Gfx.Text(g, unit, fUnit, th.Label, sx + vw + 3, cy - 2);
+    }
+
+    // ---------------- TOP 进程（v0.35） ----------------
+
+    /// <summary>
+    /// TOP 进程区块：分隔线 + 标题 + 排序段控（右）+ 最多 3 行（名称、数值、2px 迷你条）。
+    /// 数据为 null（面板打开瞬间 Hub 尚未出数）时只画骨架，下一个采样 tick 填上。
+    /// 段控没有 GPU 进程数据时只留 CPU；配置里残留的 GPU/显存键此时按 CPU 显示，不回写配置。
+    /// </summary>
+    private void DrawTopSection(Graphics g, AppConfig cfg, Theme th,
+        AppMetricsSnapshot? apps, float pad, float right, float topY)
+    {
+        _topRows.Clear();
+        _topSortItems.Clear();
+
+        using (var sep = new Pen(th.Sep, 1f)) g.DrawLine(sep, pad, topY, right, topY);
+
+        Gfx.Text(g, "TOP 进程", Gfx.F("Segoe UI", 12f, FontStyle.Bold), th.Text, pad, topY + 6);
+
+        // 排序段控：与时间窗 chips 同款画法（内缩圆角块 + 12px 文字）
+        bool gpu = apps?.Gpu.Available == true;
+        var items = gpu
+            ? new[] { (PanelTopSort.Cpu, "CPU"), (PanelTopSort.Gpu, "GPU"), (PanelTopSort.Vram, "显存") }
+            : new[] { (PanelTopSort.Cpu, "CPU") };
+        var sort = gpu ? cfg.PanelTopSort : PanelTopSort.Cpu;
+        float cx = right - items.Length * TopChipW - (items.Length - 1) * ChipGap;
+        var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        var fChip = Gfx.F("Segoe UI", 12f, FontStyle.Regular);
+        for (int i = 0; i < items.Length; i++)
+        {
+            var r = new RectangleF(cx + i * (TopChipW + ChipGap), topY + 5, TopChipW, ChipH);
+            bool sel = items[i].Item1 == sort;
+            if (sel)
+            {
+                using var p = Gfx.RoundRect(r, 5f);
+                using var b = new SolidBrush(th.Hover);
+                g.FillPath(b, p);
+            }
+            using var tb = new SolidBrush(sel ? th.Text : th.Label);
+            g.DrawString(items[i].Item2, fChip, tb, r, sf);
+            _topSortRects[i] = r;
+            _topSortItems.Add(items[i].Item1);
+        }
+        for (int i = items.Length; i < _topSortRects.Length; i++) _topSortRects[i] = RectangleF.Empty;
+
+        var top = apps == null ? new List<AppMetric>() : PanelTopList.Pick(apps.Apps, sort, TopCount);
+        var fName = Gfx.F("Segoe UI", 12f, FontStyle.Regular);
+        var fVal = Gfx.F("Segoe UI", 12f, FontStyle.Bold);
+        Color accent = sort switch { PanelTopSort.Gpu => th.Gpu, PanelTopSort.Vram => th.Vram, _ => th.Cpu };
+
+        // 迷你条归一：CPU/GPU 按百分比；显存按总量，总量未知（注册表兜底失败）按榜内最大
+        double full;
+        if (sort == PanelTopSort.Vram)
+        {
+            long total = (long)(apps?.Global.VramTotalBytes ?? 0);
+            long max = top.Count > 0 ? (long)PanelTopList.Value(top[0], sort) : 0;
+            full = total > 0 ? total : Math.Max(1, max);
+        }
+        else
+        {
+            full = 100.0;
+        }
+
+        float y = topY + TopHeadH;
+        for (int i = 0; i < TopCount; i++)
+        {
+            var rowRect = new RectangleF(pad, y, right - pad, TopRowH);
+            if (i < top.Count)
+            {
+                var a = top[i];
+                string val = PanelTopList.ValueText(a, sort);
+                float vw = Gfx.Measure(g, val, fVal).Width;
+                Gfx.Text(g, Ellipsize(g, a.Name, fName, rowRect.Width - vw - 10), fName, th.Text, pad, y + 3);
+                Gfx.Text(g, val, fVal, th.Label, right - vw, y + 3);
+
+                float frac = (float)Math.Clamp(PanelTopList.Value(a, sort) / full, 0, 1);
+                var bar = new RectangleF(pad, y + TopRowH - 5, rowRect.Width, 2f);
+                using (var bp = Gfx.RoundRect(bar, 1f))
+                using (var bb = new SolidBrush(th.Track)) g.FillPath(bb, bp);
+                if (frac > 0.01f)
+                {
+                    using var fp = Gfx.RoundRect(new RectangleF(bar.X, bar.Y, bar.Width * frac, bar.Height), 1f);
+                    using var fb = new SolidBrush(Color.FromArgb(150, accent));
+                    g.FillPath(fb, fp);
+                }
+                _topRows.Add((rowRect, "a:" + a.Key));
+            }
+            y += TopRowH;
+        }
+    }
+
+    /// <summary>TOP 行展示名超宽时截断加省略号（Gfx.Text 没有省略模式，手动收）。</summary>
+    private static string Ellipsize(Graphics g, string text, Font f, float maxW)
+    {
+        if (text.Length == 0 || Gfx.Measure(g, text, f).Width <= maxW) return text;
+        while (text.Length > 1 && Gfx.Measure(g, text + "…", f).Width > maxW) text = text[..^1];
+        return text + "…";
+    }
+
+    /// <summary>排序段控点击：换键 + 落盘 + 用 Update 缓存的实参立刻重画（不等下个采样 tick）。</summary>
+    private void OnTopSortClicked(int idx)
+    {
+        if (_cfgRef == null || _lastTh == null || idx >= _topSortItems.Count) return;
+        var next = _topSortItems[idx];
+        if (_cfgRef.PanelTopSort == next) return;
+        _cfgRef.PanelTopSort = next;
+        _cfgRef.Save();
+        Update(_lastS, _cfgRef, _lastTh, _lastApps);
     }
 
     // ---------------- 时间窗 ----------------
@@ -538,6 +693,23 @@ public sealed class DetailPanel : LayeredWindow
                     _cfgRef.Save();
                     _cacheWin = -1;               // 强制重算
                 }
+                return;
+            }
+
+            // TOP 排序段控 / TOP 行（v0.35）
+            for (int i = 0; i < _topSortRects.Length; i++)
+            {
+                if (_topSortRects[i].Width > 0 && _topSortRects[i].Contains(pt))
+                {
+                    OnTopSortClicked(i);
+                    return;
+                }
+            }
+            foreach (var (rect, key) in _topRows)
+            {
+                if (!rect.Contains(pt)) continue;
+                Hide();
+                TopClicked?.Invoke(key);
                 return;
             }
 

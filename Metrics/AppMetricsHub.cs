@@ -102,10 +102,14 @@ public sealed class AppMetricsHub : IDisposable
         long nowMs = Environment.TickCount64;
         var rows = _proc.Sample();
 
+        // Global 先挂上（GPU 子采样的显存钳制要读适配器级总量）
+        _snap.Global = global ?? new MetricsSnapshot();
+
         // ---- GPU 子采样（0.5Hz，连续超时自动拉长间隔，plan §5 降级）----
         if (nowMs >= _gpuNextAt)
         {
             _gpuSnap = _gpu.Sample();
+            ClampVram();
             _gpuByPid.Clear();
             foreach (var g in _gpuSnap.Rows)
                 _gpuByPid[g.Pid] = g;                       // 采样器已按 PID 合行，键唯一
@@ -115,7 +119,6 @@ public sealed class AppMetricsHub : IDisposable
             _snap.GpuMs = _gpuSnap.SampleMs;
         }
 
-        _snap.Global = global ?? new MetricsSnapshot();
         _snap.Processes = rows;
         _snap.ProcessCount = rows.Count;
         _snap.ProcessMs = _proc.LastSampleMs;
@@ -150,6 +153,30 @@ public sealed class AppMetricsHub : IDisposable
 
         BuildApps(rows, nowTicks);
         return _snap;
+    }
+
+    /// <summary>
+    /// 进程级显存钳制（v0.35）：610.47 驱动的 GPU Process Memory 会报超过卡总量的垃圾值
+    /// （实测 12GB 卡上报 109GB；Get-Counter 直读原始计数器同值 → 驱动侧问题）。
+    /// 按 (pid,luid) 对照适配器级 Dedicated Usage（全局采样同帧）钳到卡占用；
+    /// 适配器总量未知 / 为 0（软适配器）不钳。util 不动 —— 利用率口径没坏。
+    /// </summary>
+    private void ClampVram()
+    {
+        var totals = _snap.Global.VramByLuid;
+        if (totals.Count == 0) return;
+        foreach (var r in _gpuSnap.Rows)
+        {
+            if (r.Luid == null || r.DedicatedBytes <= 0) continue;
+            if (totals.TryGetValue(r.Luid, out ulong tot) && tot > 0 && (ulong)r.DedicatedBytes > tot)
+                r.DedicatedBytes = (long)tot;
+        }
+        foreach (var l in _gpuSnap.Luids)
+        {
+            if (l.DedicatedBytes <= 0) continue;
+            if (totals.TryGetValue(l.Luid, out ulong tot) && tot > 0 && (ulong)l.DedicatedBytes > tot)
+                l.DedicatedBytes = (long)tot;
+        }
     }
 
     private void BuildApps(List<ProcessMetric> rows, long nowTicks)

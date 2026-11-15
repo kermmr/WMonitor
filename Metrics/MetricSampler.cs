@@ -24,6 +24,16 @@ public sealed class MetricsSnapshot
     /// <summary>磁盘读写（B/s）。步骤 5 才由 PDH 填充，之前恒为 0。</summary>
     public double DiskReadBps;
     public double DiskWriteBps;
+
+    /// <summary>网速统计的接口名（v0.35 网速分接口）。空 = 全部物理网卡加总；非空 = 锁定了单块网卡
+    /// （托盘菜单「网速接口」），详情面板网速行用它显示来源。</summary>
+    public string NetSource = "";
+
+    /// <summary>各适配器的专用显存占用（键 = NormalizeInstance 归一键；v0.35）。
+    /// AppMetricsHub 拿它给进程级 Dedicated Usage 钳上限 —— 610.47 驱动的进程级计数器
+    /// 会报超过卡总量的垃圾值（实测 12GB 卡上报 109GB，Get-Counter 直读原始值一致）。
+    /// 比较一律 OrdinalIgnoreCase（docs/12 §5.4：engine 小写 / memory 大写两族，别信单侧归一）。</summary>
+    public Dictionary<string, ulong> VramByLuid = new(StringComparer.OrdinalIgnoreCase);
     public string GpuName = "GPU";
     public bool HasGpu;
     public bool HasVramTotal;
@@ -55,6 +65,14 @@ public sealed class MetricSampler : IDisposable
     private bool _lockMissLogged;
     private ulong? _lockFull64;
     private ulong _vramTotalFallback;
+
+    /// <summary>网速统计锁定的网卡（NetworkInterface.Id，空 = 全部物理网卡加总）。
+    /// 设置入口：托盘菜单「网速接口」；MonitorAppContext 在启动与 RefreshAll 时同步进来。</summary>
+    public string NetInterfaceId { get; set; } = "";
+
+    /// <summary>锁定接口当前的显示名（面板网速行展示）。未锁定或接口不在了为 null。</summary>
+    public string? NetInterfaceName { get; private set; }
+    private bool _netSelMissLogged;
 
     // 高频分配的结构只算一次
     private static readonly int ItemSize = Marshal.SizeOf<Native.PDH_FMT_COUNTERVALUE_ITEM>();
@@ -188,6 +206,9 @@ public sealed class MetricSampler : IDisposable
         // ---- GPU ----
         // 实例键形如 luid_0x00000000_0x00010FB0_phys_0（实测格式，含 luid_ 前缀）；LockedGpuLuid 存的就是它
         var gpuMem = ReadArray(_cGpuMem);
+        s.VramByLuid.Clear();
+        foreach (var (k, v) in gpuMem)
+            if (v > 0) s.VramByLuid[k] = (ulong)Math.Max(0, v);   // 查找用 OrdinalIgnoreCase 字典,原键直存
         string? target = _lockedLuid;
         ulong best = 0;
         bool lockedFound = false;
@@ -258,6 +279,7 @@ public sealed class MetricSampler : IDisposable
 
         // ---- 网速 ----
         var (down, up, ticks) = ReadNetTotals();
+        s.NetSource = NetInterfaceName ?? "";
         if (_lastNetTicks > 0 && ticks > _lastNetTicks)
         {
             double secs = (ticks - _lastNetTicks) / (double)Stopwatch.Frequency;
@@ -401,6 +423,25 @@ public sealed class MetricSampler : IDisposable
         return true;
     }
 
+    /// <summary>托盘菜单「网速接口」要列的物理网卡（Id + 显示名）。枚举失败返回空表（菜单不出现该子项）。</summary>
+    internal static List<(string Id, string Name)> EnumRealNics()
+    {
+        try
+        {
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .Where(IsRealNic)
+                .Select(n => (n.Id, n.Name))
+                .ToList();
+        }
+        catch { return new List<(string, string)>(); }
+    }
+
+    /// <summary>接口选择器匹配：优先按 Id（GUID，重命名网卡也不变），也接受按名称（手改配置给名称也认）。
+    /// 大小写不敏感 —— GUID 与名称的既有比较口径一致。</summary>
+    public static bool NicMatches(string selector, string id, string name) =>
+        string.Equals(selector, id, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(selector, name, StringComparison.OrdinalIgnoreCase);
+
     private (ulong Down, ulong Up, long Ticks) ReadNetTotals()
     {
         long now = Stopwatch.GetTimestamp();
@@ -413,18 +454,45 @@ public sealed class MetricSampler : IDisposable
             _nicsAt = now;
         }
 
-        ulong down = 0, up = 0;
-        foreach (var ni in _nics)
+        // v0.35 网速分接口：锁定单块网卡统计；接口不在了（拔出 / 禁用）回落全部，别把网速冻在 0
+        NetworkInterface? only = null;
+        if (NetInterfaceId.Length > 0)
+            foreach (var ni in _nics)
+                if (NicMatches(NetInterfaceId, ni.Id, ni.Name)) { only = ni; break; }
+
+        bool miss = NetInterfaceId.Length > 0 && only == null;
+        if (miss != _netSelMissLogged)
         {
-            try
+            _netSelMissLogged = miss;
+            if (miss) Dbg.Log($"net interface missing, fallback to all: {NetInterfaceId}");
+        }
+        NetInterfaceName = only?.Name;
+
+        ulong down = 0, up = 0;
+        if (only != null)
+        {
+            (down, up) = ReadNic(only);
+        }
+        else
+        {
+            foreach (var ni in _nics)
             {
-                var st = ni.GetIPStatistics();
-                down += (ulong)Math.Max(0, st.BytesReceived);
-                up += (ulong)Math.Max(0, st.BytesSent);
+                var (d, u) = ReadNic(ni);
+                down += d;
+                up += u;
             }
-            catch { }
         }
         return (down, up, now);
+    }
+
+    private static (ulong Down, ulong Up) ReadNic(NetworkInterface ni)
+    {
+        try
+        {
+            var st = ni.GetIPStatistics();
+            return ((ulong)Math.Max(0, st.BytesReceived), (ulong)Math.Max(0, st.BytesSent));
+        }
+        catch { return (0, 0); }
     }
 
     public void Dispose()

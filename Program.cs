@@ -812,19 +812,21 @@ internal static class Program
     /// PrintWindow。守 v0.17 的回归（切换链路曾丢掉重排，行显隐冻结在打开时刻）。
     /// 探针里的 Apply→Save 会写用户 config.json：先备份，跑完原样还原。
     /// </summary>
-    /// <summary>诊断用（v0.34）：更新说明对话框视觉回归 —— 假数据弹窗 + 长说明截断各截一帧。</summary>
+    /// <summary>诊断用（v0.34）：更新说明对话框视觉回归 —— 假数据弹窗（markdown 清理/换行/截断/双钮）各截一帧。
+    /// v0.36 起顺带断言定位：无 owner 的 ShowDialog 不能落在屏幕原点（用户报告过「锁定在左上角」）。</summary>
     private static void UpdateDialogProbe()
     {
         Directory.CreateDirectory(ProbeOut);
         var notes = "**自动更新**：每 24h 静默检查 GitHub Releases\n- 托盘菜单「更新到 vX.Y」一键升级\n" +
                     "- 安装器升级会自动结束旧进程（含 WMonitor* 通配）\n\n" +
                     "## 已知问题\n\n- 长说明行用来验证换行与截断逻辑：这一行故意写得很长很长很长很长" +
-                    "很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长\n" +
+                    "很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长很长\n" +
                     "- 行二\n- 行三";
         var t = new Thread(() =>
         {
             Application.EnableVisualStyles();
             var th = Theme.Resolve(ThemeMode.Dark);
+            var wa = Screen.FromPoint(Cursor.Position).WorkingArea;   // 与 CenterOnCursorScreen 同帧取
             var dlg = new UpdateDialog(th, "0.33.0", "0.34.0", 63 * 1024 * 1024, notes, 1f);
             dlg.Show();
             var timer = new System.Windows.Forms.Timer { Interval = 600 };
@@ -832,6 +834,16 @@ internal static class Program
             {
                 timer.Stop();
                 CaptureWindow(dlg.Handle, Path.Combine(ProbeOut, "update-dialog.png"));
+
+                var sb = new StringBuilder();
+                Native.GetWindowRect(dlg.Handle, out var r);
+                int expectX = wa.Left + Math.Max(0, (wa.Width - dlg.Width) / 2);
+                int expectY = wa.Top + Math.Max(0, (wa.Height - dlg.Height) / 3);
+                bool ok = Math.Abs(r.Left - expectX) <= 2 && Math.Abs(r.Top - expectY) <= 2;
+                sb.AppendLine($"rect={r.Left},{r.Top} expect={expectX},{expectY} (wa {wa.Width}×{wa.Height})");
+                sb.AppendLine(ok ? "PASS" : "FAIL not centered on cursor screen");
+                File.WriteAllText(Path.Combine(ProbeOut, "wmonitor-update-dialog.txt"), sb.ToString());
+
                 dlg.Close();
             };
             timer.Start();

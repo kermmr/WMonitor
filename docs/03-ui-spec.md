@@ -289,7 +289,7 @@
 
 ## B4. 对话框（ActionConfirmDialog / MessageDialog）
 
-无边框自绘、`CenterParent`、圆角 R12、底 `CardBg`、1px `CardBorder`、外圈 `WindowBg`；宽 470（消息 440），pad 20。
+无边框自绘、`CenterParent`、圆角 R12、底 `CardBg`、1px `CardBorder`、外圈 `WindowBg`；宽 470（消息 440），pad 20。**空白区可拖动（v0.36，`DialogChrome.DragByClient`：父窗体空白区 NCHITTEST→HTCAPTION，子控件不经过该分支）**；`MaximizeBox=false` 防双击最大化。UpdateDialog（v0.34）无 owner 打开（托盘菜单），不用 CenterParent —— `DialogChrome.CenterOnCursorScreen` 光标所在屏居中（v0.36，此前落屏幕原点，用户报告「锁在左上角」）。
 
 | 项 | 值 |
 |---|---|

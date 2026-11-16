@@ -5,7 +5,7 @@ using WMonitor.Metrics;
 namespace WMonitor.UI;
 
 /// <summary>
-/// 管控动作二次确认对话框（plan §7 阶段 4 + 安全规则 4）：无边框自绘小窗。
+/// 管控动作二次确认对话框（plan §7 阶段 4 + 安全规则 4）：无边框自绘小窗，空白区可拖（v0.36）。
 /// 内容 = 动作标题 / 目标（名称·PID·路径）/ 影响范围 / 受限与关键进程提示 / 错误回显行 /
 /// 优先级五档段控（仅优先级动作）/ 批量勾选（仅应用行结束任务，明确显示数量）/ 必勾确认框。
 /// 确认按钮在勾选前禁用 ——「不要只用 OK」。
@@ -226,6 +226,12 @@ public sealed class ActionConfirmDialog : Form
         }
     }
 
+    protected override void WndProc(ref Message m)
+    {
+        base.WndProc(ref m);
+        DialogChrome.DragByClient(ref m);   // 空白区当标题栏:整窗可拖(v0.36),段控/勾选框/按钮命中子控件不经过这里
+    }
+
     protected override void OnPaintBackground(PaintEventArgs e) => e.Graphics.Clear(_th.WindowBg);
 
     protected override void OnPaint(PaintEventArgs e)
@@ -432,6 +438,8 @@ public sealed class MessageDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         ShowIcon = false;
+        MinimizeBox = false;
+        MaximizeBox = false;
         KeyPreview = true;
         BackColor = th.WindowBg;
         DoubleBuffered = true;
@@ -459,6 +467,12 @@ public sealed class MessageDialog : Form
         {
             if (e.KeyCode == Keys.Escape || e.KeyCode == Keys.Enter) DialogResult = DialogResult.OK;
         };
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        base.WndProc(ref m);
+        DialogChrome.DragByClient(ref m);   // 空白区当标题栏:整窗可拖(v0.36),确定钮命中子控件不经过这里
     }
 
     protected override void OnPaintBackground(PaintEventArgs e) => e.Graphics.Clear(_th.WindowBg);

@@ -5,7 +5,7 @@
 
 - 方案总纲：`docs/10-main-dashboard-plan.md`（管控范围 §7 阶段 4、安全规则同节、详情区 §2.4）
 - 阶段 1/2/3 交接：`docs/11` / `docs/12`（LUID 坑 §5.4）/ `docs/13`（NtQuery / owner SID / 图标缓存十三决策）
-- 目标版本：v0.23（阶段 4）→ ✅ v0.24–v0.26（UI 整改 P1~P3）→ ✅ v0.27–v0.29（图标/托盘/WM_PAINT 风暴）→ ✅ v0.30（看门狗 + 监视的显卡 + 自启自愈 + 仓库治理，日志 (0)）→ **✅ v0.31（CI + 单测 + 安装程序，日志 (1)）→ ✅ v0.32–v0.34（自动更新/日志入口/更新对话框/安装器杀旧，日志 (2)–(4)）→ ✅ v0.35（P1 体验增强收官，日志 (5)）**
+- 目标版本：v0.23（阶段 4）→ ✅ v0.24–v0.26（UI 整改 P1~P3）→ ✅ v0.27–v0.29（图标/托盘/WM_PAINT 风暴）→ ✅ v0.30（看门狗 + 监视的显卡 + 自启自愈 + 仓库治理，日志 (0)）→ **✅ v0.31（CI + 单测 + 安装程序，日志 (1)）→ ✅ v0.32–v0.34（自动更新/日志入口/更新对话框/安装器杀旧，日志 (2)–(4)）→ ✅ v0.35（P1 体验增强收官，日志 (5)）→ ✅ v0.36（更新弹窗定位/拖动修复，日志 (6)）**
 - 状态：**✅ 主面板四阶段 + UI 整改 P1~P3 + 工程化 P0 + P1 体验增强全部收官；roadmap 剩 P2 晨检清单与 P3 可选项**
 
 ## 0. 当前状态速览（接手先看这里）
@@ -25,6 +25,7 @@
 | 自启自愈 | ✅ v0.30：注册表指向已不存在的旧 exe 时启动自动改回，`--startup-repair-test` PASS |
 | 工程化（CI/单测/安装器/更新） | ✅ v0.31–v0.34：CI 全绿 + xunit + Inno Setup + 自动更新 + 更新对话框 + 安装器杀旧进程 |
 | TOP 进程 / 网速分接口 | ✅ v0.35：详情面板 TOP 区块（点行跳主面板选中）+ 托盘菜单「网速接口」单选；进程显存垃圾值钳制（docs/05 §26），`--panel-top-probe` / `--net-probe` PASS |
+| 对话框定位/拖动 | ✅ v0.36：更新弹窗改光标屏居中（原无 owner 落左上角），三个对话框空白区 HTCAPTION 可拖（DialogChrome），`--update-dialog-probe` 带定位断言 |
 | 下一步 | **无排期项**；roadmap 剩 P2 晨检项与 P3 可选（docs/06），真实更新全链路等下个版本发布后 dogfood |
 | 已知问题 | 见 §5 |
 
@@ -91,6 +92,17 @@
 
 ## 6. 施工日志（新条目加在最上面）
 
+- **2026-11-16 (1)** **v0.36：修复更新弹窗锁在左上角无法移动（用户反馈；三个对话框统一可拖）**：
+  - **根因两层**：① UpdateDialog 用 CenterParent，但托盘菜单 / 设置路径 `ShowDialog()` 无 owner
+    → CenterParent 找不到父窗体落到屏幕原点；② `FormBorderStyle.None` 自绘窗没有任何拖拽支持。
+  - **修复（`UI/DialogChrome.cs` 新文件）**：`CenterOnCursorScreen`（光标所在屏工作区居中、
+    垂直偏上 1/3；UpdateDialog 专用）+ `DragByClient`（父窗体空白区 WM_NCHITTEST→HTCAPTION；
+    MessageDialog / ActionConfirmDialog / UpdateDialog 三处 WndProc 接线）。子控件（按钮/段控/
+    勾选框）有自己的命中测试，不经过父窗体分支 —— 点击不受影响；`MaximizeBox=false` 防双击
+    最大化。MessageDialog / ActionConfirmDialog 保持 CenterParent（恒有 owner = 主面板）。
+  - **探针**：`--update-dialog-probe` 增加定位断言（GetWindowRect vs 光标屏中心 ±2px，
+    写 `wmonitor-update-dialog.txt`）。
+  - **验证**：构建 0/0；单测 63/63；探针 PASS + 截图目检。
 - **2026-11-15 (1)** **v0.35：roadmap P1 体验增强收官（TOP 进程 + 网速分接口 + 显存垃圾值钳制）**：
   - **TOP 进程区块（详情面板）**：落点是**详情面板**——「仅在面板打开时采样」是 v0.05 计划
     原意，主面板表格 v0.18 起已能全量排序、无需重复。数据 = MonitorAppContext 首次打开面板

@@ -41,9 +41,10 @@ public sealed class UpdateDialog : Form
         (_noteLines, _truncated) = WrapAndCap(CleanLines(notes), fBody, noteWidth, MaxNoteLines);
 
         FormBorderStyle = FormBorderStyle.None;
-        StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
         ShowIcon = false;
+        MinimizeBox = false;
+        MaximizeBox = false;
         KeyPreview = true;
         BackColor = th.WindowBg;
         DoubleBuffered = true;
@@ -67,6 +68,15 @@ public sealed class UpdateDialog : Form
 
         ClientSize = ComputeSize();
         LayoutChildren();
+        // v0.36:托盘菜单路径 ShowDialog() 无 owner,CenterParent 会落到屏幕原点(用户报告
+        // 「锁定在左上角」)—— 改 Manual,光标所在屏工作区居中
+        DialogChrome.CenterOnCursorScreen(this);
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        base.WndProc(ref m);
+        DialogChrome.DragByClient(ref m);   // 空白区当标题栏:整窗可拖(v0.36),按钮区命中子控件不经过这里
     }
 
     /// <summary>清理 + 按控件宽换行 + 截断（截断时补一行提示，算进返回列表）。</summary>

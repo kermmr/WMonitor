@@ -1,5 +1,24 @@
 # 07 · 版本记录
 
+## v0.36 — 2026-11-16
+
+**修复：更新弹窗锁在左上角无法移动（用户反馈）+ 三个对话框统一可拖**
+
+- **根因（两层）**：更新弹窗是 `FormBorderStyle.None` 自绘窗，① 定位用 `CenterParent`，
+  但托盘菜单 / 设置按钮路径 `ShowDialog()` **无 owner** —— CenterParent 找不到父窗体直接落到
+  屏幕原点（左上角）；② 整窗没有拖拽支持（无 ChromeForm、无 NCHITTEST），落哪都不能挪。
+- **修复（`UI/DialogChrome.cs` 新文件，三个对话框共用）**：
+  - **定位**：UpdateDialog 改 `DialogChrome.CenterOnCursorScreen` —— 光标所在屏工作区居中
+    （垂直偏上 1/3）。从托盘菜单打开就居中在那块屏，从设置打开也自然。MessageDialog /
+    ActionConfirmDialog 保持 CenterParent（恒有 owner = 主面板，居中语义正确）。
+  - **拖动**：`DragByClient` 在 WndProc 里把父窗体空白区的 WM_NCHITTEST 命中改成 HTCAPTION
+    —— 三个对话框（更新 / 动作确认 / 消息提示）空白区都能拖。按钮 / 段控 / 勾选框是子控件、
+    有自己的命中测试，不经过父窗体分支，点击不受影响。对话框一律 `MaximizeBox=false`，
+    双击拖拽区不会触发最大化。
+- **探针**：`--update-dialog-probe` 增加定位断言（GetWindowRect vs 光标屏工作区中心，±2px，
+  写 `wmonitor-update-dialog.txt`），PNG 视觉回归照旧。
+- **验证**：构建 0/0；单测 63/63；探针 PASS + 截图目检。
+
 ## v0.35 — 2026-11-15
 
 **roadmap P1 体验增强收官：详情面板 TOP 进程 + 网速分接口（附带修复进程显存垃圾值）**
